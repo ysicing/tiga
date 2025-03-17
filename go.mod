@@ -1,8 +1,6 @@
 module github.com/ysicing/tiga
 
 go 1.23.1
-toolchain go1.24.1
-
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/BeidouCloudPlatform/go-bindata/v4 v4.1.0
@@ -12,7 +10,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/cockroachdb/errors v1.11.3
 	github.com/containerd/continuity v0.4.5
-	github.com/ergoapi/util v0.7.13
+	github.com/ergoapi/util v0.8.1
 	github.com/go-ping/ping v1.2.0
 	github.com/gofrs/flock v0.12.1
 	github.com/google/gops v0.3.28
@@ -52,7 +50,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/6tail/lunar-go v1.3.15 // indirect
+	github.com/6tail/lunar-go v1.4.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
