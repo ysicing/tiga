@@ -5,7 +5,8 @@ import { useHostMonitor } from '@/hooks/use-host-monitor';
 import { HostCard } from '@/components/hosts/host-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { Plus, RefreshCw, Search, LayoutGrid, LayoutList } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
   DialogContent,
@@ -51,12 +52,22 @@ export function HostListPage() {
   const { hosts, loading, setHosts, setLoading } = useHostStore();
   const { connected, reconnecting } = useHostMonitor({ autoConnect: true });
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>(() => {
+    // Load from localStorage
+    const saved = localStorage.getItem('host-list-view-mode');
+    return (saved as 'card' | 'table') || 'card';
+  });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [installCmdDialog, setInstallCmdDialog] = useState<{
     open: boolean;
     id?: string;
     cmd?: string;
   }>({ open: false });
+
+  // Save view mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('host-list-view-mode', viewMode);
+  }, [viewMode]);
 
   const [formData, setFormData] = useState<HostFormData>({
     name: '',
@@ -163,6 +174,16 @@ export function HostListPage() {
     host.note?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Group hosts by group_name for card view
+  const groupedHosts = filteredHosts.reduce((acc, host) => {
+    const groupName = host.group_name || '未分类主机';
+    if (!acc[groupName]) {
+      acc[groupName] = [];
+    }
+    acc[groupName].push(host);
+    return acc;
+  }, {} as Record<string, typeof filteredHosts>);
+
   const stats = {
     total: hosts.length,
     online: hosts.filter((h) => h.online).length,
@@ -234,6 +255,14 @@ export function HostListPage() {
             className="pl-9"
           />
         </div>
+        <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'card' | 'table')}>
+          <ToggleGroupItem value="card" aria-label="卡片视图">
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="table" aria-label="表格视图">
+            <LayoutList className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
         <Button variant="outline" onClick={fetchHosts} disabled={loading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           刷新
@@ -246,35 +275,140 @@ export function HostListPage() {
         </div>
       </div>
 
-      {/* Host Grid */}
+      {/* Host Views */}
       {filteredHosts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             {hosts.length === 0 ? '暂无主机，点击"添加主机"开始' : '没有找到匹配的主机'}
           </p>
         </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredHosts.map((host) => (
-            <div key={host.id} className="relative group">
-              <HostCard
-                host={host}
-                onClick={() => navigate(`/vms/hosts/${host.id}`)}
-              />
-              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteHost(host.id, host.name);
-                  }}
-                >
-                  删除
-                </Button>
+      ) : viewMode === 'card' ? (
+        /* Grouped Card View */
+        <div className="space-y-8">
+          {Object.entries(groupedHosts).map(([groupName, groupHosts]) => (
+            <div key={groupName} className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">{groupName}</h2>
+                <span className="text-sm text-muted-foreground">
+                  ({groupHosts.length} 台主机)
+                </span>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {groupHosts.map((host) => (
+                  <div key={host.id} className="relative group">
+                    <HostCard
+                      host={host}
+                      onClick={() => navigate(`/vms/hosts/${host.id}`)}
+                    />
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteHost(host.id, host.name);
+                        }}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        /* Table View */
+        <div className="rounded-md border">
+          <table className="w-full">
+            <thead className="bg-muted/50">
+              <tr className="border-b">
+                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">名称</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">分组</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">系统</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">CPU</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">内存</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">磁盘</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">网络 ↓/↑</th>
+                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHosts.map((host) => {
+                const state = host.current_state;
+                const info = host.host_info;
+                return (
+                  <tr
+                    key={host.id}
+                    className="border-b hover:bg-muted/50 cursor-pointer"
+                    onClick={() => navigate(`/vms/hosts/${host.id}`)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${host.online ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="text-sm">{host.online ? '在线' : '离线'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>
+                        <div className="font-medium">{host.name}</div>
+                        {host.note && (
+                          <div className="text-xs text-muted-foreground">{host.note}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm">{host.group_name || '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {info ? `${info.platform} ${info.arch}` : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      {state ? (
+                        <span className={state.cpu_usage >= 80 ? 'text-red-600' : ''}>
+                          {state.cpu_usage.toFixed(1)}%
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      {state ? (
+                        <span className={state.mem_usage >= 80 ? 'text-red-600' : ''}>
+                          {state.mem_usage.toFixed(1)}%
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      {state ? (
+                        <span className={state.disk_usage >= 80 ? 'text-red-600' : ''}>
+                          {state.disk_usage.toFixed(1)}%
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      {state ? (
+                        <span className="text-xs">
+                          {(state.net_in_speed / 1024 / 1024).toFixed(1)}M /
+                          {(state.net_out_speed / 1024 / 1024).toFixed(1)}M
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteHost(host.id, host.name);
+                        }}
+                      >
+                        删除
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
