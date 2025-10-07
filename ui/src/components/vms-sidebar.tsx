@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import {
   IconServer2,
   IconLayoutDashboard,
-  IconChartBar,
+  IconActivity,
+  IconAlertTriangle,
+  IconFolders,
 } from '@tabler/icons-react'
 import {
   Sidebar,
@@ -21,14 +23,24 @@ import Logo from '@/assets/logo.png'
 
 const menuItems = [
   {
-    title: 'vms.list',
+    title: '主机节点',
     icon: IconServer2,
-    path: '/vms',
+    path: '/vms/hosts',
   },
   {
-    title: 'vms.metrics',
-    icon: IconChartBar,
-    path: '/vms/metrics',
+    title: '服务监控',
+    icon: IconActivity,
+    path: '/vms/service-monitors',
+  },
+  {
+    title: '告警事件',
+    icon: IconAlertTriangle,
+    path: '/vms/alert-events',
+  },
+  {
+    title: '主机分组',
+    icon: IconFolders,
+    path: '/vms/host-groups',
   },
 ]
 
@@ -38,10 +50,11 @@ export function VMsSidebar() {
   const { isMobile, setOpenMobile } = useSidebar()
 
   const isActive = (path: string) => {
-    if (path === '/vms') {
-      return location.pathname === path
+    // 精确匹配子页面
+    if (path === '/vms/hosts' && location.pathname.startsWith('/vms/hosts')) {
+      return true
     }
-    return location.pathname.startsWith(path)
+    return location.pathname === path || location.pathname.startsWith(path + '/')
   }
 
   const handleMenuItemClick = () => {
@@ -82,7 +95,7 @@ export function VMsSidebar() {
 
         {/* VMs 菜单 */}
         <SidebarGroup>
-          <SidebarGroupLabel>{t('vms.title', '主机管理')}</SidebarGroupLabel>
+          <SidebarGroupLabel>主机管理</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
@@ -92,11 +105,11 @@ export function VMsSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive(item.path)}
-                      tooltip={t(item.title)}
+                      tooltip={item.title}
                     >
                       <Link to={item.path} onClick={handleMenuItemClick}>
                         <IconComponent className="h-4 w-4" />
-                        <span>{t(item.title)}</span>
+                        <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

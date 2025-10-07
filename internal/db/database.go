@@ -155,6 +155,19 @@ func (d *Database) AutoMigrate() error {
 		// Kubernetes management
 		&models.Cluster{},
 		&models.ResourceHistory{},
+
+		// Host monitoring subsystem (Nezha-inspired)
+		&models.HostNode{},
+		&models.HostInfo{},
+		&models.HostState{},
+		&models.HostGroup{},
+		&models.ServiceMonitor{},
+		&models.ServiceProbeResult{},
+		&models.ServiceAvailability{},
+		&models.WebSSHSession{},
+		&models.MonitorAlertRule{},
+		&models.MonitorAlertEvent{},
+		&models.AgentConnection{},
 	)
 
 	if err != nil {

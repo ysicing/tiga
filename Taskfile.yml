@@ -49,18 +49,46 @@ tasks:
       - go mod tidy
       - go build -o bin/tiga cmd/tiga/main.go
 
+  agent:
+    desc: build agent
+    cmds:
+      - go mod tidy
+      - go build -o bin/tiga-agent cmd/tiga-agent/main.go
+
+  all:
+    desc: build all (backend + agent)
+    cmds:
+      - task: backend
+      - task: agent
+
   cross-compile:
-    desc: cross compile
+    desc: cross compile server
     deps:
       - web
     cmds:
       - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-amd64 cmd/tiga/main.go
       - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-arm64 cmd/tiga/main.go
 
+  agent-cross:
+    desc: cross compile agent for multiple platforms
+    cmds:
+      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-linux-amd64 cmd/tiga-agent/main.go
+      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-linux-arm64 cmd/tiga-agent/main.go
+      - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-darwin-amd64 cmd/tiga-agent/main.go
+      - GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-darwin-arm64 cmd/tiga-agent/main.go
+      - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-windows-amd64.exe cmd/tiga-agent/main.go
+      - GOOS=windows GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-windows-arm64.exe cmd/tiga-agent/main.go
+
+  cross-all:
+    desc: cross compile both server and agent
+    cmds:
+      - task: cross-compile
+      - task: agent-cross
+
   clean:
     desc: clean
     cmds:
-      - rm -rf bin/tiga
+      - rm -rf bin/tiga* bin/*
       - rm -rf static/index.html
       - rm -rf static/assets
       - rm -f coverage.out coverage.html

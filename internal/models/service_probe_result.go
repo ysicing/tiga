@@ -1,0 +1,43 @@
+package models
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// ServiceProbeResult represents a single probe execution result
+type ServiceProbeResult struct {
+	gorm.Model
+
+	ServiceMonitorID uint      `gorm:"index:idx_monitor_timestamp,priority:1;not null" json:"service_monitor_id"`
+	Timestamp        time.Time `gorm:"index:idx_monitor_timestamp,priority:2;index;not null" json:"timestamp"`
+
+	// Probe result
+	Success      bool   `gorm:"index" json:"success"`
+	Latency      int    `json:"latency"`        // Latency in milliseconds
+	ErrorMessage string `gorm:"type:text" json:"error_message,omitempty"`
+
+	// HTTP-specific result
+	HTTPStatusCode   int    `json:"http_status_code,omitempty"`
+	HTTPResponseBody string `gorm:"type:text" json:"http_response_body,omitempty"` // First 1KB
+
+	// TCP-specific result
+	TCPResponse string `gorm:"type:text" json:"tcp_response,omitempty"`
+
+	// Relationship
+	ServiceMonitor *ServiceMonitor `gorm:"foreignKey:ServiceMonitorID" json:"-"`
+}
+
+// TableName specifies the table name for ServiceProbeResult
+func (ServiceProbeResult) TableName() string {
+	return "service_probe_results"
+}
+
+// BeforeCreate sets the timestamp if not provided
+func (s *ServiceProbeResult) BeforeCreate(tx *gorm.DB) error {
+	if s.Timestamp.IsZero() {
+		s.Timestamp = time.Now()
+	}
+	return nil
+}

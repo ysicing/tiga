@@ -21,11 +21,16 @@ import { VMsLayout } from './layouts/vms-layout'
 import { StorageLayout } from './layouts/storage-layout'
 import { WebServerLayout } from './layouts/webserver-layout'
 
+// VMs/Host Management Pages
+import { HostListPage } from './pages/hosts/host-list-page'
+import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-page'
+import { HostEditPage } from './pages/hosts/host-edit-page'
+import { HostSSHPage } from './pages/hosts/host-ssh-page'
+import { ServiceMonitorPage } from './pages/hosts/service-monitor-page'
+import { AlertEventsPage } from './pages/hosts/alert-events-page'
+import { HostGroupsPage } from './pages/hosts/host-groups-page'
+
 // DevOps Platform Pages
-import HostsPage from './pages/hosts'
-import HostFormPage from './pages/host-form'
-import HostDetailPage from './pages/host-detail'
-import HostMetricsPage from './pages/host-metrics'
 import AlertsPage from './pages/alerts'
 import UsersPage from './pages/users'
 import UserFormPage from './pages/user-form'
@@ -87,27 +92,39 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HostsPage />,
+        element: <Navigate to="hosts" replace />,
+      },
+      // 主机节点管理
+      {
+        path: 'hosts',
+        element: <HostListPage />,
       },
       {
-        path: 'new',
-        element: <HostFormPage />,
+        path: 'hosts/:id',
+        element: <NewHostDetailPage />,
       },
       {
-        path: ':id',
-        element: <HostDetailPage />,
+        path: 'hosts/:id/edit',
+        element: <HostEditPage />,
       },
       {
-        path: ':id/edit',
-        element: <HostFormPage />,
+        path: 'hosts/:id/ssh',
+        element: <HostSSHPage />,
       },
+      // 服务监控管理
       {
-        path: ':id/metrics',
-        element: <HostMetricsPage />,
+        path: 'service-monitors',
+        element: <ServiceMonitorPage />,
       },
+      // 告警事件管理
       {
-        path: 'metrics',
-        element: <div>VMs 整体监控页面(待实现)</div>,
+        path: 'alert-events',
+        element: <AlertEventsPage />,
+      },
+      // 主机分组管理
+      {
+        path: 'host-groups',
+        element: <HostGroupsPage />,
       },
     ],
   },

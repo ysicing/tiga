@@ -88,6 +88,20 @@ export function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+// Format uptime in seconds to human readable format
+export function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+
+  const parts = []
+  if (days > 0) parts.push(`${days}天`)
+  if (hours > 0) parts.push(`${hours}小时`)
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}分钟`)
+
+  return parts.join(' ')
+}
+
 // Format CPU cores
 export function formatCPU(cores: string | number): string {
   if (typeof cores === 'string') {

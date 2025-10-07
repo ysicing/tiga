@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 
 	"github.com/ysicing/tiga/internal/api"
 	"github.com/ysicing/tiga/internal/api/middleware"
@@ -23,10 +25,12 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
+	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/managers"
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/common"
+	"github.com/ysicing/tiga/proto"
 
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
 )
@@ -40,6 +44,7 @@ type Application struct {
 	scheduler      *scheduler.Scheduler
 	coordinator    *managers.ManagerCoordinator
 	httpServer     *http.Server
+	grpcServer     *grpc.Server
 	installMode    bool
 	installChannel chan struct{}
 	staticFS       embed.FS
@@ -193,6 +198,17 @@ func (a *Application) Initialize(ctx context.Context) error {
 		IdleTimeout:  120 * time.Second,
 	}
 
+	// Initialize gRPC server for Agent communication
+	hostRepo := repository.NewHostRepository(a.db.DB)
+	agentManager := host.NewAgentManager(hostRepo, a.db.DB)
+	terminalManager := host.NewTerminalManager()
+	grpcService := host.NewGRPCServer(agentManager, terminalManager)
+
+	a.grpcServer = grpc.NewServer()
+	proto.RegisterHostMonitorServer(a.grpcServer, grpcService)
+
+	logrus.Info("gRPC server initialized for Agent monitoring")
+
 	// Suppress unused variable warnings
 	_ = userRepo
 
@@ -236,6 +252,21 @@ func (a *Application) initializeInstallMode(_ context.Context) error {
 
 // Run runs the application
 func (a *Application) Run(ctx context.Context) error {
+	// Start gRPC server for Agents (if not in install mode)
+	if !a.installMode && a.grpcServer != nil {
+		grpcPort := 12307 // TODO: Make this configurable
+		go func() {
+			listener, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+			if err != nil {
+				logrus.Fatalf("Failed to listen on gRPC port %d: %v", grpcPort, err)
+			}
+			logrus.Infof("Starting gRPC server on port %d", grpcPort)
+			if err := a.grpcServer.Serve(listener); err != nil {
+				logrus.Fatalf("gRPC server failed: %v", err)
+			}
+		}()
+	}
+
 	// Start HTTP server
 	go func() {
 		logrus.Infof("Starting HTTP server on %s", a.httpServer.Addr)
@@ -290,6 +321,12 @@ func (a *Application) Run(ctx context.Context) error {
 	<-quit
 
 	logrus.Info("Shutting down server...")
+
+	// Shutdown gRPC server
+	if a.grpcServer != nil {
+		logrus.Info("Stopping gRPC server...")
+		a.grpcServer.GracefulStop()
+	}
 
 	// Shutdown HTTP server
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

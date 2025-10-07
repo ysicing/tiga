@@ -273,3 +273,46 @@ ui/src/
 - React：`kebab-case.tsx`（如 `user-form-page.tsx`）
 - 测试：`*_test.go`
 - 配置：`config.yaml`、`.env`
+
+## 新增功能：主机管理子系统（开发中）
+
+**功能分支**：`002-nezha-webssh`
+**参考规格**：`.claude/specs/002-nezha-webssh/`
+
+### 核心特性
+- **Agent-Server架构**：轻量级Agent部署在被监控主机，通过gRPC持久连接上报数据
+- **实时监控**：CPU、内存、磁盘、网络等指标实时采集和展示
+- **服务探测**：支持HTTP/TCP/ICMP服务健康检查，Agent端分布式执行
+- **WebSSH终端**：浏览器内SSH终端，通过Agent代理实现安全访问
+- **告警系统**：表达式引擎驱动的灵活告警规则，支持多通知渠道
+
+### 技术栈
+- **通信**：gRPC双向流（Agent-Server）、WebSocket（浏览器实时数据）
+- **Agent**：Go独立二进制、gopsutil系统监控、systemd服务管理
+- **调度**：robfig/cron服务探测定时任务
+- **告警**：antonmedv/expr表达式引擎
+- **前端**：Zustand实时状态管理、Recharts监控图表、xterm.js终端UI
+
+### 数据模型
+- `HostNode`：主机节点元数据
+- `HostInfo`：主机硬件和系统信息
+- `HostState`：实时监控指标（时序数据）
+- `ServiceMonitor`：服务探测规则
+- `MonitorAlertRule`：告警规则
+- `AlertEvent`：告警事件
+- `WebSSHSession`：SSH会话管理
+
+### API端点
+- `/api/v1/hosts`：主机管理CRUD
+- `/api/v1/hosts/{id}/state`：监控数据查询
+- `/api/v1/host-groups`：主机分组
+- `/api/v1/service-monitors`：服务探测规则
+- `/api/v1/alert-rules`：告警规则
+- `/api/v1/webssh/{session_id}`：WebSSH终端（WebSocket）
+- `/api/v1/ws/host-monitor`：实时监控订阅（WebSocket）
+
+### 实施阶段
+- Phase 1：核心监控（Agent连接、数据采集、实时展示）
+- Phase 2：服务探测（探测规则、任务调度、结果聚合）
+- Phase 3：WebSSH（SSH代理、终端UI、会话管理）
+- Phase 4：高级功能（分组管理、自定义告警、Prometheus集成）

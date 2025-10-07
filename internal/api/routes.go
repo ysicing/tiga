@@ -16,7 +16,11 @@ import (
 	"github.com/ysicing/tiga/pkg/handlers/resources"
 
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
+	alertservices "github.com/ysicing/tiga/internal/services/alert"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
+	hostservices "github.com/ysicing/tiga/internal/services/host"
+	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
+	websshservices "github.com/ysicing/tiga/internal/services/webssh"
 	pkghandlers "github.com/ysicing/tiga/pkg/handlers"
 	pkgmiddleware "github.com/ysicing/tiga/pkg/middleware"
 )
@@ -49,6 +53,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 	alertRepo := repository.NewAlertRepository(db)
 	auditRepo := repository.NewAuditLogRepository(db)
 
+	// Host monitoring repositories
+	hostRepo := repository.NewHostRepository(db)
+	serviceRepo := repository.NewServiceRepository(db)
+	monitorAlertRepo := repository.NewMonitorAlertRepository(db)
+
 	// Initialize session and login services using the shared jwtManager
 	sessionService := authservices.NewSessionService(db)
 	loginService := authservices.NewLoginService(db, jwtManager, sessionService)
@@ -56,12 +65,35 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 	// Initialize services
 	instanceService := services.NewInstanceService(instanceRepo)
 
+	// Host monitoring services
+	serverURL := "http://localhost:12306" // TODO: Get from config
+	agentManager := hostservices.NewAgentManager(hostRepo, db)
+	stateCollector := hostservices.NewStateCollector(hostRepo, agentManager)
+	hostService := hostservices.NewHostService(hostRepo, agentManager, stateCollector, serverURL)
+	probeScheduler := monitorservices.NewServiceProbeScheduler(serviceRepo)
+	probeService := monitorservices.NewServiceProbeService(serviceRepo, probeScheduler)
+	sessionManager := websshservices.NewSessionManager(db)
+	terminalManager := hostservices.NewTerminalManager()
+
+	// Start background services
+	_ = alertservices.NewAlertEngine(monitorAlertRepo, hostRepo) // Runs in background
+	expiryScheduler := hostservices.NewExpiryScheduler(hostRepo, monitorAlertRepo, db)
+	expiryScheduler.Start()
+
 	// Initialize handlers
 	instanceHandler := handlers.NewInstanceHandler(instanceRepo)
 	healthHandler := instances.NewHealthHandler(instanceService)
 	metricsHandler := instances.NewMetricsHandler(instanceService)
 	alertHandler := handlers.NewAlertHandler(alertRepo)
 	auditHandler := handlers.NewAuditLogHandler(auditRepo)
+
+	// Host monitoring handlers
+	hostHandler := handlers.NewHostHandler(hostService)
+	hostGroupHandler := handlers.NewHostGroupHandler(db)
+	serviceMonitorHandler := handlers.NewServiceMonitorHandler(probeService)
+	// TODO: Create monitor_alert_handler.go for MonitorAlertRule/MonitorAlertEvent
+	websshHandler := handlers.NewWebSSHHandler(sessionManager, terminalManager, agentManager)
+	websocketHandler := handlers.NewWebSocketHandler(stateCollector)
 
 	// MinIO handlers
 	minioBucketHandler := minio.NewBucketHandler(*instanceRepo)
@@ -279,6 +311,62 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 
 			// User-specific audit logs
 			protected.GET("/users/:user_id/audit", auditHandler.ListUserAuditLogs)
+
+			// ==================== VMs (Host Monitoring) Subsystem ====================
+			vmsGroup := protected.Group("/vms")
+			{
+				// Host node management
+				hostsGroup := vmsGroup.Group("/hosts")
+				{
+					hostsGroup.POST("", hostHandler.CreateHost)
+					hostsGroup.GET("", hostHandler.ListHosts)
+					hostsGroup.GET("/:id", hostHandler.GetHost)
+					hostsGroup.PUT("/:id", hostHandler.UpdateHost)
+					hostsGroup.DELETE("/:id", hostHandler.DeleteHost)
+
+					// Host state queries
+					hostsGroup.GET("/:id/state/current", hostHandler.GetCurrentState)
+					hostsGroup.GET("/:id/state/history", hostHandler.GetHistoryState)
+				}
+
+				// Host groups
+				hostGroupsGroup := vmsGroup.Group("/host-groups")
+				{
+					hostGroupsGroup.POST("", hostGroupHandler.CreateGroup)
+					hostGroupsGroup.GET("", hostGroupHandler.ListGroups)
+					hostGroupsGroup.DELETE("/:id", hostGroupHandler.DeleteGroup)
+					hostGroupsGroup.POST("/:id/hosts", hostGroupHandler.AddHosts)
+					hostGroupsGroup.DELETE("/:id/hosts/:host_id", hostGroupHandler.RemoveHost)
+				}
+
+				// Service monitoring
+				serviceMonitorsGroup := vmsGroup.Group("/service-monitors")
+				{
+					serviceMonitorsGroup.POST("", serviceMonitorHandler.CreateMonitor)
+					serviceMonitorsGroup.GET("/:id", serviceMonitorHandler.GetMonitor)
+					serviceMonitorsGroup.PUT("/:id", serviceMonitorHandler.UpdateMonitor)
+					serviceMonitorsGroup.DELETE("/:id", serviceMonitorHandler.DeleteMonitor)
+					serviceMonitorsGroup.POST("/:id/trigger", serviceMonitorHandler.TriggerProbe)
+					serviceMonitorsGroup.GET("/:id/availability", serviceMonitorHandler.GetAvailability)
+				}
+
+				// WebSSH
+				websshGroup := vmsGroup.Group("/webssh")
+				{
+					websshGroup.POST("/sessions", websshHandler.CreateSession)
+					websshGroup.GET("/sessions", websshHandler.ListSessions)
+					websshGroup.DELETE("/sessions/:session_id", websshHandler.CloseSession)
+					websshGroup.GET("/:session_id", websshHandler.HandleWebSocket)
+				}
+
+				// WebSocket real-time monitoring
+				wsGroup := vmsGroup.Group("/ws")
+				{
+					wsGroup.GET("/hosts/monitor", websocketHandler.HostMonitor)
+					wsGroup.GET("/service-probes", websocketHandler.ServiceProbe)
+					wsGroup.GET("/alert-events", websocketHandler.AlertEvents)
+				}
+			}
 		}
 	}
 }

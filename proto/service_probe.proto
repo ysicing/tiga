@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/ysicing/tiga/proto;proto";
+
+// ServiceProbe 服务探测服务
+service ServiceProbe {
+  // ExecuteProbe 执行探测任务(双向流)
+  rpc ExecuteProbe(stream ProbeTaskRequest) returns (stream ProbeResultResponse);
+}
+
+// 探测类型
+enum ProbeType {
+  HTTP = 0;   // HTTP/HTTPS探测
+  TCP = 1;    // TCP端口探测
+  ICMP = 2;   // ICMP Ping探测
+}
+
+// 探测任务
+message ProbeTask {
+  int64 task_id = 1;                // 任务ID
+  ProbeType type = 2;               // 探测类型
+  string target = 3;                // 探测目标(URL/IP:Port/IP)
+  int32 timeout = 4;                // 超时时间(秒)
+  int32 interval = 5;               // 探测间隔(秒)
+
+  // HTTP特定配置
+  string http_method = 10;          // HTTP方法(GET/POST)
+  map<string, string> http_headers = 11; // HTTP头
+  string http_body = 12;            // HTTP请求体
+  int32 expect_status = 13;         // 期望状态码
+  string expect_body = 14;          // 期望响应体(包含字符串)
+
+  // TCP特定配置
+  string tcp_send = 20;             // TCP发送数据
+  string tcp_expect = 21;           // TCP期望接收数据
+}
+
+// 探测结果
+message ProbeResult {
+  int64 task_id = 1;                // 任务ID
+  int64 timestamp = 2;              // 探测时间(Unix毫秒)
+  bool success = 3;                 // 是否成功
+  int32 latency = 4;                // 延迟(毫秒)
+  string error_message = 5;         // 错误信息
+
+  // HTTP特定结果
+  int32 http_status_code = 10;      // HTTP状态码
+  string http_response_body = 11;   // HTTP响应体(前1KB)
+
+  // TCP特定结果
+  string tcp_response = 20;         // TCP响应数据
+}
+
+// 探测任务请求
+message ProbeTaskRequest {
+  string uuid = 1;                  // 主机UUID
+  ProbeTask task = 2;               // 探测任务
+}
+
+// 探测结果响应
+message ProbeResultResponse {
+  bool success = 1;                 // 是否成功
+  string message = 2;               // 消息
+  ProbeResult result = 3;           // 探测结果
+}
