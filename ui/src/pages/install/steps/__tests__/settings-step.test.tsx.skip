@@ -1,0 +1,61 @@
+import { describe, it, expect } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { SettingsStep } from '@/pages/install/steps/settings-step'
+
+// T015: SettingsStep 组件测试
+
+describe('SettingsStep', () => {
+  it('renders all settings fields', () => {
+    render(<SettingsStep />)
+
+    expect(screen.getByLabelText(/app name/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/domain/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/http port/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/language/i)).toBeInTheDocument()
+  })
+
+  it('validates app name length', async () => {
+    render(<SettingsStep />)
+
+    const appNameInput = screen.getByLabelText(/app name/i)
+    fireEvent.change(appNameInput, { target: { value: '' } })
+    fireEvent.blur(appNameInput)
+
+    await waitFor(() => {
+      expect(screen.getByText(/app name is required/i)).toBeInTheDocument()
+    })
+  })
+
+  it('validates port range', async () => {
+    render(<SettingsStep />)
+
+    const portInput = screen.getByLabelText(/http port/i)
+    fireEvent.change(portInput, { target: { value: '70000' } })
+    fireEvent.blur(portInput)
+
+    await waitFor(() => {
+      expect(screen.getByText(/between 1 and 65535/i)).toBeInTheDocument()
+    })
+  })
+
+  it('provides language selection', async () => {
+    render(<SettingsStep />)
+
+    const languageSelect = screen.getByLabelText(/language/i)
+
+    expect(languageSelect).toBeInTheDocument()
+    fireEvent.click(languageSelect)
+
+    await waitFor(() => {
+      expect(screen.getByText(/中文（简体）/i)).toBeInTheDocument()
+      expect(screen.getByText(/English/i)).toBeInTheDocument()
+    })
+  })
+
+  it('sets default values', () => {
+    render(<SettingsStep />)
+
+    const portInput = screen.getByLabelText(/http port/i) as HTMLInputElement
+    expect(portInput.value).toBe('12306')
+  })
+})

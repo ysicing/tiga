@@ -1,0 +1,80 @@
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { ConfirmStep } from '@/pages/install/steps/confirm-step'
+
+// T016: ConfirmStep 组件测试
+
+describe('ConfirmStep', () => {
+  const mockData = {
+    database: {
+      type: 'postgresql',
+      host: '127.0.0.1',
+      port: 5432,
+      database: 'tiga_test',
+      username: 'tiga',
+    },
+    admin: {
+      username: 'admin',
+      email: 'admin@example.com',
+    },
+    settings: {
+      app_name: 'Tiga Dashboard',
+      domain: 'localhost',
+      http_port: 12306,
+      language: 'zh-CN',
+    },
+  }
+
+  it('displays database configuration summary', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    expect(screen.getByText(/postgresql/i)).toBeInTheDocument()
+    expect(screen.getByText(/127\.0\.0\.1/)).toBeInTheDocument()
+    expect(screen.getByText(/5432/)).toBeInTheDocument()
+    expect(screen.getByText(/tiga_test/)).toBeInTheDocument()
+  })
+
+  it('displays admin account summary', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    expect(screen.getByText(/admin/)).toBeInTheDocument()
+    expect(screen.getByText(/admin@example\.com/)).toBeInTheDocument()
+  })
+
+  it('displays system settings summary', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    expect(screen.getByText(/Tiga Dashboard/)).toBeInTheDocument()
+    expect(screen.getByText(/localhost/)).toBeInTheDocument()
+    expect(screen.getByText(/12306/)).toBeInTheDocument()
+    expect(screen.getByText(/中文/)).toBeInTheDocument()
+  })
+
+  it('masks database password', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    expect(screen.queryByText(/test_password/)).not.toBeInTheDocument()
+    expect(screen.getByText(/\*{8}/)).toBeInTheDocument()
+  })
+
+  it('masks admin password', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    expect(screen.queryByText(/Admin123!/)).not.toBeInTheDocument()
+    expect(screen.getAllByText(/\*{8}/)).toHaveLength(2)
+  })
+
+  it('provides back button', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    const backButton = screen.getByRole('button', { name: /back/i })
+    expect(backButton).toBeInTheDocument()
+  })
+
+  it('provides finalize button', () => {
+    render(<ConfirmStep data={mockData} />)
+
+    const finalizeButton = screen.getByRole('button', { name: /complete installation/i })
+    expect(finalizeButton).toBeInTheDocument()
+  })
+})

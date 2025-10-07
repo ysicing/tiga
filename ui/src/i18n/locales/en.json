@@ -1,0 +1,785 @@
+{
+  "theme": {
+    "toggle": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "name": "Name",
+    "namespace": "Namespace",
+    "status": "Status",
+    "created": "Created",
+    "actions": "Actions",
+    "refresh": "Refresh",
+    "language": "Language",
+    "changeLanguage": "Change Language",
+    "close": "Close",
+    "done": "Done",
+    "desired": "Desired",
+    "current": "Current",
+    "available": "Available"
+  },
+  "install": {
+    "title": "Tiga Installation",
+    "welcome": "Welcome! Let's set up your Tiga instance",
+    "steps": {
+      "database": "Database",
+      "admin": "Admin Account",
+      "settings": "System Settings",
+      "confirm": "Review & Confirm"
+    },
+    "actions": {
+      "back": "Back",
+      "next": "Next",
+      "complete": "Complete Installation"
+    },
+    "database": {
+      "title": "Database Configuration",
+      "description": "Configure your database connection settings",
+      "type": "Database Type",
+      "selectType": "Select database type",
+      "host": "Host",
+      "port": "Port",
+      "database": "Database Name",
+      "username": "Username",
+      "password": "Password",
+      "sqlitePath": "SQLite database file path",
+      "databaseName": "Database name to use",
+      "testConnection": "Test Connection",
+      "retestConnection": "Retest Connection",
+      "connectionSuccess": "Connection successful!",
+      "connectionFailed": "Connection failed",
+      "connectionError": "Failed to test connection",
+      "existingDataWarning": "Database already contains Tiga data (version {{version}}). Please confirm reinstall.",
+      "existingDataFound": "Existing data found. Please confirm to reinstall.",
+      "willReinstall": "Will reinstall with existing data",
+      "confirmReinstall": "I confirm to reinstall and overwrite existing data"
+    },
+    "admin": {
+      "title": "Administrator Account",
+      "description": "Create the first administrator account",
+      "username": "Username",
+      "usernameHelp": "3-20 characters, letters, numbers and underscores only",
+      "email": "Email",
+      "password": "Password",
+      "passwordHelp": "At least 8 characters with uppercase, lowercase and numbers",
+      "confirmPassword": "Confirm Password",
+      "passwordStrength": "Password Strength",
+      "passwordWeak": "Weak",
+      "passwordFair": "Fair",
+      "passwordGood": "Good",
+      "passwordStrong": "Strong"
+    },
+    "settings": {
+      "title": "System Settings",
+      "description": "Configure basic system settings",
+      "appName": "Application Name",
+      "appNameHelp": "Display name for your Tiga instance",
+      "appSubtitle": "Application Subtitle",
+      "appSubtitleHelp": "Subtitle shown on the login page (optional)",
+      "domain": "Domain",
+      "domainHelp": "Domain or IP address for accessing Tiga",
+      "httpPort": "HTTP Port",
+      "httpPortHelp": "Port for HTTP server (1-65535)",
+      "language": "Language",
+      "languageHelp": "Default interface language",
+      "enableAnalytics": "Allow anonymous usage statistics",
+      "enableAnalyticsHelp": "Help us improve by allowing anonymous usage statistics collection. We use Umami, an open-source privacy-focused analytics tool. You can disable this at any time in system settings."
+    },
+    "confirm": {
+      "title": "Review Configuration",
+      "description": "Please review your configuration before completing installation",
+      "databaseConfig": "Database Configuration",
+      "adminAccount": "Administrator Account",
+      "systemSettings": "System Settings",
+      "incompleteData": "Installation data is incomplete. Please go back and complete all steps.",
+      "installationFailed": "Installation failed",
+      "installationError": "An error occurred during installation"
+    }
+  },
+  "globalSearch": {
+    "title": "Global Search",
+    "description": "Search across all Kubernetes resources",
+    "placeholder": "Search resources...",
+    "searching": "Searching...",
+    "emptyHint": "Type at least 3 characters to search or see favorites below...",
+    "favorites": "Favorites",
+    "resources": "Resources",
+    "noResults": "No results found",
+    "navigation": "Navigation",
+    "hidden": "Hidden",
+    "actions": "Actions",
+    "toggleTheme": "Toggle Theme",
+    "switchCluster": "Switch to cluster {{name}}"
+  },
+  "sidebar": {
+    "groups": {
+      "traffic": "traffic",
+      "storage": "storage",
+      "config": "config",
+      "other": "other",
+      "security": "Security",
+      "workloads": "Workloads"
+    },
+    "short": {
+      "pvcs": "PVCs",
+      "pvs": "PVs"
+    },
+    "layout": "Layout",
+    "layout.default": "Default",
+    "layout.compact": "Compact",
+    "layout.minimal": "Minimal",
+    "pinnedItems": "Pinned Items",
+    "pinned": "Pinned",
+    "menuGroups": "Menu Groups",
+    "resetToDefault": "Reset to Default"
+  },
+  "nav": {
+    "overview": "Overview",
+    "backToOverview": "Back to Overview",
+    "k8sOverview": "K8s Overview",
+    "pods": "Pods",
+    "deployments": "Deployments",
+    "statefulsets": "StatefulSets",
+    "daemonsets": "DaemonSets",
+    "jobs": "Jobs",
+    "services": "Services",
+    "ingresses": "Ingresses",
+    "gateways": "Gateways",
+    "httproutes": "HTTP Routes",
+    "configMaps": "ConfigMaps",
+    "secrets": "Secrets",
+    "persistentvolumeclaims": "Persistent Volume Claims",
+    "persistentvolumes": "Persistent Volumes",
+    "nodes": "Nodes",
+    "namespaces": "Namespaces",
+    "customResources": "Custom Resources",
+    "customResourceDefinitions": "Custom Resource Definitions",
+    "replicasets": "ReplicaSets",
+    "cronjobs": "Cron Jobs",
+    "storageclasses": "Storage Classes",
+    "events": "Events",
+    "crds": "CRDs",
+    "serviceaccounts": "Service Accounts",
+    "roles": "Roles",
+    "rolebindings": "Role Bindings",
+    "clusterroles": "Cluster Roles",
+    "clusterrolebindings": "Cluster Role Bindings",
+    "horizontalpodautoscalers": "HPA"
+  },
+  "overview": {
+    "title": "Overview",
+    "clusterStats": "Cluster Statistics",
+    "recentEvents": "Recent Events",
+    "resourceCharts": "Resource Charts",
+    "failedToLoad": "Failed to load overview data",
+    "unknownError": "Unknown error occurred",
+    "subsystem": {
+      "mysql": "MySQL",
+      "postgresql": "PostgreSQL",
+      "redis": "Redis",
+      "minio": "MinIO",
+      "docker": "Docker",
+      "kubernetes": "Kubernetes",
+      "k8s": "Kubernetes",
+      "caddy": "Caddy"
+    },
+    "status": {
+      "running": "Running",
+      "stopped": "Stopped",
+      "error": "Error"
+    },
+    "empty": "No instances, click to create",
+    "instances": "instances",
+    "instance": "instance",
+    "loadError": "Failed to load data, please refresh and try again",
+    "noInstances": "No instances found",
+    "createFirst": "Create your first instance to get started",
+    "manageInfrastructure": "Manage your infrastructure services and instances"
+  },
+  "pods": {
+    "title": "Pods",
+    "ready": "Ready",
+    "restarts": "Restarts",
+    "age": "Age",
+    "node": "Node",
+    "containerDetails": "Container Details",
+    "logs": "Logs",
+    "terminal": "Terminal"
+  },
+  "deployments": {
+    "title": "Deployments",
+    "replicas": "Replicas",
+    "ready": "Ready",
+    "upToDate": "Up-to-date",
+    "available": "Available",
+    "age": "Age"
+  },
+  "services": {
+    "title": "Services",
+    "type": "Type",
+    "clusterIP": "Cluster IP",
+    "externalIP": "External IP",
+    "ports": "Ports",
+    "age": "Age"
+  },
+  "nodes": {
+    "title": "Nodes",
+    "roles": "Roles",
+    "version": "Version",
+    "internalIP": "Internal IP",
+    "externalIP": "External IP",
+    "os": "OS",
+    "kernelVersion": "Kernel Version",
+    "containerRuntime": "Container Runtime"
+  },
+  "events": {
+    "title": "Events",
+    "type": "Type",
+    "reason": "Reason",
+    "object": "Object",
+    "message": "Message",
+    "firstSeen": "First Seen",
+    "lastSeen": "Last Seen",
+    "count": "Count",
+    "source": "Source",
+    "noEventsFound": "No events found"
+  },
+  "dialog": {
+    "createResource": "Create Resource",
+    "editResource": "Edit Resource",
+    "deleteConfirmation": "Delete Confirmation",
+    "deleteMessage": "Are you sure you want to delete this resource? This action cannot be undone.",
+    "containerEdit": "Edit Container"
+  },
+  "status": {
+    "running": "Running",
+    "pending": "Pending",
+    "succeeded": "Succeeded",
+    "failed": "Failed",
+    "unknown": "Unknown",
+    "terminating": "Terminating",
+    "crashLoopBackOff": "CrashLoopBackOff",
+    "containerCreating": "ContainerCreating",
+    "imagePullBackOff": "ImagePullBackOff"
+  },
+  "monitoring": {
+    "cpuUsage": "CPU Usage",
+    "memoryUsage": "Memory Usage",
+    "networkUsage": "Network Usage",
+    "diskUsage": "Disk Usage",
+    "resourceUtilization": "Resource Utilization",
+    "requests": "Requests",
+    "limits": "Limits",
+    "total": "Total"
+  },
+  "login": {
+    "title": "Sign In",
+    "subtitle": "Access your DevOps dashboard",
+    "Dashboard": "DevOps Dashboard",
+    "signIn": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "enterUsername": "Enter your username",
+    "enterPassword": "Enter your password",
+    "signingIn": "Signing in...",
+    "signInWithPassword": "Sign In with Password",
+    "orContinueWith": "Or continue with",
+    "signInWith": "Sign in with {{provider}}",
+    "tryAgainDifferentAccount": "Try Again with Different Account",
+    "tryAgainHint": "You can try logging in with a different account that has the required permissions.",
+    "noLoginMethods": "No login methods configured",
+    "configureAuth": "Please configure authentication providers in your environment",
+    "footer": "© {{year}} tiga. All rights reserved.",
+    "documentation": "Documentation",
+    "errors": {
+      "accessDenied": "Access Denied",
+      "authenticationFailed": "Authentication Failed",
+      "profileAccessFailed": "Profile Access Failed",
+      "sessionCreationFailed": "Session Creation Failed",
+      "oauthCallbackFailed": "OAuth Callback Failed",
+      "authenticationError": "Authentication Error",
+      "insufficientPermissions": "Insufficient permissions to access this application.",
+      "insufficientPermissionsUser": "Access denied for user \"{{user}}\". Please contact your administrator to verify your permissions.",
+      "insufficientPermissionsDetails": "Your account does not have the required permissions to access this Kubernetes dashboard.",
+      "tokenExchangeFailed": "Failed to complete authentication with {{provider}}.",
+      "tokenExchangeDetails": "There was an issue exchanging the authorization code for an access token. Please try again.",
+      "userInfoFailed": "Unable to retrieve your profile information from {{provider}}.",
+      "userInfoDetails": "The authentication succeeded, but we could not access your profile. Please try again.",
+      "jwtGenerationFailed": "Unable to create your authentication session.",
+      "jwtGenerationFailedUser": "Failed to create a session for user \"{{user}}\".",
+      "jwtGenerationDetails": "Please try logging in again. If the problem persists, contact support.",
+      "callbackFailed": "The OAuth authentication process failed.",
+      "callbackError": "An error occurred during authentication.",
+      "generalError": "An unexpected error occurred during authentication.",
+      "contactSupport": "Please try again or contact support if the issue persists.",
+      "invalidCredentials": "Invalid username or password",
+      "unknownError": "An unknown error occurred",
+      "userDisabled": "User Disabled",
+      "userDisabledMessage": "Your user account has been disabled. Please contact your administrator for more information."
+    }
+  },
+  "cluster": {
+    "loading": "Loading clusters...",
+    "error": "Error loading clusters: {{error}}",
+    "error403": "You do not have permission to access this cluster. Please contact your administrator for more information."
+  },
+  "resourceTable": {
+    "errorLoading": "Error loading {{resourceName}}",
+    "tryAgain": "Try Again"
+  },
+  "rbac": {
+    "noPermissionCluster": "User {{user}} does not have permission to {{verb}} {{resource}} on cluster {{cluster}}",
+    "noPermissionNamespace": "User {{user}} does not have permission to {{verb}} {{resource}} in namespace {{namespace}} on cluster {{cluster}}",
+    "accessDenied": "Access Denied",
+    "insufficientPermissions": "You do not have sufficient permissions to perform this action",
+    "allNamespaces": "All Namespaces",
+    "verb": {
+      "get": "Get",
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete",
+      "log": "View Logs",
+      "exec": "Execute"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage clusters, roles and permissions",
+    "tabs": {
+      "clusters": "Cluster",
+      "oauth": "OAuth",
+      "rbac": "RBAC",
+      "users": "User"
+    }
+  },
+  "settingsHint": {
+    "title": "Complete Your Setup",
+    "description": "Configure essential settings to get the most out of tiga",
+    "p8s": {
+      "description": "Configure Prometheus"
+    },
+    "oauth": {
+      "description": "Set up OAuth providers for authentication"
+    },
+    "rbac": {
+      "description": "Configure roles and permissions"
+    },
+    "viewAll": "View All Settings"
+  },
+  "clusterManagement": {
+    "title": "Cluster Management",
+    "actions": {
+      "add": "Add Cluster",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "table": {
+      "name": "Name",
+      "type": "Type",
+      "status": "Status",
+      "prometheus": "Prometheus",
+      "actions": "Actions"
+    },
+    "type": {
+      "inCluster": "In-Cluster",
+      "external": "External"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "empty": {
+      "title": "No clusters configured",
+      "description": "Add your first cluster to get started"
+    },
+    "messages": {
+      "created": "Cluster created successfully",
+      "updated": "Cluster updated successfully",
+      "deleted": "Cluster deleted successfully",
+      "createError": "Failed to create cluster",
+      "updateError": "Failed to update cluster",
+      "deleteError": "Failed to delete cluster"
+    },
+    "errors": {
+      "loadFailed": "Failed to load clusters"
+    },
+    "deleteConfirmation": "This action will only remove the current cluster's configuration in tiga and will not delete any cluster resources.",
+    "dialog": {
+      "createTitle": "Add Cluster",
+      "editTitle": "Edit Cluster",
+      "name": "Name",
+      "namePlaceholder": "Enter cluster name",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter cluster description (optional)",
+      "type": "Type",
+      "config": "Configuration",
+      "configPlaceholder": "Paste kubeconfig content here...",
+      "prometheusUrl": "Prometheus URL",
+      "prometheusUrlPlaceholder": "https://prometheus.example.com",
+      "enabled": "Enabled",
+      "isDefault": "Set as Default"
+    }
+  },
+  "oauthManagement": {
+    "title": "OAuth Provider Management",
+    "actions": {
+      "add": "Add Provider",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "table": {
+      "name": "Name",
+      "clientId": "Client ID",
+      "issuer": "Issuer",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "messages": {
+      "created": "OAuth provider created successfully",
+      "updated": "OAuth provider updated successfully",
+      "deleted": "OAuth provider deleted successfully",
+      "createError": "Failed to create OAuth provider",
+      "updateError": "Failed to update OAuth provider",
+      "deleteError": "Failed to delete OAuth provider"
+    },
+    "errors": {
+      "loadFailed": "Failed to load OAuth providers"
+    },
+    "deleteConfirmation": "This action will remove the OAuth provider configuration. Users will no longer be able to login using this provider.",
+    "dialog": {
+      "createTitle": "Add OAuth Provider",
+      "editTitle": "Edit OAuth Provider",
+      "name": "Name",
+      "namePlaceholder": "e.g., github, google",
+      "clientId": "Client ID",
+      "clientIdPlaceholder": "OAuth Client ID",
+      "clientSecret": "Client Secret",
+      "clientSecretRequired": "OAuth Client Secret",
+      "clientSecretPlaceholder": "Leave empty to keep current secret",
+      "authUrl": "Authorization URL",
+      "tokenUrl": "Token URL",
+      "userInfoUrl": "User Info URL",
+      "scopes": "Scopes",
+      "issuer": "Issuer",
+      "enabled": "Enabled"
+    }
+  },
+  "initialization": {
+    "title": "Initial Setup",
+    "welcome": "Welcome! Let's set up your tiga dashboard",
+    "subtitle": "Complete the following steps to get started",
+    "description": "Configure your admin user and connect cluster",
+    "step1": {
+      "title": "Create Super Admin User",
+      "description": "If you want to use it anonymously, please set the `ANONYMOUS_USER_ENABLED` env variable to true",
+      "username": "Username",
+      "usernameRequired": "Username *",
+      "usernamePlaceholder": "Enter admin username",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "Enter display name (optional)",
+      "password": "Password",
+      "passwordRequired": "Password *",
+      "passwordPlaceholder": "Enter password",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordRequired": "Confirm Password *",
+      "confirmPasswordPlaceholder": "Confirm password",
+      "creating": "Creating User...",
+      "createButton": "Create Super Admin User",
+      "passwordMismatch": "Passwords do not match",
+      "createSuccess": "Super admin user created successfully",
+      "createError": "Failed to create user"
+    },
+    "step2": {
+      "title": "Import Kubernetes Cluster",
+      "description": "Connect your Kubernetes cluster",
+      "kubeconfig": "Kubeconfig File",
+      "kubeconfigRequired": "Kubeconfig File *",
+      "kubeconfigPlaceholder": "Paste your kubeconfig file content here...",
+      "kubeconfigHint": "You can find your kubeconfig file at ~/.kube/config or get it from your cluster provider",
+      "pasteMode": "Paste Content",
+      "fileMode": "Upload File",
+      "fileHint": "Select your kubeconfig file (usually located at ~/.kube/config)",
+      "importing": "Importing Clusters...",
+      "importButton": "Import Clusters",
+      "importSuccess": "Clusters imported successfully",
+      "importError": "Failed to import clusters",
+      "configRequired": "Please provide a kubeconfig file"
+    },
+    "completion": {
+      "title": "Setup Complete!",
+      "message": "You will be redirected to the dashboard shortly..."
+    }
+  },
+  "resourceHistory": {
+    "title": "Resource History",
+    "operator": "Operator",
+    "operationTime": "Time",
+    "operationType": "Type",
+    "status": "Status",
+    "actions": "Actions",
+    "viewDiff": "View Diff",
+    "yamlDiff": "YAML Diff",
+    "loadingHistory": "Loading history...",
+    "failedToLoadHistory": "Failed to load history",
+    "noHistoryFound": "No history found",
+    "create": "Create",
+    "update": "Update",
+    "delete": "Delete",
+    "apply": "Apply",
+    "success": "Success",
+    "failed": "Failed",
+    "previousVsModified": "Previous vs Modified",
+    "currentVsModified": "Current vs Modified",
+    "rollback": {
+      "previous": "Rollback Previous",
+      "modified": "Rollback Modified",
+      "rollingBack": "Rolling back...",
+      "success": "Successfully rolled back resource",
+      "error": "Failed to rollback resource"
+    }
+  },
+  "pvcs": {
+    "volume": "Volume",
+    "storageClass": "Storage Class",
+    "capacity": "Capacity",
+    "accessModes": "Access Modes"
+  },
+  "detail": {
+    "buttons": {
+      "refresh": "Refresh",
+      "delete": "Delete",
+      "scale": "Scale",
+      "restart": "Restart",
+      "drain": "Drain",
+      "cordon": "Cordon",
+      "uncordon": "Uncordon",
+      "taint": "Taint",
+      "cancel": "Cancel",
+      "add": "Add",
+      "remove": "Remove",
+      "edit": "Edit",
+      "create": "Create",
+      "save": "Save"
+    },
+    "status": {
+      "loading": "Loading {{resource}} details...",
+      "yamlSaved": "YAML saved successfully",
+      "restartInitiated": "{{resource}} restart initiated",
+      "scaledTo": "{{resource}} scaled to {{replicas}} replicas",
+      "deleted": "{{resource}} deleted successfully",
+      "taintKeyRequired": "Taint key is required",
+      "taintRemoved": "Taint removed from {{resource}} successfully",
+      "nodeDrained": "Node {{name}} drained successfully",
+      "nodeCordoned": "Node {{name}} cordoned successfully",
+      "nodeUncordoned": "Node {{name}} uncordoned successfully",
+      "nodeTainted": "Node {{name}} tainted successfully"
+    },
+    "dialogs": {
+      "drainNode": {
+        "title": "Drain Node",
+        "description": "Safely evict all pods from this node.",
+        "forceDrain": "Force drain",
+        "deleteLocalData": "Delete local data",
+        "ignoreDaemonSets": "Ignore DaemonSets",
+        "gracePeriod": "Grace Period (seconds)",
+        "drainButton": "Drain Node"
+      },
+      "cordonNode": {
+        "title": "Cordon Node",
+        "description": "Mark this node as unschedulable.",
+        "cordonButton": "Cordon Node"
+      },
+      "taintNode": {
+        "title": "Taint Node",
+        "description": "Add a taint to prevent pods from being scheduled.",
+        "key": "Key *",
+        "value": "Value",
+        "effect": "Effect",
+        "keyPlaceholder": "e.g., node.kubernetes.io/maintenance",
+        "valuePlaceholder": "Optional value",
+        "addTaintButton": "Add Taint"
+      },
+      "scaleDeployment": {
+        "title": "Scale Deployment",
+        "description": "Adjust the number of replicas for this deployment.",
+        "replicas": "Replicas",
+        "scaleButton": "Scale"
+      },
+      "restartDeployment": {
+        "title": "Restart Deployment",
+        "description": "This will restart all pods in the deployment by updating the deployment's template with a new restart annotation. This action cannot be undone.",
+        "restartButton": "Restart"
+      },
+      "restartDaemonSet": {
+        "title": "Restart DaemonSet",
+        "description": "This will restart all pods managed by this DaemonSet. This action cannot be undone.",
+        "restartButton": "Restart"
+      }
+    },
+    "sections": {
+      "statusOverview": "Status Overview",
+      "nodeInformation": "Node Information",
+      "resourceCapacity": "Resource Capacity",
+      "nodeTaints": "Node Taints",
+      "nodeConditions": "Node Conditions",
+      "deploymentInformation": "Deployment Information",
+      "daemonSetInformation": "DaemonSet Information",
+      "podInformation": "Pod Information",
+      "initContainers": "Init Containers",
+      "containers": "Containers",
+      "conditions": "Conditions"
+    },
+    "fields": {
+      "created": "Created",
+      "strategy": "Strategy",
+      "replicas": "Replicas",
+      "selector": "Selector",
+      "started": "Started",
+      "podIP": "Pod IP",
+      "hostIP": "Host IP",
+      "owner": "Owner",
+      "role": "Role",
+      "internalIP": "Internal IP",
+      "externalIP": "External IP",
+      "podCIDR": "Pod CIDR",
+      "kubeletVersion": "Kubelet Version",
+      "hostname": "Hostname",
+      "osImage": "OS Image",
+      "kernelVersion": "Kernel Version",
+      "architecture": "Architecture",
+      "containerRuntime": "Container Runtime",
+      "kubeProxyVersion": "Kube Proxy Version",
+      "phase": "Phase",
+      "readyContainers": "Ready Containers",
+      "restartCount": "Restart Count",
+      "node": "Node",
+      "notAssigned": "Not assigned",
+      "notStarted": "Not started",
+      "noOwner": "No owner",
+      "ready": "Ready",
+      "notReady": "Not Ready",
+      "schedulingDisabled": "(SchedulingDisabled)",
+      "capacity": "Capacity",
+      "allocatable": "Allocatable",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "pods": "Pods",
+      "storage": "Storage",
+      "effect": "Effect",
+      "key": "Key",
+      "value": "Value",
+      "timeAdded": "Time Added",
+      "type": "Type",
+      "message": "Message",
+      "lastTransitionTime": "Last Transition Time",
+      "updatedReplicas": "Updated Replicas",
+      "availableReplicas": "Available Replicas",
+      "readyReplicas": "Ready Replicas",
+      "desiredScheduled": "Desired Scheduled",
+      "currentScheduled": "Current Scheduled"
+    }
+  },
+  "devops": {
+    "hosts": "Hosts",
+    "alerts": "Alerts",
+    "users": "Users",
+    "roles": "Roles",
+    "settings": "Settings"
+  },
+  "vms": {
+    "title": "Host Management",
+    "list": "Host List",
+    "metrics": "Cluster Metrics"
+  },
+  "minio": {
+    "buckets": "Buckets",
+    "users": "Users",
+    "policies": "Policies",
+    "metrics": "Metrics"
+  },
+  "subsystem": {
+    "devops": "DevOps",
+    "devops.description": "Development and operations management, including hosts, users, alerts",
+    "hosts": "Host Management",
+    "hosts.description": "Manage physical and virtual servers",
+    "middleware": "Middleware",
+    "middleware.description": "Database and storage middleware management",
+    "minio": "Object Storage",
+    "minio.description": "MinIO object storage service management",
+    "kubernetes": "Kubernetes",
+    "kubernetes.description": "Container orchestration and microservices management",
+    "docker": "Docker",
+    "docker.description": "Container images and runtime management",
+    "caddy": "Web Server",
+    "caddy.description": "Caddy web server and reverse proxy management",
+    "monitoring": "Monitoring",
+    "monitoring.description": "System monitoring and alert management"
+  },
+  "middleware": {
+    "title": "Middleware Management",
+    "overview": "Middleware Overview",
+    "mysql": "MySQL",
+    "postgresql": "PostgreSQL",
+    "redis": "Redis",
+    "minio": "MinIO",
+    "docker": "Docker",
+    "createInstance": "Create Instance",
+    "noInstances": "No instances",
+    "allInstances": "All Instances",
+    "noInstancesFound": "No middleware instances found",
+    "createFirstInstance": "Create First Instance"
+  },
+  "docker": {
+    "title": "Docker Management",
+    "overview": "Docker Overview",
+    "overview.description": "Manage Docker containers, images, and networks",
+    "containers": "Containers",
+    "containers.description": "Manage Docker containers",
+    "images": "Images",
+    "images.description": "Manage Docker images",
+    "networks": "Networks",
+    "networks.description": "Manage Docker networks",
+    "comingSoon.description": "Docker management features are under development, please stay tuned."
+  },
+  "storage": {
+    "title": "Object Storage",
+    "overview": "Storage Overview",
+    "overview.description": "MinIO object storage service management",
+    "buckets": "Buckets",
+    "buckets.description": "Manage storage buckets",
+    "users": "Users",
+    "users.description": "Manage storage users",
+    "policies": "Policies",
+    "policies.description": "Manage access policies",
+    "metrics": "Metrics",
+    "metrics.description": "Storage performance monitoring",
+    "comingSoon.description": "MinIO object storage management features are under development, please stay tuned."
+  },
+  "webserver": {
+    "title": "Web Server",
+    "overview": "WebServer Overview",
+    "overview.description": "Caddy web server and reverse proxy management",
+    "sites": "Sites",
+    "sites.description": "Manage websites and virtual hosts",
+    "config": "Configuration",
+    "config.description": "Server configuration management",
+    "certificates": "SSL Certificates",
+    "certificates.description": "Manage SSL/TLS certificates",
+    "metrics": "Metrics",
+    "metrics.description": "Server performance monitoring",
+    "comingSoon.description": "Caddy web server management features are under development, please stay tuned."
+  }
+}

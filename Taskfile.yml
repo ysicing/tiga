@@ -1,0 +1,109 @@
+version: '3'
+
+tasks:
+
+  gofmt:
+    cmds:
+      - go install golang.org/x/tools/cmd/goimports@latest
+      - gofmt -s -w .
+      - goimports -w .
+
+  golint:
+    cmds:
+      - command -v golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - golangci-lint run -v ./...
+
+  gci:
+    cmds:
+      - command -v gci || go install github.com/daixiang0/gci@v0.13.1
+      - gci write --skip-generated --custom-order -s standard -s default -s "prefix(github.com/ysicing/tiga)" -s blank -s dot -s alias .
+
+  gomod:
+    cmds:
+      - go mod tidy
+
+  lint:
+    desc: lint code
+    cmds:
+      - task: gomod
+      - task: gofmt
+      - task: gci
+      # - task: golint
+
+  web:
+    desc: build web
+    deps:
+      - clean
+    dir: ui
+    cmds:
+      - pnpm install --frozen-lockfile
+      - pnpm run build
+    status:
+      - test -f ../static/index.html
+
+  backend:
+    desc: build backend
+    deps:
+      - web
+    cmds:
+      - go mod tidy
+      - go build -o bin/tiga cmd/tiga/main.go
+
+  cross-compile:
+    desc: cross compile
+    deps:
+      - web
+    cmds:
+      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-amd64 cmd/tiga/main.go
+      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-arm64 cmd/tiga/main.go
+
+  clean:
+    desc: clean
+    cmds:
+      - rm -rf bin/tiga
+      - rm -rf static/index.html
+      - rm -rf static/assets
+      - rm -f coverage.out coverage.html
+
+  test:
+    desc: run unit tests (skip integration tests that need Docker)
+    cmds:
+      - go test ./... -v -short -race -coverprofile=coverage.out -covermode=atomic
+      - go tool cover -func=coverage.out | grep total | awk '{print "Total coverage:" $3}'
+
+  test-integration:
+    desc: run all tests including integration tests (requires Docker)
+    cmds:
+      - go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
+      - go tool cover -func=coverage.out | grep total | awk '{print "Total coverage:" $3}'
+
+  test-report:
+    desc: generate HTML coverage report
+    deps:
+      - test
+    cmds:
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated at coverage.html"
+
+  docker:
+    desc: build docker image
+    cmds:
+      - docker buildx build --pull --push --platform linux/amd64 -t ttl.sh/ysicing/tiga .
+
+  dev:
+    desc: run development server (all-in-one mode)
+    deps:
+      - web
+    cmds:
+      - go run cmd/tiga/main.go
+
+  dev:backend:
+    desc: run backend API server only
+    cmds:
+      - go run cmd/tiga/main.go
+
+  dev:web:
+    desc: run frontend development server (Vite hot reload)
+    dir: ui
+    cmds:
+      - pnpm dev

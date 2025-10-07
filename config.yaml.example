@@ -1,0 +1,61 @@
+# Tiga DevOps Platform Configuration
+
+server:
+  mode: debug  # debug, release, test
+  port: 12306
+  read_timeout: 60
+  write_timeout: 60
+
+database:
+  host: localhost
+  port: 5432
+  user: tiga
+  password: tiga_password
+  dbname: tiga
+  sslmode: disable
+  max_open_conns: 100
+  max_idle_conns: 10
+  conn_max_lifetime: 3600
+
+security:
+  # JWT secret will be auto-generated during installation
+  # You can also set it manually here (at least 32 characters recommended)
+  jwt_secret: ""
+  bcrypt_cost: 10
+  encryption_key: your-32-byte-encryption-key-here!!  # Must be 32 bytes
+
+logging:
+  level: info  # debug, info, warning, error
+  format: text # text, json
+
+monitoring:
+  enabled: true
+  interval: 30  # seconds
+
+# Notification configurations (optional)
+notifications:
+  email:
+    enabled: false
+    smtp_host: smtp.example.com
+    smtp_port: 587
+    username: noreply@example.com
+    password: your-smtp-password
+    from: noreply@example.com
+    use_tls: true
+
+  webhook:
+    enabled: false
+    url: https://your-webhook-url.com
+    method: POST
+    timeout: 10
+    retry_count: 3
+
+  dingtalk:
+    enabled: false
+    webhook_url: https://oapi.dingtalk.com/robot/send?access_token=xxx
+    secret: your-dingtalk-secret
+    at_all: false
+
+  wechat_work:
+    enabled: false
+    webhook_url: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx

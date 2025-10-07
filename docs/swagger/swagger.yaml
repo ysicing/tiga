@@ -1,0 +1,2411 @@
+basePath: /api/v1
+definitions:
+  handlers.AcknowledgeAlertEventRequest:
+    properties:
+      eventID:
+        type: string
+      note:
+        type: string
+    required:
+    - eventID
+    type: object
+  handlers.AssignRoleRequest:
+    properties:
+      role_id:
+        type: string
+      userID:
+        type: string
+    required:
+    - role_id
+    - userID
+    type: object
+  handlers.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  handlers.CreateAlertRuleRequest:
+    properties:
+      description:
+        type: string
+      enabled:
+        type: boolean
+      instance_id:
+        type: string
+      name:
+        type: string
+      notification_channels:
+        items:
+          type: string
+        type: array
+      notification_config:
+        additionalProperties: true
+        type: object
+      rule_config:
+        additionalProperties: true
+        type: object
+      rule_type:
+        enum:
+        - threshold
+        - anomaly
+        - rate
+        type: string
+      severity:
+        enum:
+        - critical
+        - warning
+        - info
+        type: string
+    required:
+    - name
+    - rule_config
+    - rule_type
+    - severity
+    type: object
+  handlers.CreateInstanceRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      environment:
+        enum:
+        - dev
+        - test
+        - staging
+        - production
+        type: string
+      host:
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      service_type:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - host
+    - name
+    - port
+    - service_type
+    type: object
+  handlers.CreateMetricRequest:
+    properties:
+      instance_id:
+        type: string
+      labels:
+        additionalProperties: true
+        type: object
+      metric_name:
+        type: string
+      metric_type:
+        type: string
+      timestamp:
+        description: RFC3339 format, defaults to now
+        type: string
+      value:
+        type: number
+    required:
+    - instance_id
+    - metric_name
+    - metric_type
+    - value
+    type: object
+  handlers.CreateMetricsBatchRequest:
+    properties:
+      metrics:
+        items:
+          $ref: '#/definitions/handlers.CreateMetricRequest'
+        maxItems: 1000
+        minItems: 1
+        type: array
+    required:
+    - metrics
+    type: object
+  handlers.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      status:
+        enum:
+        - active
+        - suspended
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    - username
+    type: object
+  handlers.ErrorResponse:
+    properties:
+      details: {}
+      error:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handlers.ManageTagsRequest:
+    properties:
+      instanceID:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    required:
+    - instanceID
+    - tags
+    type: object
+  handlers.OAuthLoginRequest:
+    properties:
+      code:
+        type: string
+      provider:
+        description: google, github, oidc
+        type: string
+      state:
+        type: string
+    required:
+    - code
+    - provider
+    - state
+    type: object
+  handlers.PaginatedResponse:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/handlers.Pagination'
+      success:
+        type: boolean
+    type: object
+  handlers.Pagination:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  handlers.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  handlers.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.ToggleAlertRuleRequest:
+    properties:
+      enabled:
+        type: boolean
+      ruleID:
+        type: string
+    required:
+    - enabled
+    - ruleID
+    type: object
+  handlers.UpdateAlertRuleRequest:
+    properties:
+      description:
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      notification_channels:
+        items:
+          type: string
+        type: array
+      notification_config:
+        additionalProperties: true
+        type: object
+      rule_config:
+        additionalProperties: true
+        type: object
+      ruleID:
+        type: string
+      severity:
+        enum:
+        - critical
+        - warning
+        - info
+        type: string
+    required:
+    - ruleID
+    type: object
+  handlers.UpdateInstanceHealthRequest:
+    properties:
+      health:
+        enum:
+        - healthy
+        - unhealthy
+        - degraded
+        - unknown
+        type: string
+      health_message:
+        type: string
+      instanceID:
+        type: string
+    required:
+    - health
+    - instanceID
+    type: object
+  handlers.UpdateInstanceRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      environment:
+        enum:
+        - dev
+        - test
+        - staging
+        - production
+        type: string
+      host:
+        type: string
+      instanceID:
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      tags:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - instanceID
+    type: object
+  handlers.UpdateInstanceStatusRequest:
+    properties:
+      instanceID:
+        type: string
+      status:
+        enum:
+        - pending
+        - running
+        - stopped
+        - failed
+        type: string
+    required:
+    - instanceID
+    - status
+    type: object
+  handlers.UpdateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      status:
+        enum:
+        - active
+        - suspended
+        type: string
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  managers.HealthStatus:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      healthy:
+        type: boolean
+      last_check_time:
+        type: string
+      message:
+        type: string
+      response_time_ms:
+        type: integer
+    type: object
+  managers.ServiceMetrics:
+    properties:
+      instance_id:
+        type: string
+      metrics:
+        additionalProperties: true
+        type: object
+      timestamp:
+        type: string
+    type: object
+host: localhost:12306
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+    url: https://github.com/ysicing/tiga
+  description: |
+    Multi-instance DevOps management platform with support for MinIO, MySQL, PostgreSQL, Redis, Docker, and Caddy.
+
+    Features:
+    - Instance health monitoring and metrics collection
+    - Alert management with rules and events
+    - Comprehensive audit logging
+    - MinIO object storage management
+    - Database management with SQL editor
+    - Docker container operations
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Tiga DevOps Platform API
+  version: "1.0"
+paths:
+  /api/v1/alerts/events:
+    get:
+      description: Get a paginated list of alert events
+      parameters:
+      - description: Filter by alert ID (UUID)
+        in: query
+        name: alert_id
+        type: string
+      - description: Filter by instance ID (UUID)
+        in: query
+        name: instance_id
+        type: string
+      - description: Filter by status (firing, acknowledged, resolved)
+        in: query
+        name: status
+        type: string
+      - description: Filter by severity
+        in: query
+        name: severity
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List alert events
+      tags:
+      - alerts
+  /api/v1/alerts/events/{event_id}:
+    get:
+      description: Get alert event details by ID
+      parameters:
+      - description: Event ID (UUID)
+        in: path
+        name: event_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get alert event
+      tags:
+      - alerts
+  /api/v1/alerts/events/{event_id}/acknowledge:
+    post:
+      consumes:
+      - application/json
+      description: Acknowledge an alert event
+      parameters:
+      - description: Event ID (UUID)
+        in: path
+        name: event_id
+        required: true
+        type: string
+      - description: Acknowledgement request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AcknowledgeAlertEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Acknowledge alert event
+      tags:
+      - alerts
+  /api/v1/alerts/events/{event_id}/resolve:
+    post:
+      description: Resolve an alert event
+      parameters:
+      - description: Event ID (UUID)
+        in: path
+        name: event_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resolve alert event
+      tags:
+      - alerts
+  /api/v1/alerts/events/active:
+    get:
+      description: Get all currently firing alert events
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get active alert events
+      tags:
+      - alerts
+  /api/v1/alerts/rules:
+    get:
+      description: Get a paginated list of alert rules
+      parameters:
+      - description: Filter by instance ID (UUID)
+        in: query
+        name: instance_id
+        type: string
+      - description: Filter by enabled status
+        in: query
+        name: enabled
+        type: boolean
+      - description: Filter by severity (critical, warning, info)
+        in: query
+        name: severity
+        type: string
+      - description: Search in name, description
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List alert rules
+      tags:
+      - alerts
+    post:
+      consumes:
+      - application/json
+      description: Create a new alert rule
+      parameters:
+      - description: Alert rule creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateAlertRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create alert rule
+      tags:
+      - alerts
+  /api/v1/alerts/rules/{rule_id}:
+    delete:
+      description: Delete an alert rule
+      parameters:
+      - description: Rule ID (UUID)
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete alert rule
+      tags:
+      - alerts
+    get:
+      description: Get alert rule details by ID
+      parameters:
+      - description: Rule ID (UUID)
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get alert rule
+      tags:
+      - alerts
+    patch:
+      consumes:
+      - application/json
+      description: Update alert rule details
+      parameters:
+      - description: Rule ID (UUID)
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      - description: Alert rule update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateAlertRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update alert rule
+      tags:
+      - alerts
+  /api/v1/alerts/rules/{rule_id}/toggle:
+    patch:
+      consumes:
+      - application/json
+      description: Enable or disable an alert rule
+      parameters:
+      - description: Rule ID (UUID)
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      - description: Toggle request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ToggleAlertRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Toggle alert rule
+      tags:
+      - alerts
+  /api/v1/alerts/statistics:
+    get:
+      description: Get overall alert statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get alert statistics
+      tags:
+      - alerts
+  /api/v1/audit:
+    get:
+      description: Get a paginated list of audit logs
+      parameters:
+      - description: Filter by user ID (UUID)
+        in: query
+        name: user_id
+        type: string
+      - description: Filter by resource type
+        in: query
+        name: resource_type
+        type: string
+      - description: Filter by resource ID (UUID)
+        in: query
+        name: resource_id
+        type: string
+      - description: Filter by action (create, read, update, delete)
+        in: query
+        name: action
+        type: string
+      - description: Filter by status (success, failure)
+        in: query
+        name: status
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        type: string
+      - description: Filter by IP address
+        in: query
+        name: ip_address
+        type: string
+      - description: Search in description, changes
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List audit logs
+      tags:
+      - audit
+  /api/v1/audit/{log_id}:
+    get:
+      description: Get audit log details by ID
+      parameters:
+      - description: Log ID (UUID)
+        in: path
+        name: log_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get audit log
+      tags:
+      - audit
+  /api/v1/audit/actions:
+    get:
+      description: Get all distinct action types in audit logs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get distinct actions
+      tags:
+      - audit
+  /api/v1/audit/failed:
+    get:
+      description: Get failed audit logs
+      parameters:
+      - default: 100
+        description: Limit results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List failed actions
+      tags:
+      - audit
+  /api/v1/audit/recent:
+    get:
+      description: Get the most recent audit logs
+      parameters:
+      - default: 100
+        description: Limit results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List recent audit logs
+      tags:
+      - audit
+  /api/v1/audit/resource-types:
+    get:
+      description: Get all distinct resource types in audit logs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get distinct resource types
+      tags:
+      - audit
+  /api/v1/audit/resources/{resource_type}/{resource_id}:
+    get:
+      description: Get audit logs for a specific resource
+      parameters:
+      - description: Resource type
+        in: path
+        name: resource_type
+        required: true
+        type: string
+      - description: Resource ID (UUID)
+        in: path
+        name: resource_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List resource audit logs
+      tags:
+      - audit
+  /api/v1/audit/search:
+    get:
+      description: Search audit logs by text query
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        required: true
+        type: string
+      - default: 100
+        description: Limit results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search audit logs
+      tags:
+      - audit
+  /api/v1/audit/statistics:
+    get:
+      description: Get overall audit log statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get audit statistics
+      tags:
+      - audit
+  /api/v1/audit/timeline:
+    get:
+      description: Get activity timeline aggregated over time buckets
+      parameters:
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      - description: Aggregation interval (e.g., '1 hour')
+        in: query
+        name: interval
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get activity timeline
+      tags:
+      - audit
+  /api/v1/auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Change current user's password
+      parameters:
+      - description: Password change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with username and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate user session
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: User logout
+      tags:
+      - auth
+  /api/v1/auth/oauth/login:
+    post:
+      consumes:
+      - application/json
+      description: Complete OAuth login flow
+      parameters:
+      - description: OAuth login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.OAuthLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: OAuth login
+      tags:
+      - auth
+  /api/v1/auth/oauth/url:
+    get:
+      description: Get the URL to redirect user for OAuth authorization
+      parameters:
+      - description: OAuth provider (google, github, oidc)
+        in: query
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Get OAuth authorization URL
+      tags:
+      - auth
+  /api/v1/auth/profile:
+    get:
+      description: Get current authenticated user's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /api/v1/auth/sessions:
+    get:
+      description: Get all active sessions for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get active sessions
+      tags:
+      - auth
+  /api/v1/auth/sessions/{session_id}:
+    delete:
+      description: Invalidate a specific session by ID
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invalidate session
+      tags:
+      - auth
+  /api/v1/instances:
+    get:
+      description: Get a paginated list of instances
+      parameters:
+      - description: Filter by service type
+        in: query
+        name: service_type
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by environment
+        in: query
+        name: environment
+        type: string
+      - description: Filter by tags
+        in: query
+        name: tags
+        type: array
+      - description: Search in name, host, description
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List instances
+      tags:
+      - instances
+    post:
+      consumes:
+      - application/json
+      description: Create a new service instance
+      parameters:
+      - description: Instance creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create instance
+      tags:
+      - instances
+  /api/v1/instances/{instance_id}:
+    delete:
+      description: Soft delete an instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete instance
+      tags:
+      - instances
+    get:
+      description: Get instance details by ID
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instance
+      tags:
+      - instances
+    patch:
+      consumes:
+      - application/json
+      description: Update instance details
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Instance update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update instance
+      tags:
+      - instances
+  /api/v1/instances/{instance_id}/health:
+    get:
+      description: Get health status for a specific instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/managers.HealthStatus'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instance health
+      tags:
+      - instances
+    patch:
+      consumes:
+      - application/json
+      description: Update instance health status
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Health update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateInstanceHealthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update instance health
+      tags:
+      - instances
+  /api/v1/instances/{instance_id}/metrics:
+    get:
+      description: Get metrics for a specific instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/managers.ServiceMetrics'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instance metrics
+      tags:
+      - instances
+  /api/v1/instances/{instance_id}/metrics/latest:
+    get:
+      description: Get the most recent value for all metrics of an instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all latest metrics
+      tags:
+      - metrics
+  /api/v1/instances/{instance_id}/metrics/names:
+    get:
+      description: Get all available metric names for an instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get metric names
+      tags:
+      - metrics
+  /api/v1/instances/{instance_id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update instance operational status
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Status update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateInstanceStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update instance status
+      tags:
+      - instances
+  /api/v1/instances/{instance_id}/tags:
+    delete:
+      consumes:
+      - application/json
+      description: Remove tags from an instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Tags to remove
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ManageTagsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove tags
+      tags:
+      - instances
+    post:
+      consumes:
+      - application/json
+      description: Add tags to an instance
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: instance_id
+        required: true
+        type: string
+      - description: Tags to add
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ManageTagsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add tags
+      tags:
+      - instances
+  /api/v1/instances/statistics:
+    get:
+      description: Get overall instance statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get instance statistics
+      tags:
+      - instances
+  /api/v1/metrics:
+    get:
+      description: Query metrics with time range and filters
+      parameters:
+      - description: Filter by instance ID (UUID)
+        in: query
+        name: instance_id
+        type: string
+      - description: Filter by metric name
+        in: query
+        name: metric_name
+        type: string
+      - description: Filter by metric type
+        in: query
+        name: metric_type
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        type: string
+      - default: 1000
+        description: Limit results
+        in: query
+        name: limit
+        type: integer
+      - default: desc
+        description: Order by time (asc, desc)
+        in: query
+        name: order_by
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Query metrics
+      tags:
+      - metrics
+    post:
+      consumes:
+      - application/json
+      description: Create a new metric data point
+      parameters:
+      - description: Metric creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateMetricRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create metric
+      tags:
+      - metrics
+  /api/v1/metrics/aggregate:
+    get:
+      description: Aggregate metrics over time buckets using TimescaleDB
+      parameters:
+      - description: Instance ID (UUID)
+        in: query
+        name: instance_id
+        required: true
+        type: string
+      - description: Metric name
+        in: query
+        name: metric_name
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      - description: Aggregation interval (e.g., '5 minutes', '1 hour')
+        in: query
+        name: interval
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Aggregate metrics
+      tags:
+      - metrics
+  /api/v1/metrics/average:
+    get:
+      description: Calculate average metric value over time range
+      parameters:
+      - description: Instance ID (UUID)
+        in: query
+        name: instance_id
+        required: true
+        type: string
+      - description: Metric name
+        in: query
+        name: metric_name
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Calculate average
+      tags:
+      - metrics
+  /api/v1/metrics/batch:
+    post:
+      consumes:
+      - application/json
+      description: Create multiple metric data points in batch
+      parameters:
+      - description: Batch metric creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateMetricsBatchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create metrics batch
+      tags:
+      - metrics
+  /api/v1/metrics/latest:
+    get:
+      description: Get the most recent metric value
+      parameters:
+      - description: Instance ID (UUID)
+        in: query
+        name: instance_id
+        required: true
+        type: string
+      - description: Metric name
+        in: query
+        name: metric_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get latest metric
+      tags:
+      - metrics
+  /api/v1/metrics/percentile:
+    get:
+      description: Calculate percentile (p50, p95, p99) for a metric
+      parameters:
+      - description: Instance ID (UUID)
+        in: query
+        name: instance_id
+        required: true
+        type: string
+      - description: Metric name
+        in: query
+        name: metric_name
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      - description: Percentile value (0-1, e.g., 0.95 for p95)
+        in: query
+        name: percentile
+        required: true
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Calculate percentile
+      tags:
+      - metrics
+  /api/v1/metrics/statistics:
+    get:
+      description: Get overall metrics statistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get metrics statistics
+      tags:
+      - metrics
+  /api/v1/metrics/timeseries:
+    get:
+      description: Get time series data points for charting
+      parameters:
+      - description: Instance ID (UUID)
+        in: query
+        name: instance_id
+        required: true
+        type: string
+      - description: Metric name
+        in: query
+        name: metric_name
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      - description: Data point interval (e.g., '5 minutes')
+        in: query
+        name: interval
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get time series data
+      tags:
+      - metrics
+  /api/v1/users:
+    get:
+      description: Get a paginated list of users
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by roles
+        in: query
+        name: roles
+        type: array
+      - description: Search in username, email, full_name
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user (admin only)
+      parameters:
+      - description: User creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create user
+      tags:
+      - users
+  /api/v1/users/{user_id}:
+    delete:
+      description: Soft delete a user (admin only)
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - users
+    get:
+      description: Get user details by ID
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Update user details
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: User update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /api/v1/users/{user_id}/audit:
+    get:
+      description: Get audit logs for a specific user
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - default: 100
+        description: Limit results
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List user audit logs
+      tags:
+      - audit
+  /api/v1/users/{user_id}/roles:
+    get:
+      description: Get all roles assigned to a user
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user roles
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Assign a role to a user (admin only)
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role assignment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.AssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign role
+      tags:
+      - users
+  /api/v1/users/{user_id}/roles/{role_id}:
+    delete:
+      description: Revoke a role from a user (admin only)
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Role ID (UUID)
+        in: path
+        name: role_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Revoke role
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Instance management operations
+  name: instances
+- description: MinIO object storage operations
+  name: minio
+- description: Alert rules and events management
+  name: alerts
+- description: Audit log operations
+  name: audit
+- description: Database management operations
+  name: database
+- description: Docker container operations
+  name: docker
+- description: Authentication operations
+  name: auth
+- description: User management operations
+  name: users

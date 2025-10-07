@@ -1,0 +1,12 @@
+server:
+    install_lock: true
+    app_name: Tiga Dashboard
+    domain: localhost
+    http_port: 12306
+    language: zh-CN
+database:
+    type: sqlite
+    database: /tmp/tiga.v8.db
+security:
+    jwt_secret: 3K1DW1DaLs4hcNFsTNLsDe2gDHVG28gByH3YXMyRaA0=
+    encryption_key: CrT0bVGmtDMNsf7QBXl1xXqECcumyfnR8uPUaNQ4j9Y=
