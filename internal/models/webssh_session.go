@@ -3,19 +3,20 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // WebSSHSession represents an active or historical WebSSH session
 type WebSSHSession struct {
-	gorm.Model
+	BaseModel
 
 	SessionID string `gorm:"uniqueIndex;not null" json:"session_id"` // Unique session identifier
 
 	// Session details
-	UserID     uint   `gorm:"index;not null" json:"user_id"`
-	HostNodeID uint   `gorm:"index;not null" json:"host_node_id"`
-	ClientIP   string `json:"client_ip"`
+	UserID     uuid.UUID `gorm:"type:char(36);index;not null" json:"user_id"`
+	HostNodeID uuid.UUID `gorm:"type:char(36);index;not null" json:"host_node_id"`
+	ClientIP   string    `json:"client_ip"`
 
 	// Terminal configuration
 	Cols int `json:"cols"`
@@ -28,11 +29,11 @@ type WebSSHSession struct {
 	LastActive time.Time  `gorm:"index" json:"last_active"`
 
 	// Audit information
-	SSHUser       string `json:"ssh_user"`
-	SSHPort       int    `json:"ssh_port"`
-	CommandCount  int    `gorm:"default:0" json:"command_count"`  // Number of commands executed
-	AuditLog      string `gorm:"type:text" json:"-"`              // Full terminal log (encrypted)
-	CloseReason   string `json:"close_reason,omitempty"`
+	SSHUser      string `json:"ssh_user"`
+	SSHPort      int    `json:"ssh_port"`
+	CommandCount int    `gorm:"default:0" json:"command_count"` // Number of commands executed
+	AuditLog     string `gorm:"type:text" json:"-"`             // Full terminal log (encrypted)
+	CloseReason  string `json:"close_reason,omitempty"`
 
 	// Relationships
 	HostNode *HostNode `gorm:"foreignKey:HostNodeID" json:"-"`

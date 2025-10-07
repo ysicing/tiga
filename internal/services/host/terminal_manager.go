@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/proto"
@@ -15,7 +16,7 @@ import (
 // TerminalSession represents an active terminal session
 type TerminalSession struct {
 	StreamID  string
-	HostID    uint
+	HostID    uuid.UUID
 	UUID      string
 	StartedAt time.Time
 
@@ -128,7 +129,7 @@ func (m *TerminalManager) HandleIOStream(stream proto.HostMonitor_IOStreamServer
 }
 
 // CreateSession creates a new terminal session
-func (m *TerminalManager) CreateSession(streamID string, hostID uint, uuid string) *TerminalSession {
+func (m *TerminalManager) CreateSession(streamID string, hostID uuid.UUID, uuid string) *TerminalSession {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session := &TerminalSession{
@@ -143,7 +144,7 @@ func (m *TerminalManager) CreateSession(streamID string, hostID uint, uuid strin
 	}
 
 	m.sessions.Store(streamID, session)
-	logrus.Infof("Created terminal session: %s for host %d", streamID, hostID)
+	logrus.Infof("Created terminal session: %s for host %s", streamID, hostID)
 
 	return session
 }

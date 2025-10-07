@@ -3,19 +3,20 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // ServiceProbeResult represents a single probe execution result
 type ServiceProbeResult struct {
-	gorm.Model
+	BaseModel
 
-	ServiceMonitorID uint      `gorm:"index:idx_monitor_timestamp,priority:1;not null" json:"service_monitor_id"`
+	ServiceMonitorID uuid.UUID `gorm:"type:char(36);index:idx_monitor_timestamp,priority:1;not null" json:"service_monitor_id"`
 	Timestamp        time.Time `gorm:"index:idx_monitor_timestamp,priority:2;index;not null" json:"timestamp"`
 
 	// Probe result
 	Success      bool   `gorm:"index" json:"success"`
-	Latency      int    `json:"latency"`        // Latency in milliseconds
+	Latency      int    `json:"latency"` // Latency in milliseconds
 	ErrorMessage string `gorm:"type:text" json:"error_message,omitempty"`
 
 	// HTTP-specific result

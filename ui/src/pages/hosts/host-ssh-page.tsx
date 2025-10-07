@@ -18,7 +18,7 @@ export function HostSSHPage() {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
-  const host = hosts.find((h) => h.id === Number(id));
+  const host = hosts.find((h) => h.id === id);
 
   useEffect(() => {
     if (!terminalRef.current || !host || !host.host_info?.ssh_enabled) return;

@@ -3,14 +3,14 @@ package models
 import (
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
 // ServiceAvailability represents aggregated availability statistics
 type ServiceAvailability struct {
-	gorm.Model
+	BaseModel
 
-	ServiceMonitorID uint      `gorm:"index:idx_monitor_period,priority:1;not null" json:"service_monitor_id"`
+	ServiceMonitorID uuid.UUID `gorm:"type:char(36);index:idx_monitor_period,priority:1;not null" json:"service_monitor_id"`
 	Period           string    `gorm:"index:idx_monitor_period,priority:2;not null" json:"period"` // 1h/24h/7d/30d
 	StartTime        time.Time `gorm:"index;not null" json:"start_time"`
 	EndTime          time.Time `gorm:"index;not null" json:"end_time"`

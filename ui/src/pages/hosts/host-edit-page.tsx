@@ -32,15 +32,15 @@ type HostFormData = {
   expiry_date?: string;
 
   // Group
-  group_id?: number;
+  group_id?: string;
 };
 
 export function HostEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { hosts } = useHostStore();
-  const host = hosts.find((h) => h.id === Number(id));
-  const [groups, setGroups] = useState<Array<{ id: number; name: string }>>([]);
+  const host = hosts.find((h) => h.id === id);
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
 
   const [formData, setFormData] = useState<HostFormData>({
     name: '',
@@ -261,8 +261,8 @@ export function HostEditPage() {
               <div className="grid gap-2">
                 <Label htmlFor="group_id">主机分组</Label>
                 <Select
-                  value={formData.group_id?.toString()}
-                  onValueChange={(value) => setFormData({ ...formData, group_id: value ? parseInt(value) : undefined })}
+                  value={formData.group_id}
+                  onValueChange={(value) => setFormData({ ...formData, group_id: value || undefined })}
                 >
                   <SelectTrigger id="group_id">
                     <SelectValue placeholder="选择分组（可选）" />
@@ -270,7 +270,7 @@ export function HostEditPage() {
                   <SelectContent>
                     <SelectItem value="">无分组</SelectItem>
                     {groups.map((group) => (
-                      <SelectItem key={group.id} value={group.id.toString()}>
+                      <SelectItem key={group.id} value={group.id}>
                         {group.name}
                       </SelectItem>
                     ))}
@@ -314,13 +314,13 @@ export function HostEditPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="font-medium mb-2">主机 UUID</h3>
+            <h3 className="font-medium mb-2">主机 ID</h3>
             <div className="flex gap-2">
-              <Input value={host.uuid} readOnly className="font-mono text-sm" />
+              <Input value={host.id} readOnly className="font-mono text-sm" />
               <Button
                 variant="outline"
                 onClick={() => {
-                  navigator.clipboard.writeText(host.uuid);
+                  navigator.clipboard.writeText(host.id);
                   toast.success('已复制到剪贴板');
                 }}
               >
@@ -328,7 +328,7 @@ export function HostEditPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              UUID用于Agent连接认证，请勿泄露
+              ID用于Agent连接认证，请勿泄露
             </p>
           </div>
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
 )
@@ -21,22 +22,22 @@ type HostFilter struct {
 // HostRepository defines the interface for host data access
 type HostRepository interface {
 	Create(ctx context.Context, host *models.HostNode) error
-	GetByID(ctx context.Context, id uint) (*models.HostNode, error)
-	GetByUUID(ctx context.Context, uuid string) (*models.HostNode, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.HostNode, error)
+	GetByUUID(ctx context.Context, uuidStr string) (*models.HostNode, error)
 	List(ctx context.Context, filter HostFilter) ([]*models.HostNode, int64, error)
 	Update(ctx context.Context, host *models.HostNode) error
-	Delete(ctx context.Context, id uint) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// State related
 	SaveState(ctx context.Context, state *models.HostState) error
-	GetLatestState(ctx context.Context, hostID uint) (*models.HostState, error)
-	GetLatestStates(ctx context.Context, hostID uint, limit int) ([]*models.HostState, error)
-	GetStatesByTimeRange(ctx context.Context, hostID uint, start, end time.Time) ([]*models.HostState, error)
+	GetLatestState(ctx context.Context, hostID uuid.UUID) (*models.HostState, error)
+	GetLatestStates(ctx context.Context, hostID uuid.UUID, limit int) ([]*models.HostState, error)
+	GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]*models.HostState, error)
 
 	// Group related
-	AddToGroup(ctx context.Context, hostID, groupID uint) error
-	RemoveFromGroup(ctx context.Context, hostID, groupID uint) error
-	GetHostsByGroup(ctx context.Context, groupID uint) ([]*models.HostNode, error)
+	AddToGroup(ctx context.Context, hostID, groupID uuid.UUID) error
+	RemoveFromGroup(ctx context.Context, hostID, groupID uuid.UUID) error
+	GetHostsByGroup(ctx context.Context, groupID uuid.UUID) ([]*models.HostNode, error)
 }
 
 // hostRepository implements HostRepository
@@ -55,7 +56,7 @@ func (r *hostRepository) Create(ctx context.Context, host *models.HostNode) erro
 }
 
 // GetByID retrieves a host by ID
-func (r *hostRepository) GetByID(ctx context.Context, id uint) (*models.HostNode, error) {
+func (r *hostRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.HostNode, error) {
 	var host models.HostNode
 	err := r.db.WithContext(ctx).
 		Preload("HostInfo").
@@ -66,12 +67,18 @@ func (r *hostRepository) GetByID(ctx context.Context, id uint) (*models.HostNode
 	return &host, nil
 }
 
-// GetByUUID retrieves a host by UUID
-func (r *hostRepository) GetByUUID(ctx context.Context, uuid string) (*models.HostNode, error) {
+// GetByUUID retrieves a host by UUID string
+func (r *hostRepository) GetByUUID(ctx context.Context, uuidStr string) (*models.HostNode, error) {
+	// Parse UUID string
+	id, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return nil, err
+	}
+
 	var host models.HostNode
-	err := r.db.WithContext(ctx).
+	err = r.db.WithContext(ctx).
 		Preload("HostInfo").
-		Where("uuid = ?", uuid).
+		Where("id = ?", id).
 		First(&host).Error
 	if err != nil {
 		return nil, err
@@ -146,7 +153,7 @@ func (r *hostRepository) Update(ctx context.Context, host *models.HostNode) erro
 }
 
 // Delete deletes a host node
-func (r *hostRepository) Delete(ctx context.Context, id uint) error {
+func (r *hostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Delete associated data
 		if err := tx.Where("host_node_id = ?", id).Delete(&models.HostState{}).Error; err != nil {
@@ -173,7 +180,7 @@ func (r *hostRepository) SaveState(ctx context.Context, state *models.HostState)
 }
 
 // GetLatestState retrieves the most recent state for a host
-func (r *hostRepository) GetLatestState(ctx context.Context, hostID uint) (*models.HostState, error) {
+func (r *hostRepository) GetLatestState(ctx context.Context, hostID uuid.UUID) (*models.HostState, error) {
 	var state models.HostState
 	err := r.db.WithContext(ctx).
 		Where("host_node_id = ?", hostID).
@@ -186,7 +193,7 @@ func (r *hostRepository) GetLatestState(ctx context.Context, hostID uint) (*mode
 }
 
 // GetLatestStates retrieves the latest N states for a host
-func (r *hostRepository) GetLatestStates(ctx context.Context, hostID uint, limit int) ([]*models.HostState, error) {
+func (r *hostRepository) GetLatestStates(ctx context.Context, hostID uuid.UUID, limit int) ([]*models.HostState, error) {
 	var states []*models.HostState
 	err := r.db.WithContext(ctx).
 		Where("host_node_id = ?", hostID).
@@ -197,7 +204,7 @@ func (r *hostRepository) GetLatestStates(ctx context.Context, hostID uint, limit
 }
 
 // GetStatesByTimeRange retrieves states within a time range
-func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uint, start, end time.Time) ([]*models.HostState, error) {
+func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]*models.HostState, error) {
 	var states []*models.HostState
 	err := r.db.WithContext(ctx).
 		Where("host_node_id = ? AND timestamp >= ? AND timestamp <= ?", hostID, start, end).
@@ -207,7 +214,7 @@ func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uint, 
 }
 
 // AddToGroup adds a host to a group (simplified JSON implementation)
-func (r *hostRepository) AddToGroup(ctx context.Context, hostID, groupID uint) error {
+func (r *hostRepository) AddToGroup(ctx context.Context, hostID, groupID uuid.UUID) error {
 	// In production, consider using a proper join table for many-to-many
 	// This is a simplified implementation using JSON array
 	var host models.HostNode
@@ -221,7 +228,7 @@ func (r *hostRepository) AddToGroup(ctx context.Context, hostID, groupID uint) e
 }
 
 // RemoveFromGroup removes a host from a group
-func (r *hostRepository) RemoveFromGroup(ctx context.Context, hostID, groupID uint) error {
+func (r *hostRepository) RemoveFromGroup(ctx context.Context, hostID, groupID uuid.UUID) error {
 	// Simplified implementation
 	var host models.HostNode
 	if err := r.db.WithContext(ctx).First(&host, hostID).Error; err != nil {
@@ -232,10 +239,10 @@ func (r *hostRepository) RemoveFromGroup(ctx context.Context, hostID, groupID ui
 }
 
 // GetHostsByGroup retrieves all hosts in a group
-func (r *hostRepository) GetHostsByGroup(ctx context.Context, groupID uint) ([]*models.HostNode, error) {
+func (r *hostRepository) GetHostsByGroup(ctx context.Context, groupID uuid.UUID) ([]*models.HostNode, error) {
 	var hosts []*models.HostNode
 	err := r.db.WithContext(ctx).
-		Where("group_ids LIKE ?", "%\""+string(rune(groupID))+"\"%").
+		Where("group_ids LIKE ?", "%\""+groupID.String()+"\"%").
 		Preload("HostInfo").
 		Find(&hosts).Error
 	return hosts, err

@@ -3,15 +3,16 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // HostState represents real-time monitoring metrics snapshot
 // Updated every 30 seconds by Agent
 type HostState struct {
-	gorm.Model
+	BaseModel
 
-	HostNodeID uint      `gorm:"index:idx_host_timestamp,priority:1;not null" json:"host_node_id"`
+	HostNodeID uuid.UUID `gorm:"type:char(36);index:idx_host_timestamp,priority:1;not null" json:"host_node_id"`
 	Timestamp  time.Time `gorm:"index:idx_host_timestamp,priority:2;index;not null" json:"timestamp"`
 
 	// CPU and Load

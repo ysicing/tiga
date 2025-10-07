@@ -3,15 +3,15 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // HostNode represents a monitored host server
 type HostNode struct {
-	gorm.Model
+	BaseModel
 
 	// Basic information
-	UUID      string `gorm:"uniqueIndex;not null" json:"uuid"`
 	Name      string `gorm:"not null" json:"name"`
 	SecretKey string `gorm:"not null" json:"-"` // Encrypted with AES-256, never expose in JSON
 
@@ -22,16 +22,16 @@ type HostNode struct {
 	HideForGuest bool   `gorm:"default:false" json:"hide_for_guest"`
 
 	// Billing and expiry information
-	MonthlyCost  float64    `gorm:"default:0" json:"monthly_cost"`           // 月费用
-	YearlyCost   float64    `gorm:"default:0" json:"yearly_cost"`            // 年费用
-	RenewalType  string     `gorm:"default:monthly" json:"renewal_type"`     // monthly or yearly
-	TrafficLimit int64      `gorm:"default:0" json:"traffic_limit"`          // 流量限制 (GB), 0表示无限
-	TrafficUsed  int64      `gorm:"default:0" json:"traffic_used"`           // 已用流量 (GB)
-	ExpiryDate   *time.Time `gorm:"index" json:"expiry_date,omitempty"`      // 到期时间
+	MonthlyCost  float64    `gorm:"default:0" json:"monthly_cost"`       // 月费用
+	YearlyCost   float64    `gorm:"default:0" json:"yearly_cost"`        // 年费用
+	RenewalType  string     `gorm:"default:monthly" json:"renewal_type"` // monthly or yearly
+	TrafficLimit int64      `gorm:"default:0" json:"traffic_limit"`      // 流量限制 (GB), 0表示无限
+	TrafficUsed  int64      `gorm:"default:0" json:"traffic_used"`       // 已用流量 (GB)
+	ExpiryDate   *time.Time `gorm:"index" json:"expiry_date,omitempty"`  // 到期时间
 
 	// Group associations
-	GroupID *uint  `gorm:"index" json:"group_id,omitempty"` // 主分组ID
-	GroupIDs string `gorm:"type:text" json:"group_ids"`      // 多分组支持（JSON array）
+	GroupID  *uuid.UUID `gorm:"type:char(36);index" json:"group_id,omitempty"` // 主分组ID
+	GroupIDs string     `gorm:"type:text" json:"group_ids"`                    // 多分组支持（JSON array）
 
 	// Runtime status (not persisted to database)
 	Online     bool       `gorm:"-" json:"online"`

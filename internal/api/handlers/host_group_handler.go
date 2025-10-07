@@ -59,7 +59,10 @@ func (h *HostGroupHandler) ListGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
 		"message": "success",
-		"data":    groups,
+		"data": gin.H{
+			"items": groups,
+			"total": len(groups),
+		},
 	})
 }
 

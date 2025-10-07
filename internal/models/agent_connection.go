@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -10,37 +11,37 @@ import (
 type AgentConnectionStatus string
 
 const (
-	AgentStatusOnline      AgentConnectionStatus = "online"
-	AgentStatusOffline     AgentConnectionStatus = "offline"
-	AgentStatusConnecting  AgentConnectionStatus = "connecting"
+	AgentStatusOnline       AgentConnectionStatus = "online"
+	AgentStatusOffline      AgentConnectionStatus = "offline"
+	AgentStatusConnecting   AgentConnectionStatus = "connecting"
 	AgentStatusDisconnected AgentConnectionStatus = "disconnected"
 )
 
 // AgentConnection represents the connection state and metadata of a connected agent
 type AgentConnection struct {
-	gorm.Model
+	BaseModel
 
-	HostNodeID uint `gorm:"uniqueIndex;not null" json:"host_node_id"` // One-to-one with HostNode
+	HostNodeID uuid.UUID `gorm:"type:char(36);uniqueIndex;not null" json:"host_node_id"` // One-to-one with HostNode
 
 	// Connection status
-	Status       AgentConnectionStatus `gorm:"index;not null" json:"status"`
-	ConnectedAt  *time.Time            `json:"connected_at,omitempty"`
-	LastHeartbeat time.Time            `gorm:"index;not null" json:"last_heartbeat"`
+	Status        AgentConnectionStatus `gorm:"index;not null" json:"status"`
+	ConnectedAt   *time.Time            `json:"connected_at,omitempty"`
+	LastHeartbeat time.Time             `gorm:"index;not null" json:"last_heartbeat"`
 
 	// Agent information
 	AgentVersion string `json:"agent_version"`
 	IPAddress    string `json:"ip_address"`
 
 	// Connection statistics
-	HeartbeatCount   int64  `gorm:"default:0" json:"heartbeat_count"`
-	ReconnectCount   int    `gorm:"default:0" json:"reconnect_count"`
+	HeartbeatCount   int64      `gorm:"default:0" json:"heartbeat_count"`
+	ReconnectCount   int        `gorm:"default:0" json:"reconnect_count"`
 	LastDisconnectAt *time.Time `json:"last_disconnect_at,omitempty"`
-	DisconnectReason string `json:"disconnect_reason,omitempty"`
+	DisconnectReason string     `json:"disconnect_reason,omitempty"`
 
 	// Performance metrics
-	AvgLatency       int `json:"avg_latency"` // Average heartbeat latency in milliseconds
-	LastLatency      int `json:"last_latency"`
-	PacketLoss       float64 `json:"packet_loss"` // Packet loss percentage
+	AvgLatency  int     `json:"avg_latency"` // Average heartbeat latency in milliseconds
+	LastLatency int     `json:"last_latency"`
+	PacketLoss  float64 `json:"packet_loss"` // Packet loss percentage
 
 	// Relationship
 	HostNode *HostNode `gorm:"foreignKey:HostNodeID" json:"-"`

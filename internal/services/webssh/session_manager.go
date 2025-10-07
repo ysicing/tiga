@@ -34,7 +34,7 @@ func NewSessionManager(db *gorm.DB) *SessionManager {
 }
 
 // CreateSession creates a new WebSSH session
-func (m *SessionManager) CreateSession(ctx context.Context, userID, hostID uint, cols, rows int, clientIP string) (*models.WebSSHSession, error) {
+func (m *SessionManager) CreateSession(ctx context.Context, userID, hostID uuid.UUID, cols, rows int, clientIP string) (*models.WebSSHSession, error) {
 	// Check max sessions limit
 	count := 0
 	m.activeSessions.Range(func(key, value interface{}) bool {

@@ -332,4 +332,76 @@ export const devopsAPI = {
         query,
       }),
   },
+
+  // VMs (Host Monitoring)
+  vms: {
+    // Host management
+    hosts: {
+      list: () => apiClient.get('/vms/hosts'),
+      get: (id: string) => apiClient.get(`/vms/hosts/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/vms/hosts', data),
+      update: (id: string, data: Record<string, any>) => apiClient.put(`/vms/hosts/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/vms/hosts/${id}`),
+      getCurrentState: (id: string) => apiClient.get(`/vms/hosts/${id}/state/current`),
+      getHistoryState: (id: string, params?: Record<string, any>) =>
+        apiClient.get(`/vms/hosts/${id}/state/history`, params),
+    },
+
+    // Host groups
+    hostGroups: {
+      list: () => apiClient.get('/vms/host-groups'),
+      create: (data: { name: string; description?: string }) =>
+        apiClient.post('/vms/host-groups', data),
+      update: (id: string, data: { name: string; description?: string }) =>
+        apiClient.put(`/vms/host-groups/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/vms/host-groups/${id}`),
+      addHosts: (id: string, hostIds: string[]) =>
+        apiClient.post(`/vms/host-groups/${id}/hosts`, { host_ids: hostIds }),
+      removeHost: (groupId: string, hostId: string) =>
+        apiClient.delete(`/vms/host-groups/${groupId}/hosts/${hostId}`),
+    },
+
+    // Service monitors
+    serviceMonitors: {
+      list: () => apiClient.get('/vms/service-monitors'),
+      get: (id: string) => apiClient.get(`/vms/service-monitors/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/vms/service-monitors', data),
+      update: (id: string, data: Record<string, any>) =>
+        apiClient.put(`/vms/service-monitors/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/vms/service-monitors/${id}`),
+      trigger: (id: string) => apiClient.post(`/vms/service-monitors/${id}/trigger`, {}),
+      getAvailability: (id: string, params?: Record<string, any>) =>
+        apiClient.get(`/vms/service-monitors/${id}/availability`, params),
+    },
+
+    // Alert rules
+    alertRules: {
+      list: () => apiClient.get('/vms/alert-rules'),
+      get: (id: string) => apiClient.get(`/vms/alert-rules/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/vms/alert-rules', data),
+      update: (id: string, data: Record<string, any>) =>
+        apiClient.put(`/vms/alert-rules/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/vms/alert-rules/${id}`),
+      toggle: (id: string, enabled: boolean) =>
+        apiClient.post(`/vms/alert-rules/${id}/toggle`, { enabled }),
+    },
+
+    // Alert events
+    alertEvents: {
+      list: (params?: Record<string, any>) => apiClient.get('/vms/alert-events', params),
+      get: (id: string) => apiClient.get(`/vms/alert-events/${id}`),
+      acknowledge: (id: string, note?: string) =>
+        apiClient.post(`/vms/alert-events/${id}/acknowledge`, { note }),
+      resolve: (id: string, note?: string) =>
+        apiClient.post(`/vms/alert-events/${id}/resolve`, { note }),
+    },
+
+    // WebSSH
+    webssh: {
+      createSession: (data: { host_id: string; username?: string; password?: string }) =>
+        apiClient.post('/vms/webssh/sessions', data),
+      listSessions: () => apiClient.get('/vms/webssh/sessions'),
+      closeSession: (sessionId: string) => apiClient.delete(`/vms/webssh/sessions/${sessionId}`),
+    },
+  },
 };

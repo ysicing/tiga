@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/expr-lang/expr"
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -25,7 +26,7 @@ func NewAlertEngine(alertRepo repository.MonitorAlertRepository, hostRepo reposi
 }
 
 // EvaluateHostRules evaluates all host-related alert rules
-func (e *AlertEngine) EvaluateHostRules(ctx context.Context, hostID uint, state *models.HostState) error {
+func (e *AlertEngine) EvaluateHostRules(ctx context.Context, hostID uuid.UUID, state *models.HostState) error {
 	// Get all active host rules
 	rules, err := e.alertRepo.GetActiveRules(ctx, string(models.AlertTypeHost))
 	if err != nil {
@@ -108,10 +109,10 @@ func (e *AlertEngine) prepareEnv(data interface{}) map[string]interface{} {
 }
 
 // resolveEvents resolves any firing events for a rule
-func (e *AlertEngine) resolveEvents(ctx context.Context, ruleID uint) {
+func (e *AlertEngine) resolveEvents(ctx context.Context, ruleID uuid.UUID) {
 	events, _ := e.alertRepo.GetFiringEvents(ctx, ruleID)
 	for _, event := range events {
-		event.Resolve(0, "Condition no longer met")
+		event.Resolve(uuid.Nil, "Condition no longer met") // uuid.Nil indicates system auto-resolve
 		e.alertRepo.UpdateEvent(ctx, event)
 	}
 }

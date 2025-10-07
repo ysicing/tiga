@@ -3,12 +3,12 @@ import { useHostStore, HostState } from '../stores/host-store';
 
 interface WebSocketMessage {
   action: 'subscribe' | 'unsubscribe' | 'state_update';
-  host_ids?: number[];
-  data?: HostState & { host_id: number };
+  host_ids?: string[];
+  data?: HostState & { host_id: string };
 }
 
 interface UseHostMonitorOptions {
-  hostIds?: number[]; // Specific hosts to monitor, empty for all
+  hostIds?: string[]; // Specific hosts to monitor, empty for all
   autoConnect?: boolean;
   reconnectInterval?: number; // in milliseconds
   maxReconnectAttempts?: number;
@@ -48,7 +48,7 @@ export function useHostMonitor(options: UseHostMonitorOptions = {}) {
 
   // Subscribe to hosts
   const subscribe = useCallback(
-    (hostIdList: number[]) => {
+    (hostIdList: string[]) => {
       sendMessage({
         action: 'subscribe',
         host_ids: hostIdList.length > 0 ? hostIdList : undefined, // undefined = all hosts

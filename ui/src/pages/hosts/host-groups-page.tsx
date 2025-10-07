@@ -22,9 +22,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash2, FolderOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { devopsAPI } from '@/lib/api-client';
 
 interface HostGroup {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   host_count?: number;
@@ -54,12 +55,7 @@ export function HostGroupsPage() {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch('/api/v1/vms/host-groups', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hostGroups.list();
       if (data.code === 0) {
         setGroups(data.data.items || []);
       }
@@ -73,16 +69,7 @@ export function HostGroupsPage() {
     e.preventDefault();
 
     try {
-      const response = await fetch('/api/v1/vms/host-groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hostGroups.create(formData);
       if (data.code === 0) {
         toast.success('分组创建成功');
         setIsCreateDialogOpen(false);
@@ -102,16 +89,7 @@ export function HostGroupsPage() {
     if (!editingGroup) return;
 
     try {
-      const response = await fetch(`/api/v1/vms/host-groups/${editingGroup.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hostGroups.update(editingGroup.id, formData);
       if (data.code === 0) {
         toast.success('分组更新成功');
         setIsEditDialogOpen(false);
@@ -127,20 +105,13 @@ export function HostGroupsPage() {
     }
   };
 
-  const handleDelete = async (id: number, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (!confirm(`确定要删除分组"${name}"吗？此操作不可恢复。`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/v1/vms/host-groups/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hostGroups.delete(id);
       if (data.code === 0) {
         toast.success('分组删除成功');
         fetchGroups();

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
 )
@@ -21,20 +22,20 @@ type ServiceFilter struct {
 // ServiceRepository defines the interface for service monitor data access
 type ServiceRepository interface {
 	Create(ctx context.Context, service *models.ServiceMonitor) error
-	GetByID(ctx context.Context, id uint) (*models.ServiceMonitor, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.ServiceMonitor, error)
 	List(ctx context.Context, filter ServiceFilter) ([]*models.ServiceMonitor, int64, error)
 	Update(ctx context.Context, service *models.ServiceMonitor) error
-	Delete(ctx context.Context, id uint) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	// Probe results
 	SaveProbeResult(ctx context.Context, result *models.ServiceProbeResult) error
-	GetProbeHistory(ctx context.Context, serviceID uint, start, end time.Time, limit int) ([]*models.ServiceProbeResult, int64, error)
-	GetLatestProbeResult(ctx context.Context, serviceID uint) (*models.ServiceProbeResult, error)
+	GetProbeHistory(ctx context.Context, serviceID uuid.UUID, start, end time.Time, limit int) ([]*models.ServiceProbeResult, int64, error)
+	GetLatestProbeResult(ctx context.Context, serviceID uuid.UUID) (*models.ServiceProbeResult, error)
 
 	// Availability statistics
 	SaveAvailability(ctx context.Context, availability *models.ServiceAvailability) error
-	GetAvailability(ctx context.Context, serviceID uint, period string, start time.Time) (*models.ServiceAvailability, error)
-	CalculateAvailability(ctx context.Context, serviceID uint, start, end time.Time) (*models.ServiceAvailability, error)
+	GetAvailability(ctx context.Context, serviceID uuid.UUID, period string, start time.Time) (*models.ServiceAvailability, error)
+	CalculateAvailability(ctx context.Context, serviceID uuid.UUID, start, end time.Time) (*models.ServiceAvailability, error)
 }
 
 // serviceRepository implements ServiceRepository
@@ -53,7 +54,7 @@ func (r *serviceRepository) Create(ctx context.Context, service *models.ServiceM
 }
 
 // GetByID retrieves a service monitor by ID
-func (r *serviceRepository) GetByID(ctx context.Context, id uint) (*models.ServiceMonitor, error) {
+func (r *serviceRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.ServiceMonitor, error) {
 	var service models.ServiceMonitor
 	err := r.db.WithContext(ctx).First(&service, id).Error
 	if err != nil {
@@ -117,7 +118,7 @@ func (r *serviceRepository) Update(ctx context.Context, service *models.ServiceM
 }
 
 // Delete deletes a service monitor and its associated data
-func (r *serviceRepository) Delete(ctx context.Context, id uint) error {
+func (r *serviceRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Delete associated probe results
 		if err := tx.Where("service_monitor_id = ?", id).Delete(&models.ServiceProbeResult{}).Error; err != nil {
@@ -140,7 +141,7 @@ func (r *serviceRepository) SaveProbeResult(ctx context.Context, result *models.
 }
 
 // GetProbeHistory retrieves probe history within a time range
-func (r *serviceRepository) GetProbeHistory(ctx context.Context, serviceID uint, start, end time.Time, limit int) ([]*models.ServiceProbeResult, int64, error) {
+func (r *serviceRepository) GetProbeHistory(ctx context.Context, serviceID uuid.UUID, start, end time.Time, limit int) ([]*models.ServiceProbeResult, int64, error) {
 	query := r.db.WithContext(ctx).
 		Where("service_monitor_id = ?", serviceID)
 
@@ -169,7 +170,7 @@ func (r *serviceRepository) GetProbeHistory(ctx context.Context, serviceID uint,
 }
 
 // GetLatestProbeResult retrieves the most recent probe result
-func (r *serviceRepository) GetLatestProbeResult(ctx context.Context, serviceID uint) (*models.ServiceProbeResult, error) {
+func (r *serviceRepository) GetLatestProbeResult(ctx context.Context, serviceID uuid.UUID) (*models.ServiceProbeResult, error) {
 	var result models.ServiceProbeResult
 	err := r.db.WithContext(ctx).
 		Where("service_monitor_id = ?", serviceID).
@@ -192,7 +193,7 @@ func (r *serviceRepository) SaveAvailability(ctx context.Context, availability *
 }
 
 // GetAvailability retrieves availability statistics for a specific period
-func (r *serviceRepository) GetAvailability(ctx context.Context, serviceID uint, period string, start time.Time) (*models.ServiceAvailability, error) {
+func (r *serviceRepository) GetAvailability(ctx context.Context, serviceID uuid.UUID, period string, start time.Time) (*models.ServiceAvailability, error) {
 	var availability models.ServiceAvailability
 	err := r.db.WithContext(ctx).
 		Where("service_monitor_id = ? AND period = ? AND start_time = ?", serviceID, period, start).
@@ -204,7 +205,7 @@ func (r *serviceRepository) GetAvailability(ctx context.Context, serviceID uint,
 }
 
 // CalculateAvailability calculates availability from probe results
-func (r *serviceRepository) CalculateAvailability(ctx context.Context, serviceID uint, start, end time.Time) (*models.ServiceAvailability, error) {
+func (r *serviceRepository) CalculateAvailability(ctx context.Context, serviceID uuid.UUID, start, end time.Time) (*models.ServiceAvailability, error) {
 	var totalChecks int64
 	var successfulChecks int64
 

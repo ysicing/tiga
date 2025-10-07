@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -23,12 +24,12 @@ const (
 
 // MonitorAlertRule represents an alert rule configuration
 type MonitorAlertRule struct {
-	gorm.Model
+	BaseModel
 
 	// Basic information
 	Name     string        `gorm:"not null" json:"name"`
-	Type     AlertType     `gorm:"not null;index" json:"type"`     // host/service
-	TargetID uint          `gorm:"index;not null" json:"target_id"` // HostNode ID or ServiceMonitor ID
+	Type     AlertType     `gorm:"not null;index" json:"type"`              // host/service
+	TargetID uuid.UUID     `gorm:"type:char(36);index;not null" json:"target_id"` // HostNode ID or ServiceMonitor ID
 	Severity AlertSeverity `gorm:"not null;index" json:"severity"`
 
 	// Condition expression (using antonmedv/expr)

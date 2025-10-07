@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"github.com/google/uuid"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ysicing/tiga/internal/models"
@@ -22,14 +22,14 @@ func NewServiceMonitorHandler(probeService *monitor.ServiceProbeService) *Servic
 // CreateMonitor creates a new service monitor
 func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 	var req struct {
-		Name             string `json:"name" binding:"required"`
-		Type             string `json:"type" binding:"required"`
-		Target           string `json:"target" binding:"required"`
-		Interval         int    `json:"interval"`
-		Timeout          int    `json:"timeout"`
-		HostID           uint   `json:"host_id"`
-		Enabled          bool   `json:"enabled"`
-		NotifyOnFailure  bool   `json:"notify_on_failure"`
+		Name             string      `json:"name" binding:"required"`
+		Type             string      `json:"type" binding:"required"`
+		Target           string      `json:"target" binding:"required"`
+		Interval         int         `json:"interval"`
+		Timeout          int         `json:"timeout"`
+		HostID           *uuid.UUID  `json:"host_id"`
+		Enabled          bool        `json:"enabled"`
+		NotifyOnFailure  bool        `json:"notify_on_failure"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,9 +58,9 @@ func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 
 // GetMonitor gets a service monitor
 func (h *ServiceMonitorHandler) GetMonitor(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, _ := uuid.Parse(c.Param("id"))
 
-	mon, err := h.probeService.GetMonitor(c.Request.Context(), uint(id))
+	mon, err := h.probeService.GetMonitor(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Monitor not found"})
 		return
@@ -71,7 +71,7 @@ func (h *ServiceMonitorHandler) GetMonitor(c *gin.Context) {
 
 // UpdateMonitor updates a service monitor
 func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, _ := uuid.Parse(c.Param("id"))
 
 	var req struct {
 		Interval int  `json:"interval"`
@@ -83,7 +83,7 @@ func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
 		return
 	}
 
-	mon, err := h.probeService.GetMonitor(c.Request.Context(), uint(id))
+	mon, err := h.probeService.GetMonitor(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Monitor not found"})
 		return
@@ -102,9 +102,9 @@ func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
 
 // DeleteMonitor deletes a service monitor
 func (h *ServiceMonitorHandler) DeleteMonitor(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, _ := uuid.Parse(c.Param("id"))
 
-	if err := h.probeService.DeleteMonitor(c.Request.Context(), uint(id)); err != nil {
+	if err := h.probeService.DeleteMonitor(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to delete"})
 		return
 	}
@@ -114,9 +114,9 @@ func (h *ServiceMonitorHandler) DeleteMonitor(c *gin.Context) {
 
 // TriggerProbe triggers manual probe
 func (h *ServiceMonitorHandler) TriggerProbe(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, _ := uuid.Parse(c.Param("id"))
 
-	result, err := h.probeService.TriggerManualProbe(c.Request.Context(), uint(id))
+	result, err := h.probeService.TriggerManualProbe(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to trigger probe"})
 		return
@@ -127,10 +127,10 @@ func (h *ServiceMonitorHandler) TriggerProbe(c *gin.Context) {
 
 // GetAvailability gets availability statistics
 func (h *ServiceMonitorHandler) GetAvailability(c *gin.Context) {
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, _ := uuid.Parse(c.Param("id"))
 	period := c.DefaultQuery("period", "24h")
 
-	stats, err := h.probeService.GetAvailabilityStats(c.Request.Context(), uint(id), period)
+	stats, err := h.probeService.GetAvailabilityStats(c.Request.Context(), id, period)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get stats"})
 		return

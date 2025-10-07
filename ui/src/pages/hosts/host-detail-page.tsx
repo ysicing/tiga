@@ -14,7 +14,7 @@ export function HostDetailPage() {
   const { hosts } = useHostStore();
   const [historyData, setHistoryData] = useState<any>({});
 
-  const host = hosts.find((h) => h.id === Number(id));
+  const host = hosts.find((h) => h.id === id);
 
   useEffect(() => {
     if (!id) return;

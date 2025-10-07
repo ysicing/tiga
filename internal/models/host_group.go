@@ -6,7 +6,7 @@ import (
 
 // HostGroup represents a logical grouping of hosts
 type HostGroup struct {
-	gorm.Model
+	BaseModel
 
 	Name        string `gorm:"uniqueIndex;not null" json:"name"`
 	Description string `gorm:"type:text" json:"description"`
@@ -27,7 +27,7 @@ func (g *HostGroup) GetHostCount(db *gorm.DB) (int64, error) {
 	// This requires a JSON query, simplified here
 	// In production, consider using a join table for many-to-many
 	err := db.Model(&HostNode{}).
-		Where("group_ids LIKE ?", "%\""+string(rune(g.ID))+"\"%").
+		Where("group_ids LIKE ?", "%\""+g.ID.String()+"\"%").
 		Count(&count).Error
 	return count, err
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/host"
@@ -47,7 +48,7 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		ExpiryDate   *string `json:"expiry_date"`
 
 		// Group
-		GroupID  *uint  `json:"group_id"`
+		GroupID  *uuid.UUID  `json:"group_id"`
 		GroupIDs string `json:"group_ids"`
 	}
 
@@ -101,7 +102,7 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		"message": "success",
 		"data": gin.H{
 			"id":                hostNode.ID,
-			"uuid":              hostNode.UUID,
+			"uuid":              hostNode.ID.String(),
 			"name":              hostNode.Name,
 			"agent_install_cmd": installCmd,
 			"note":              hostNode.Note,
@@ -162,7 +163,7 @@ func (h *HostHandler) ListHosts(c *gin.Context) {
 	for i, host := range hosts {
 		item := map[string]interface{}{
 			"id":            host.ID,
-			"uuid":          host.UUID,
+			"uuid":          host.ID.String(),
 			"name":          host.Name,
 			"note":          host.Note,
 			"public_note":   host.PublicNote,
@@ -230,7 +231,7 @@ func (h *HostHandler) ListHosts(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/hosts/{id} [get]
 func (h *HostHandler) GetHost(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    40001,
@@ -239,7 +240,7 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 		return
 	}
 
-	host, err := h.hostService.GetHost(c.Request.Context(), uint(id))
+	host, err := h.hostService.GetHost(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"code":    40404,
@@ -250,7 +251,7 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 
 	data := gin.H{
 		"id":            host.ID,
-		"uuid":          host.UUID,
+		"uuid":          host.ID.String(),
 		"name":          host.Name,
 		"note":          host.Note,
 		"public_note":   host.PublicNote,
@@ -297,7 +298,7 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/hosts/{id} [put]
 func (h *HostHandler) UpdateHost(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    40001,
@@ -321,7 +322,7 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 		ExpiryDate   *string `json:"expiry_date"`
 
 		// Group
-		GroupID  *uint  `json:"group_id"`
+		GroupID  *uuid.UUID  `json:"group_id"`
 		GroupIDs string `json:"group_ids"`
 	}
 
@@ -333,7 +334,7 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 		return
 	}
 
-	host, err := h.hostService.GetHost(c.Request.Context(), uint(id))
+	host, err := h.hostService.GetHost(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"code":    40404,
@@ -386,7 +387,7 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/hosts/{id} [delete]
 func (h *HostHandler) DeleteHost(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    40001,
@@ -395,7 +396,7 @@ func (h *HostHandler) DeleteHost(c *gin.Context) {
 		return
 	}
 
-	if err := h.hostService.DeleteHost(c.Request.Context(), uint(id)); err != nil {
+	if err := h.hostService.DeleteHost(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    50001,
 			"message": "Failed to delete host",
@@ -417,7 +418,7 @@ func (h *HostHandler) DeleteHost(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/hosts/{id}/state/current [get]
 func (h *HostHandler) GetCurrentState(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    40001,
@@ -426,7 +427,7 @@ func (h *HostHandler) GetCurrentState(c *gin.Context) {
 		return
 	}
 
-	state, err := h.hostService.GetHostState(c.Request.Context(), uint(id))
+	state, err := h.hostService.GetHostState(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"code":    40404,
@@ -454,7 +455,7 @@ func (h *HostHandler) GetCurrentState(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/hosts/{id}/state/history [get]
 func (h *HostHandler) GetHistoryState(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    40001,
@@ -472,7 +473,7 @@ func (h *HostHandler) GetHistoryState(c *gin.Context) {
 	endTime, _ := time.Parse(time.RFC3339, end)
 
 	// Get historical states
-	states, err := h.hostService.GetHostStateHistory(c.Request.Context(), uint(id), start, end, interval)
+	states, err := h.hostService.GetHostStateHistory(c.Request.Context(), id, start, end, interval)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    50001,

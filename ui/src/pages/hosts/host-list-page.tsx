@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { devopsAPI } from '@/lib/api-client';
 
 type HostFormData = {
   name: string;
@@ -41,7 +42,7 @@ type HostFormData = {
   expiry_date?: string;
 
   // Group
-  group_id?: number;
+  group_id?: string;
 };
 
 export function HostListPage() {
@@ -50,10 +51,10 @@ export function HostListPage() {
   const { connected, reconnecting } = useHostMonitor({ autoConnect: true });
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [groups, setGroups] = useState<Array<{ id: number; name: string }>>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [installCmdDialog, setInstallCmdDialog] = useState<{
     open: boolean;
-    uuid?: string;
+    id?: string;
     cmd?: string;
   }>({ open: false });
 
@@ -79,12 +80,7 @@ export function HostListPage() {
   const fetchHosts = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/v1/vms/hosts', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hosts.list();
       if (data.code === 0) {
         setHosts(data.data.items || []);
       }
@@ -98,12 +94,7 @@ export function HostListPage() {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch('/api/v1/vms/host-groups', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hostGroups.list();
       if (data.code === 0) {
         setGroups(data.data.items || []);
       }
@@ -133,7 +124,7 @@ export function HostListPage() {
         // Show agent install command
         setInstallCmdDialog({
           open: true,
-          uuid: data.data.uuid,
+          id: data.data.id,
           cmd: data.data.agent_install_cmd,
         });
 
@@ -162,7 +153,7 @@ export function HostListPage() {
     }
   };
 
-  const handleDeleteHost = async (id: number, name: string) => {
+  const handleDeleteHost = async (id: string, name: string) => {
     if (!confirm(`确定要删除主机"${name}"吗？此操作不可恢复。`)) {
       return;
     }
@@ -421,8 +412,8 @@ export function HostListPage() {
                 <div className="grid gap-2">
                   <Label htmlFor="group_id">主机分组</Label>
                   <Select
-                    value={formData.group_id?.toString()}
-                    onValueChange={(value) => setFormData({ ...formData, group_id: value ? parseInt(value) : undefined })}
+                    value={formData.group_id}
+                    onValueChange={(value) => setFormData({ ...formData, group_id: value || undefined })}
                   >
                     <SelectTrigger id="group_id">
                       <SelectValue placeholder="选择分组（可选）" />
@@ -430,7 +421,7 @@ export function HostListPage() {
                     <SelectContent>
                       <SelectItem value="">无分组</SelectItem>
                       {groups.map((group) => (
-                        <SelectItem key={group.id} value={group.id.toString()}>
+                        <SelectItem key={group.id} value={group.id}>
                           {group.name}
                         </SelectItem>
                       ))}
@@ -469,12 +460,12 @@ export function HostListPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>主机 UUID</Label>
+              <Label>主机 ID</Label>
               <div className="flex gap-2 mt-2">
-                <Input value={installCmdDialog.uuid || ''} readOnly />
+                <Input value={installCmdDialog.id || ''} readOnly />
                 <Button
                   variant="outline"
-                  onClick={() => copyToClipboard(installCmdDialog.uuid || '')}
+                  onClick={() => copyToClipboard(installCmdDialog.id || '')}
                 >
                   复制
                 </Button>

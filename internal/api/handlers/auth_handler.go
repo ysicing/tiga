@@ -80,10 +80,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
 
 	c.SetSameSite(http.SameSiteLaxMode)
+	// Set access token cookie
 	c.SetCookie(
 		"auth_token",
 		response.TokenPair.AccessToken,
-		int(response.TokenPair.ExpiresAt.Sub(time.Now()).Seconds()),
+		int(time.Until(response.TokenPair.ExpiresAt).Seconds()),
+		"/",
+		"",
+		secure,
+		true, // httpOnly
+	)
+
+	// Set refresh token cookie (30 days expiry)
+	refreshExpiry := 30 * 24 * time.Hour
+	c.SetCookie(
+		"refresh_token",
+		response.TokenPair.RefreshToken,
+		int(refreshExpiry.Seconds()),
 		"/",
 		"",
 		secure,
@@ -101,32 +114,64 @@ type LogoutRequest struct {
 
 // Logout handles user logout
 // @Summary User logout
-// @Description Invalidate user session
+// @Description Invalidate user session and clear auth cookie
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} SuccessResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /api/v1/auth/logout [post]
+// @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// Get token from header
-	token := c.GetHeader("Authorization")
+	// Get token from header or cookie
+	var token string
+	authHeader := c.GetHeader("Authorization")
+	if authHeader != "" {
+		// Remove "Bearer " prefix
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		}
+	} else {
+		// Try to get from cookie
+		cookieToken, err := c.Cookie("auth_token")
+		if err == nil {
+			token = cookieToken
+		}
+	}
+
 	if token == "" {
 		RespondUnauthorized(c, fmt.Errorf("authorization token required"))
 		return
 	}
 
-	// Remove "Bearer " prefix
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	// Logout
+	// Logout (invalidate session on server)
 	if err := h.loginService.Logout(c.Request.Context(), token); err != nil {
 		RespondInternalError(c, err)
 		return
 	}
+
+	// Clear both auth cookies
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+
+	c.SetCookie(
+		"auth_token",
+		"",
+		-1, // MaxAge -1 deletes the cookie
+		"/",
+		"",
+		secure,
+		true, // httpOnly
+	)
+
+	c.SetCookie(
+		"refresh_token",
+		"",
+		-1, // MaxAge -1 deletes the cookie
+		"/",
+		"",
+		secure,
+		true, // httpOnly
+	)
 
 	RespondSuccessWithMessage(c, nil, "logged out successfully")
 }
@@ -138,28 +183,53 @@ type RefreshTokenRequest struct {
 
 // RefreshToken handles token refresh
 // @Summary Refresh access token
-// @Description Get a new access token using refresh token
+// @Description Get a new access token using refresh token (from cookie or JSON body)
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param request body RefreshTokenRequest true "Refresh token"
+// @Param request body RefreshTokenRequest false "Refresh token (optional if cookie is set)"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /api/v1/auth/refresh [post]
+// @Router /api/auth/refresh [post]
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var refreshToken string
+
+	// Try to get refresh token from JSON body first
 	var req RefreshTokenRequest
-	if !BindJSON(c, &req) {
-		return
+	if err := c.ShouldBindJSON(&req); err == nil && req.RefreshToken != "" {
+		refreshToken = req.RefreshToken
+	} else {
+		// Fall back to cookie
+		cookieToken, err := c.Cookie("refresh_token")
+		if err != nil || cookieToken == "" {
+			RespondUnauthorized(c, fmt.Errorf("refresh token required (from cookie or JSON body)"))
+			return
+		}
+		refreshToken = cookieToken
 	}
 
 	// Refresh token
-	tokenPair, err := h.loginService.RefreshToken(c.Request.Context(), req.RefreshToken)
+	tokenPair, err := h.loginService.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
 		RespondUnauthorized(c, err)
 		return
 	}
 
+	// Update access token cookie
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(
+		"auth_token",
+		tokenPair.AccessToken,
+		int(time.Until(tokenPair.ExpiresAt).Seconds()),
+		"/",
+		"",
+		secure,
+		true, // httpOnly
+	)
+
+	// Also return in response for clients that don't use cookies
 	RespondSuccess(c, tokenPair)
 }
 

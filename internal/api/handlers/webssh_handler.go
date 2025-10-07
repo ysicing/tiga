@@ -42,9 +42,9 @@ func NewWebSSHHandler(sessionMgr *webssh.SessionManager, terminalMgr *host.Termi
 // CreateSession creates a WebSSH session
 func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 	var req struct {
-		HostID uint `json:"host_id" binding:"required"`
-		Width  int  `json:"width"`
-		Height int  `json:"height"`
+		HostID string `json:"host_id" binding:"required"` // UUID string
+		Width  int    `json:"width"`
+		Height int    `json:"height"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -52,8 +52,15 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
+	// Parse host UUID
+	hostUUID, err := uuid.Parse(req.HostID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid host ID"})
+		return
+	}
+
 	// Get host info from agent manager
-	conn := h.agentManager.GetConnectionByHostID(req.HostID)
+	conn := h.agentManager.GetConnectionByHostID(hostUUID)
 	if conn == nil {
 		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Host not online"})
 		return
@@ -63,12 +70,12 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 	streamID := uuid.New().String()
 
 	// Create terminal session
-	_ = h.terminalMgr.CreateSession(streamID, req.HostID, conn.UUID)
+	_ = h.terminalMgr.CreateSession(streamID, hostUUID, conn.UUID)
 
 	// Create webssh session for recording
-	userID := uint(1) // TODO: Get from auth context
+	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001") // TODO: Get from auth context
 	clientIP := c.ClientIP()
-	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), userID, req.HostID, req.Width, req.Height, clientIP)
+	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), userID, hostUUID, req.Width, req.Height, clientIP)
 	if err != nil {
 		logrus.Errorf("Failed to create webssh session: %v", err)
 	}

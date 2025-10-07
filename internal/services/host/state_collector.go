@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -13,7 +14,7 @@ import (
 // StateSubscriber represents a client subscribed to real-time state updates
 type StateSubscriber struct {
 	ID       string
-	HostIDs  []uint // Empty means all hosts
+	HostIDs  []uuid.UUID // Empty means all hosts
 	Channel  chan *models.HostState
 	Created  time.Time
 	LastSent time.Time
@@ -53,7 +54,7 @@ func NewStateCollector(hostRepo repository.HostRepository, agentMgr *AgentManage
 }
 
 // CollectState processes a new state report from an agent
-func (sc *StateCollector) CollectState(ctx context.Context, hostID uint, state *models.HostState) error {
+func (sc *StateCollector) CollectState(ctx context.Context, hostID uuid.UUID, state *models.HostState) error {
 	// Save to database
 	if err := sc.hostRepo.SaveState(ctx, state); err != nil {
 		return err
@@ -69,7 +70,7 @@ func (sc *StateCollector) CollectState(ctx context.Context, hostID uint, state *
 }
 
 // GetLatestState retrieves the latest cached state for a host
-func (sc *StateCollector) GetLatestState(hostID uint) (*models.HostState, bool) {
+func (sc *StateCollector) GetLatestState(hostID uuid.UUID) (*models.HostState, bool) {
 	if state, ok := sc.latestStates.Load(hostID); ok {
 		return state.(*models.HostState), true
 	}
@@ -77,8 +78,8 @@ func (sc *StateCollector) GetLatestState(hostID uint) (*models.HostState, bool) 
 }
 
 // GetLatestStates retrieves latest states for multiple hosts
-func (sc *StateCollector) GetLatestStates(hostIDs []uint) map[uint]*models.HostState {
-	result := make(map[uint]*models.HostState)
+func (sc *StateCollector) GetLatestStates(hostIDs []uuid.UUID) map[uuid.UUID]*models.HostState {
+	result := make(map[uuid.UUID]*models.HostState)
 	for _, id := range hostIDs {
 		if state, ok := sc.GetLatestState(id); ok {
 			result[id] = state
@@ -88,7 +89,7 @@ func (sc *StateCollector) GetLatestStates(hostIDs []uint) map[uint]*models.HostS
 }
 
 // Subscribe creates a new subscription for real-time state updates
-func (sc *StateCollector) Subscribe(subscriberID string, hostIDs []uint) *StateSubscriber {
+func (sc *StateCollector) Subscribe(subscriberID string, hostIDs []uuid.UUID) *StateSubscriber {
 	sub := &StateSubscriber{
 		ID:       subscriberID,
 		HostIDs:  hostIDs,
@@ -128,7 +129,7 @@ func (sc *StateCollector) broadcastState(state *models.HostState) {
 }
 
 // containsHostID checks if a host ID is in the list
-func (sc *StateCollector) containsHostID(hostIDs []uint, targetID uint) bool {
+func (sc *StateCollector) containsHostID(hostIDs []uuid.UUID, targetID uuid.UUID) bool {
 	for _, id := range hostIDs {
 		if id == targetID {
 			return true
@@ -138,7 +139,7 @@ func (sc *StateCollector) containsHostID(hostIDs []uint, targetID uint) bool {
 }
 
 // GetHistoricalStates retrieves historical states for a time range
-func (sc *StateCollector) GetHistoricalStates(ctx context.Context, hostID uint, start, end time.Time, interval string) ([]*models.HostState, error) {
+func (sc *StateCollector) GetHistoricalStates(ctx context.Context, hostID uuid.UUID, start, end time.Time, interval string) ([]*models.HostState, error) {
 	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end)
 	if err != nil {
 		return nil, err
@@ -160,7 +161,7 @@ func (sc *StateCollector) aggregateStates(states []*models.HostState, interval s
 }
 
 // GetStateStatistics calculates statistics for a time period
-func (sc *StateCollector) GetStateStatistics(ctx context.Context, hostID uint, start, end time.Time) (map[string]interface{}, error) {
+func (sc *StateCollector) GetStateStatistics(ctx context.Context, hostID uuid.UUID, start, end time.Time) (map[string]interface{}, error) {
 	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end)
 	if err != nil {
 		return nil, err
@@ -262,7 +263,7 @@ func (sc *StateCollector) monitorSubscribers() {
 }
 
 // ExportStates exports states to JSON format
-func (sc *StateCollector) ExportStates(ctx context.Context, hostID uint, start, end time.Time) ([]byte, error) {
+func (sc *StateCollector) ExportStates(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]byte, error) {
 	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end)
 	if err != nil {
 		return nil, err

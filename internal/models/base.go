@@ -13,7 +13,7 @@ type BaseModel struct {
 	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"` // Soft delete
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"` // Soft delete
 }
 
 // BeforeCreate hook to auto-generate UUID

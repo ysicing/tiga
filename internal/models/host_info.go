@@ -1,21 +1,19 @@
 package models
 
-import (
-	"gorm.io/gorm"
-)
+import "github.com/google/uuid"
 
 // HostInfo represents static hardware and system information of a host
 // This data is reported by Agent once during registration and updated when hardware changes
 type HostInfo struct {
-	gorm.Model
+	BaseModel
 
-	HostNodeID uint `gorm:"uniqueIndex;not null" json:"host_node_id"` // One-to-one with HostNode
+	HostNodeID uuid.UUID `gorm:"type:char(36);uniqueIndex;not null" json:"host_node_id"` // One-to-one with HostNode
 
 	// System information
-	Platform        string `json:"platform"`          // Operating system (linux/windows/darwin)
-	PlatformVersion string `json:"platform_version"`  // OS version (e.g., "Ubuntu 22.04")
-	Arch            string `json:"arch"`              // Architecture (amd64/arm64)
-	Virtualization  string `json:"virtualization"`    // Virtualization type (kvm/docker/none)
+	Platform        string `json:"platform"`         // Operating system (linux/windows/darwin)
+	PlatformVersion string `json:"platform_version"` // OS version (e.g., "Ubuntu 22.04")
+	Arch            string `json:"arch"`             // Architecture (amd64/arm64)
+	Virtualization  string `json:"virtualization"`   // Virtualization type (kvm/docker/none)
 
 	// Hardware information
 	CPUModel  string `json:"cpu_model"`  // CPU model name

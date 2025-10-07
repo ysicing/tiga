@@ -43,8 +43,7 @@ export interface HostState {
 }
 
 export interface Host {
-  id: number;
-  uuid: string;
+  id: string;
   name: string;
   note?: string;
   public_note?: string;
@@ -60,7 +59,7 @@ export interface Host {
   expiry_date?: string;   // ISO date string
 
   // Group associations
-  group_id?: number;
+  group_id?: string;
   group_ids?: string;
 
   online: boolean;
@@ -72,7 +71,7 @@ export interface Host {
 }
 
 export interface HostGroup {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   host_count?: number;
@@ -80,13 +79,13 @@ export interface HostGroup {
 }
 
 export interface ServiceMonitor {
-  id: number;
+  id: string;
   name: string;
   type: 'HTTP' | 'TCP' | 'ICMP';
   target: string;
   interval: number;
   timeout: number;
-  host_node_id?: number;
+  host_node_id?: string;
   enabled: boolean;
 
   // HTTP-specific
@@ -106,7 +105,7 @@ export interface ServiceMonitor {
 
 // WebSocket subscription state
 export interface WSSubscription {
-  hostIds: number[];
+  hostIds: string[];
   connected: boolean;
   reconnecting: boolean;
   error?: string;
@@ -117,7 +116,7 @@ interface HostStoreState {
   // Host data
   hosts: Host[];
   selectedHost: Host | null;
-  hostStates: Map<number, HostState>; // hostId -> latest state
+  hostStates: Map<string, HostState>; // hostId -> latest state
   hostGroups: HostGroup[];
   serviceMonitors: ServiceMonitor[];
 
@@ -131,13 +130,13 @@ interface HostStoreState {
   // Actions
   setHosts: (hosts: Host[]) => void;
   addHost: (host: Host) => void;
-  updateHost: (id: number, host: Partial<Host>) => void;
-  removeHost: (id: number) => void;
+  updateHost: (id: string, host: Partial<Host>) => void;
+  removeHost: (id: string) => void;
   selectHost: (host: Host | null) => void;
 
   // State updates
-  updateHostState: (hostId: number, state: HostState) => void;
-  updateHostStates: (states: Map<number, HostState>) => void;
+  updateHostState: (hostId: string, state: HostState) => void;
+  updateHostStates: (states: Map<string, HostState>) => void;
 
   // Groups
   setHostGroups: (groups: HostGroup[]) => void;
@@ -145,12 +144,12 @@ interface HostStoreState {
   // Monitors
   setServiceMonitors: (monitors: ServiceMonitor[]) => void;
   addServiceMonitor: (monitor: ServiceMonitor) => void;
-  updateServiceMonitor: (id: number, monitor: Partial<ServiceMonitor>) => void;
-  removeServiceMonitor: (id: number) => void;
+  updateServiceMonitor: (id: string, monitor: Partial<ServiceMonitor>) => void;
+  removeServiceMonitor: (id: string) => void;
 
   // WebSocket
   setWSSubscription: (subscription: Partial<WSSubscription>) => void;
-  subscribeToHosts: (hostIds: number[]) => void;
+  subscribeToHosts: (hostIds: string[]) => void;
   unsubscribeFromHosts: () => void;
 
   // Loading/Error
@@ -165,7 +164,7 @@ interface HostStoreState {
 const initialState = {
   hosts: [],
   selectedHost: null,
-  hostStates: new Map<number, HostState>(),
+  hostStates: new Map<string, HostState>(),
   hostGroups: [],
   serviceMonitors: [],
   loading: false,
@@ -289,8 +288,8 @@ export const selectOnlineHosts = (state: HostStoreState) =>
 export const selectOfflineHosts = (state: HostStoreState) =>
   state.hosts.filter((h) => !h.online);
 
-export const selectHostsByGroup = (groupId: number) => (state: HostStoreState) =>
-  state.hosts.filter((h) => h.group_ids?.includes(String(groupId)));
+export const selectHostsByGroup = (groupId: string) => (state: HostStoreState) =>
+  state.hosts.filter((h) => h.group_ids?.includes(groupId));
 
 export const selectEnabledMonitors = (state: HostStoreState) =>
   state.serviceMonitors.filter((m) => m.enabled);

@@ -30,7 +30,7 @@ type MonitorFormData = {
   interval: number;
   timeout: number;
   enabled: boolean;
-  host_node_id?: number;
+  host_node_id?: string;
 };
 
 export function ServiceMonitorPage() {
@@ -98,7 +98,7 @@ export function ServiceMonitorPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('确定要删除此监控项吗?')) return;
 
     try {

@@ -110,6 +110,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 		authGroup.GET("/providers", authHandler.GetOAuthProviders)
 		// Password login endpoint - using new system
 		authGroup.POST("/login/password", authHandler.Login)
+		// Refresh token endpoint (no auth required - uses refresh token)
+		authGroup.POST("/refresh", authHandler.RefreshToken)
 	}
 
 	// ==================== Public Config API (No Auth Required) ====================
@@ -128,6 +130,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 	{
 		// Get current user info
 		authProtected.GET("/user", authHandler.GetCurrentUser)
+		// Logout
+		authProtected.POST("/logout", authHandler.Logout)
 	}
 
 	// API v1 group

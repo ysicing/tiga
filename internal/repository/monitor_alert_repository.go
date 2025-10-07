@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
 )
@@ -32,20 +33,20 @@ type MonitorAlertEventFilter struct {
 type MonitorAlertRepository interface {
 	// Alert rules
 	CreateRule(ctx context.Context, rule *models.MonitorAlertRule) error
-	GetRuleByID(ctx context.Context, id uint) (*models.MonitorAlertRule, error)
+	GetRuleByID(ctx context.Context, id uuid.UUID) (*models.MonitorAlertRule, error)
 	ListRules(ctx context.Context, filter MonitorAlertRuleFilter) ([]*models.MonitorAlertRule, int64, error)
 	UpdateRule(ctx context.Context, rule *models.MonitorAlertRule) error
-	DeleteRule(ctx context.Context, id uint) error
+	DeleteRule(ctx context.Context, id uuid.UUID) error
 	GetActiveRules(ctx context.Context, ruleType string) ([]*models.MonitorAlertRule, error)
 
 	// Alert events
 	CreateEvent(ctx context.Context, event *models.MonitorAlertEvent) error
-	GetEventByID(ctx context.Context, id uint) (*models.MonitorAlertEvent, error)
+	GetEventByID(ctx context.Context, id uuid.UUID) (*models.MonitorAlertEvent, error)
 	ListEvents(ctx context.Context, filter MonitorAlertEventFilter) ([]*models.MonitorAlertEvent, int64, error)
 	UpdateEvent(ctx context.Context, event *models.MonitorAlertEvent) error
-	AcknowledgeEvent(ctx context.Context, eventID, userID uint, note string) error
-	ResolveEvent(ctx context.Context, eventID, userID uint, note string) error
-	GetFiringEvents(ctx context.Context, ruleID uint) ([]*models.MonitorAlertEvent, error)
+	AcknowledgeEvent(ctx context.Context, eventID, userID uuid.UUID, note string) error
+	ResolveEvent(ctx context.Context, eventID, userID uuid.UUID, note string) error
+	GetFiringEvents(ctx context.Context, ruleID uuid.UUID) ([]*models.MonitorAlertEvent, error)
 	GetEventStatistics(ctx context.Context, start, end time.Time) (map[string]interface{}, error)
 }
 
@@ -65,7 +66,7 @@ func (r *monitorAlertRepository) CreateRule(ctx context.Context, rule *models.Mo
 }
 
 // GetRuleByID retrieves an alert rule by ID
-func (r *monitorAlertRepository) GetRuleByID(ctx context.Context, id uint) (*models.MonitorAlertRule, error) {
+func (r *monitorAlertRepository) GetRuleByID(ctx context.Context, id uuid.UUID) (*models.MonitorAlertRule, error) {
 	var rule models.MonitorAlertRule
 	err := r.db.WithContext(ctx).First(&rule, id).Error
 	if err != nil {
@@ -122,7 +123,7 @@ func (r *monitorAlertRepository) UpdateRule(ctx context.Context, rule *models.Mo
 }
 
 // DeleteRule deletes an alert rule
-func (r *monitorAlertRepository) DeleteRule(ctx context.Context, id uint) error {
+func (r *monitorAlertRepository) DeleteRule(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Delete associated events
 		if err := tx.Where("rule_id = ?", id).Delete(&models.MonitorAlertEvent{}).Error; err != nil {
@@ -153,7 +154,7 @@ func (r *monitorAlertRepository) CreateEvent(ctx context.Context, event *models.
 }
 
 // GetEventByID retrieves an alert event by ID
-func (r *monitorAlertRepository) GetEventByID(ctx context.Context, id uint) (*models.MonitorAlertEvent, error) {
+func (r *monitorAlertRepository) GetEventByID(ctx context.Context, id uuid.UUID) (*models.MonitorAlertEvent, error) {
 	var event models.MonitorAlertEvent
 	err := r.db.WithContext(ctx).
 		Preload("Rule").
@@ -220,7 +221,7 @@ func (r *monitorAlertRepository) UpdateEvent(ctx context.Context, event *models.
 }
 
 // AcknowledgeEvent marks an event as acknowledged
-func (r *monitorAlertRepository) AcknowledgeEvent(ctx context.Context, eventID, userID uint, note string) error {
+func (r *monitorAlertRepository) AcknowledgeEvent(ctx context.Context, eventID uuid.UUID, userID uuid.UUID, note string) error {
 	var event models.MonitorAlertEvent
 	if err := r.db.WithContext(ctx).First(&event, eventID).Error; err != nil {
 		return err
@@ -231,7 +232,7 @@ func (r *monitorAlertRepository) AcknowledgeEvent(ctx context.Context, eventID, 
 }
 
 // ResolveEvent marks an event as resolved
-func (r *monitorAlertRepository) ResolveEvent(ctx context.Context, eventID, userID uint, note string) error {
+func (r *monitorAlertRepository) ResolveEvent(ctx context.Context, eventID uuid.UUID, userID uuid.UUID, note string) error {
 	var event models.MonitorAlertEvent
 	if err := r.db.WithContext(ctx).First(&event, eventID).Error; err != nil {
 		return err
@@ -242,7 +243,7 @@ func (r *monitorAlertRepository) ResolveEvent(ctx context.Context, eventID, user
 }
 
 // GetFiringEvents retrieves all firing events for a rule
-func (r *monitorAlertRepository) GetFiringEvents(ctx context.Context, ruleID uint) ([]*models.MonitorAlertEvent, error) {
+func (r *monitorAlertRepository) GetFiringEvents(ctx context.Context, ruleID uuid.UUID) ([]*models.MonitorAlertEvent, error) {
 	var events []*models.MonitorAlertEvent
 	err := r.db.WithContext(ctx).
 		Where("rule_id = ? AND status = ?", ruleID, models.AlertStatusFiring).

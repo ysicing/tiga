@@ -86,6 +86,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else {
           setUser(null)
         }
+      } else if (response.status === 401) {
+        // Unauthorized - redirect to login
+        setUser(null)
+        setIsLoading(false)
+        window.location.href = '/login'
+        return
       } else {
         setUser(null)
       }

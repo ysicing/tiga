@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/proto"
@@ -17,7 +18,7 @@ import (
 // AgentConnection represents an active agent connection
 type AgentConnection struct {
 	UUID       string
-	HostNodeID uint
+	HostNodeID uuid.UUID
 	Stream     proto.HostMonitor_ReportStateServer
 	Connected  time.Time
 	LastSeen   time.Time
@@ -130,7 +131,7 @@ func (m *AgentManager) RegisterAgent(ctx context.Context, req *proto.RegisterAge
 func (m *AgentManager) HandleReportState(stream proto.HostMonitor_ReportStateServer) error {
 	ctx := stream.Context()
 	var currentUUID string
-	var hostNodeID uint
+	var hostNodeID uuid.UUID
 
 	// Cleanup on disconnect
 	defer func() {
@@ -186,7 +187,7 @@ func (m *AgentManager) HandleReportState(stream proto.HostMonitor_ReportStateSer
 }
 
 // processStateReport saves the host state to database
-func (m *AgentManager) processStateReport(hostNodeID uint, state *proto.HostState) error {
+func (m *AgentManager) processStateReport(hostNodeID uuid.UUID, state *proto.HostState) error {
 	hostState := &models.HostState{
 		HostNodeID:       hostNodeID,
 		Timestamp:        time.UnixMilli(state.Timestamp),
@@ -237,7 +238,7 @@ func (m *AgentManager) processStateReport(hostNodeID uint, state *proto.HostStat
 }
 
 // accumulateTraffic adds delta traffic to the host's total traffic_used
-func (m *AgentManager) accumulateTraffic(hostNodeID uint, delta int64) error {
+func (m *AgentManager) accumulateTraffic(hostNodeID uuid.UUID, delta int64) error {
 	return m.db.Model(&models.HostNode{}).
 		Where("id = ?", hostNodeID).
 		UpdateColumn("traffic_used", gorm.Expr("traffic_used + ?", delta)).
@@ -245,7 +246,7 @@ func (m *AgentManager) accumulateTraffic(hostNodeID uint, delta int64) error {
 }
 
 // RegisterConnection registers an active agent connection
-func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uint, stream proto.HostMonitor_ReportStateServer) {
+func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uuid.UUID, stream proto.HostMonitor_ReportStateServer) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conn := &AgentConnection{
@@ -281,7 +282,7 @@ func (m *AgentManager) DisconnectAgent(uuid string) {
 }
 
 // updateConnectionStatus updates the agent connection status in database
-func (m *AgentManager) updateConnectionStatus(hostNodeID uint, status models.AgentConnectionStatus) {
+func (m *AgentManager) updateConnectionStatus(hostNodeID uuid.UUID, status models.AgentConnectionStatus) {
 	var agentConn models.AgentConnection
 	if err := m.db.Where("host_node_id = ?", hostNodeID).First(&agentConn).Error; err != nil {
 		return
@@ -360,7 +361,7 @@ func (m *AgentManager) IsAgentOnline(uuid string) bool {
 }
 
 // GetConnectionByHostID returns the connection for a given host ID
-func (m *AgentManager) GetConnectionByHostID(hostID uint) *AgentConnection {
+func (m *AgentManager) GetConnectionByHostID(hostID uuid.UUID) *AgentConnection {
 	var result *AgentConnection
 	m.connections.Range(func(key, value interface{}) bool {
 		conn := value.(*AgentConnection)

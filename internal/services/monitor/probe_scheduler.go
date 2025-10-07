@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
@@ -13,18 +14,18 @@ import (
 
 // ProbeTask represents a scheduled probe task
 type ProbeTask struct {
-	MonitorID  uint
-	Monitor    *models.ServiceMonitor
+	MonitorID   uuid.UUID
+	Monitor     *models.ServiceMonitor
 	CronEntryID cron.EntryID
-	LastRun    time.Time
-	NextRun    time.Time
+	LastRun     time.Time
+	NextRun     time.Time
 }
 
 // ServiceProbeScheduler schedules and manages service probe tasks
 type ServiceProbeScheduler struct {
 	serviceRepo repository.ServiceRepository
 	cron        *cron.Cron
-	tasks       sync.Map // map[uint]*ProbeTask
+	tasks       sync.Map // map[uuid.UUID]*ProbeTask
 	mu          sync.RWMutex
 
 	// Agent communication (for distributed probing)
@@ -107,7 +108,7 @@ func (s *ServiceProbeScheduler) ScheduleMonitor(monitor *models.ServiceMonitor) 
 }
 
 // UnscheduleMonitor removes a monitor from the schedule
-func (s *ServiceProbeScheduler) UnscheduleMonitor(monitorID uint) {
+func (s *ServiceProbeScheduler) UnscheduleMonitor(monitorID uuid.UUID) {
 	if task, ok := s.tasks.LoadAndDelete(monitorID); ok {
 		probeTask := task.(*ProbeTask)
 		s.cron.Remove(probeTask.CronEntryID)
@@ -233,7 +234,7 @@ func (s *ServiceProbeScheduler) checkProbeFailures(ctx context.Context, monitor 
 }
 
 // TriggerManualProbe triggers an immediate probe for a monitor
-func (s *ServiceProbeScheduler) TriggerManualProbe(ctx context.Context, monitorID uint) (*models.ServiceProbeResult, error) {
+func (s *ServiceProbeScheduler) TriggerManualProbe(ctx context.Context, monitorID uuid.UUID) (*models.ServiceProbeResult, error) {
 	monitor, err := s.serviceRepo.GetByID(ctx, monitorID)
 	if err != nil {
 		return nil, err
@@ -276,7 +277,7 @@ func (s *ServiceProbeScheduler) UpdateMonitorSchedule(monitor *models.ServiceMon
 }
 
 // GetTaskStatus returns the status of a specific probe task
-func (s *ServiceProbeScheduler) GetTaskStatus(monitorID uint) (*ProbeTask, bool) {
+func (s *ServiceProbeScheduler) GetTaskStatus(monitorID uuid.UUID) (*ProbeTask, bool) {
 	if task, ok := s.tasks.Load(monitorID); ok {
 		return task.(*ProbeTask), true
 	}

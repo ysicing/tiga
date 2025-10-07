@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -51,13 +52,13 @@ func (s *ServiceProbeService) UpdateMonitor(ctx context.Context, monitor *models
 }
 
 // DeleteMonitor deletes a monitor and unschedules it
-func (s *ServiceProbeService) DeleteMonitor(ctx context.Context, id uint) error {
+func (s *ServiceProbeService) DeleteMonitor(ctx context.Context, id uuid.UUID) error {
 	s.scheduler.UnscheduleMonitor(id)
 	return s.serviceRepo.Delete(ctx, id)
 }
 
 // GetMonitor retrieves a monitor with latest status
-func (s *ServiceProbeService) GetMonitor(ctx context.Context, id uint) (*models.ServiceMonitor, error) {
+func (s *ServiceProbeService) GetMonitor(ctx context.Context, id uuid.UUID) (*models.ServiceMonitor, error) {
 	monitor, err := s.serviceRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func (s *ServiceProbeService) GetMonitor(ctx context.Context, id uint) (*models.
 }
 
 // GetAvailabilityStats calculates availability statistics for a period
-func (s *ServiceProbeService) GetAvailabilityStats(ctx context.Context, monitorID uint, period string) (*models.ServiceAvailability, error) {
+func (s *ServiceProbeService) GetAvailabilityStats(ctx context.Context, monitorID uuid.UUID, period string) (*models.ServiceAvailability, error) {
 	now := time.Now()
 	var start time.Time
 
@@ -106,6 +107,6 @@ func (s *ServiceProbeService) GetAvailabilityStats(ctx context.Context, monitorI
 }
 
 // TriggerManualProbe triggers a manual probe execution
-func (s *ServiceProbeService) TriggerManualProbe(ctx context.Context, monitorID uint) (*models.ServiceProbeResult, error) {
+func (s *ServiceProbeService) TriggerManualProbe(ctx context.Context, monitorID uuid.UUID) (*models.ServiceProbeResult, error) {
 	return s.scheduler.TriggerManualProbe(ctx, monitorID)
 }
