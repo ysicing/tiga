@@ -183,6 +183,37 @@ func (d *Database) AutoMigrate() error {
 	return nil
 }
 
+// SeedDefaultData creates default data if not exists
+func (d *Database) SeedDefaultData() error {
+	logrus.Info("Seeding default data...")
+
+	// Create default host groups if none exist
+	var groupCount int64
+	if err := d.DB.Model(&models.HostGroup{}).Count(&groupCount).Error; err != nil {
+		return fmt.Errorf("failed to count host groups: %w", err)
+	}
+
+	if groupCount == 0 {
+		defaultGroups := []models.HostGroup{
+			{
+				Name:        "默认分组",
+				Description: "系统自动创建的默认主机分组",
+			},
+		}
+
+		for _, group := range defaultGroups {
+			if err := d.DB.Create(&group).Error; err != nil {
+				logrus.Warnf("Failed to create default group '%s': %v", group.Name, err)
+			} else {
+				logrus.Infof("Created default host group: %s", group.Name)
+			}
+		}
+	}
+
+	logrus.Info("Default data seeding completed")
+	return nil
+}
+
 // Close closes the database connection
 func (d *Database) Close() error {
 	sqlDB, err := d.DB.DB()

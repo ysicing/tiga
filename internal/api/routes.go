@@ -141,6 +141,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 		// Initialization check endpoint (no auth required)
 		v1.GET("/init_check", pkghandlers.NewInitCheckHandler(configPath))
 
+		// App configuration endpoint (no auth required) - used by login page
+		v1.GET("/config", handlers.GetAppConfig(configPath))
+
 		adminAPI := v1.Group("/admin")
 		{
 			// Initial setup endpoints (no auth required - only works when no users exist)

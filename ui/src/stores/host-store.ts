@@ -51,12 +51,13 @@ export interface Host {
   hide_for_guest: boolean;
 
   // Billing and expiry information
-  monthly_cost: number;
-  yearly_cost: number;
+  cost: number;
   renewal_type: 'monthly' | 'yearly';
-  traffic_limit: number;  // GB, 0 means unlimited
-  traffic_used: number;   // GB
-  expiry_date?: string;   // ISO date string
+  purchase_date?: string;   // ISO date string
+  expiry_date?: string;      // ISO date string
+  auto_renew: boolean;
+  traffic_limit: number;     // GB, 0 means unlimited
+  traffic_used: number;      // GB
 
   // Group associations
   group_id?: string;

@@ -1,20 +1,16 @@
 # Code Audit TODO
 
-- [ ] internal/api/middleware/router.go:42 `/api/v1/auth/login`/`refresh` are still stub handlers that return 200, so the real auth endpoints remain unreachable at the documented paths.
-- [ ] internal/api/handlers/auth_handler.go:372 `GetCurrentUser`仍旧读取 `c.Get("user")`，而 OAuth 中间件只存储 `UserIDKey` 等 typed key，导致接口恒 401。
-- [ ] internal/api/routes.go:52 Login 改走 `/api/auth/login/password`，但 `/api/v1/auth/logout`/`refresh` 等真正路由从未注册，调用的还是旧占位 Handler。
-- [ ] internal/api/routes.go:56 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager，`/api/auth/providers` 只能返回 `password`，后续 OAuth 登录依旧不可用。
-- [x] ~~pkg/common/common.go:47 `LoadEnvs` 依旧没有被调用，运行时不会加载自定义 JWT/数据库/加密配置。~~ **已修复**: LoadEnvs 已移除，改用配置文件，JWT Secret 和加密密钥在安装时自动生成并保存到配置文件
-- [x] ~~pkg/common/common.go:33 `ENABLE_ANALYTICS=true` 时却把 `EnableAnalytics` 设为 false，功能开关永远打不开。~~ **已实现**: Analytics 功能已完整实现，配置存储在数据库中，提供 API 让前端动态加载分析脚本，用户可在安装时选择启用并后续通过系统设置开关
-- [ ] internal/repository/instance_repo.go:209 继续使用 `? = ANY(tags)` 过滤，`tags` 实际是 JSON/text，SQLite/MySQL 直接报错，Postgres 永远匹配不到。
-- [ ] internal/services/managers/manager.go:90 `GetConnectionString` 仍然把端口转换成单个字符，拼出的 `<host>:é` 之类字符串无法用于连接。
-- [ ] internal/services/managers/mysql_manager.go:53 `GetConfigValue` 返回 `float64`，这里强转 `.(int)` 一旦配置中写了池参数立即 panic。
-- [ ] internal/services/managers/postgres_manager.go:53 同样的 `float64`→`int` panic 问题依旧存在。
-- [x] ~~internal/app/app.go:131 认证中间件仍旧使用 `pkgauth.NewOAuthManager()` 里的 `common.JwtSecret`，与新登录服务签发的 `jwtSecret` 不一致，登录取得的 token 无法通过校验。~~ **已修复**: OAuth Manager 和所有认证组件现在都使用配置文件中的 JWT Secret
-- [ ] internal/services/auth/oauth.go:250 `parseJSON` 仍是空实现，OAuth 用户信息解析始终返回空对象。
-- [ ] internal/services/auth/oauth.go:289 `randomString` 继续用 `time.Now().UnixNano()%len` 生成低熵 state，容易被预测。
-- [ ] internal/api/middleware/auth.go:42 将 `claims.UserID` 以字符串写入 context，再按 `uuid.UUID` 读取必然失败，所有需要用户 ID 的逻辑都失效。
-- [ ] internal/api/handlers/auth_handler.go:146 `GetProfile` 依赖 `middleware.GetUserID`，因此当前实现永远 401。
-- [ ] internal/services/auth/login.go:248/274 更新密码时仍写 `password_hash` 字段，新模型已改成 `password`，修改/重置密码都会报错。
-- [ ] pkg/model/compat.go:273 `ResetPasswordByID` 同样更新 `password_hash`，兼容层无法重置新用户密码。
-- [ ] internal/install/services/validation_service.go:144 安装流程创建管理员仍使用旧版 `models.User`（uint ID、`IsAdmin` 字段），与最新表结构不匹配，初始化必然失败。
+- [ ] internal/api/routes.go:103 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager，`/api/auth/providers` 只能返回 `password`，后续 OAuth 登录依旧不可用。
+- [ ] internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤依旧假设数组字段，SQLite/MySQL 会报错，Postgres 永远匹配不到。
+- [ ] internal/services/managers/manager.go:101 `GetConnectionString` 仍把端口转换成单字符，拼出的 `<host>:\x05` 之类字符串无法用于连接。
+- [ ] internal/services/managers/mysql_manager.go:52 `GetConfigValue` 返回 `float64`，这里强转 `.(int)` 一旦配置中写了池参数立即 panic。
+- [ ] internal/services/managers/postgres_manager.go:55 同样的 `float64`→`int` panic 问题依旧存在。
+- [ ] internal/services/auth/oauth.go:266 `parseJSON` 仍是空实现，OAuth 用户信息解析始终返回空对象。
+- [ ] internal/services/auth/oauth.go:277 `randomString` 继续用 `time.Now().UnixNano()%len` 生成低熵 state，容易被预测。
+- [ ] internal/api/handlers/host_group_handler.go:71 依旧用 `ParseUint`/`[]uint` 处理 ID，切到 UUID 后删除分组或批量加主机会直接失败。
+- [ ] internal/api/handlers/host_handler.go:140 以及 internal/repository/host_repository.go:16/95 `group_id` 仍按整数处理并拼 `string(rune(...))`，UUID 时代分组筛选彻底失效。
+- [ ] internal/api/handlers/service_monitor_handler.go:60/79/99/116/128 忽略 `uuid.Parse` 错误，非法 ID 会默默落成 `uuid.Nil` 并作用在错误的记录上。
+- [ ] internal/repository/service_repository.go:13 `ServiceFilter.HostID` 仍是 `uint` 并与 `group_ids` 一样用大于零判断，UUID 下 host 过滤统统失效。
+- [ ] internal/api/handlers/webssh_handler.go:74 为了兼容 UUID 暂时写死 `userID := uuid.MustParse("0000...01")`，还在 `CreateSession` 失败时继续访问 `wsSession.SessionID`，真实用户 ID 永远丢失且容易 panic。
+- [ ] ui/src/pages/hosts/host-list-page.tsx:114 / host-edit-page.tsx:84 / service-monitor-page.tsx:60 等仍然用 `Bearer ${localStorage.getItem('token')}` 且缺少 `credentials: 'include'`，新登录改成 Cookie 后这些增删改请求都会 401。
+- [ ] internal/models/host_node.go:7 同步把 host/agent/monitor 表主键改成 UUID，但没有任何迁移脚本，旧库仍是 int，自建环境会直接列类型不匹配。

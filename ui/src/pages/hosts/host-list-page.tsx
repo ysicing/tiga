@@ -35,11 +35,12 @@ type HostFormData = {
   hide_for_guest: boolean;
 
   // Billing information
-  monthly_cost: number;
-  yearly_cost: number;
+  cost: number;
   renewal_type: 'monthly' | 'yearly';
-  traffic_limit: number;
+  purchase_date?: string;
   expiry_date?: string;
+  auto_renew: boolean;
+  traffic_limit: number;
 
   // Group
   group_id?: string;
@@ -64,11 +65,12 @@ export function HostListPage() {
     public_note: '',
     display_index: 0,
     hide_for_guest: false,
-    monthly_cost: 0,
-    yearly_cost: 0,
+    cost: 0,
     renewal_type: 'monthly',
-    traffic_limit: 0,
+    purchase_date: '',
     expiry_date: '',
+    auto_renew: false,
+    traffic_limit: 0,
   });
 
   // Fetch hosts on mount
@@ -135,11 +137,12 @@ export function HostListPage() {
           public_note: '',
           display_index: 0,
           hide_for_guest: false,
-          monthly_cost: 0,
-          yearly_cost: 0,
+          cost: 0,
           renewal_type: 'monthly',
-          traffic_limit: 0,
+          purchase_date: '',
           expiry_date: '',
+          auto_renew: false,
+          traffic_limit: 0,
         });
 
         // Refresh list
@@ -350,28 +353,18 @@ export function HostListPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="monthly_cost">月费用 (¥)</Label>
+                  <Label htmlFor="cost">费用 (¥)</Label>
                   <Input
-                    id="monthly_cost"
+                    id="cost"
                     type="number"
                     step="0.01"
-                    value={formData.monthly_cost}
-                    onChange={(e) => setFormData({ ...formData, monthly_cost: parseFloat(e.target.value) || 0 })}
+                    value={formData.cost}
+                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    根据续费周期，此费用为{formData.renewal_type === 'monthly' ? '月' : '年'}费用
+                  </p>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="yearly_cost">年费用 (¥)</Label>
-                  <Input
-                    id="yearly_cost"
-                    type="number"
-                    step="0.01"
-                    value={formData.yearly_cost}
-                    onChange={(e) => setFormData({ ...formData, yearly_cost: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="renewal_type">续费周期</Label>
                   <Select
@@ -387,6 +380,30 @@ export function HostListPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="purchase_date">购买日期</Label>
+                  <Input
+                    id="purchase_date"
+                    type="date"
+                    value={formData.purchase_date}
+                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="expiry_date">到期时间</Label>
+                  <Input
+                    id="expiry_date"
+                    type="date"
+                    value={formData.expiry_date}
+                    onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="traffic_limit">流量限制 (GB)</Label>
                   <Input
@@ -397,29 +414,17 @@ export function HostListPage() {
                     placeholder="0 表示无限"
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="expiry_date">到期时间</Label>
-                  <Input
-                    id="expiry_date"
-                    type="date"
-                    value={formData.expiry_date}
-                    onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
-                  />
-                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="group_id">主机分组</Label>
                   <Select
-                    value={formData.group_id}
-                    onValueChange={(value) => setFormData({ ...formData, group_id: value || undefined })}
+                    value={formData.group_id || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, group_id: value === "none" ? undefined : value })}
                   >
                     <SelectTrigger id="group_id">
                       <SelectValue placeholder="选择分组（可选）" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">无分组</SelectItem>
+                      <SelectItem value="none">无分组</SelectItem>
                       {groups.map((group) => (
                         <SelectItem key={group.id} value={group.id}>
                           {group.name}
@@ -431,7 +436,26 @@ export function HostListPage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <Label htmlFor="hide_for_guest">对访客隐藏</Label>
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto_renew">自动续费</Label>
+                  <p className="text-xs text-muted-foreground">
+                    到期时自动续费，避免服务中断
+                  </p>
+                </div>
+                <Switch
+                  id="auto_renew"
+                  checked={formData.auto_renew}
+                  onCheckedChange={(checked) => setFormData({ ...formData, auto_renew: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="hide_for_guest">对访客隐藏</Label>
+                  <p className="text-xs text-muted-foreground">
+                    未登录用户无法查看此主机
+                  </p>
+                </div>
                 <Switch
                   id="hide_for_guest"
                   checked={formData.hide_for_guest}

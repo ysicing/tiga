@@ -65,15 +65,21 @@ class ApiClient {
 
       // Handle authentication errors with automatic retry
       if (response.status === 401) {
+        // Avoid redirect loop: don't redirect if already on login page
+        const currentPath = window.location.pathname
+        const isLoginPage = currentPath === '/login' || currentPath.startsWith('/login')
+
         try {
           // Try to refresh the token
           await this.refreshToken()
           // Retry the original request
           response = await fetch(fullUrl, defaultOptions)
         } catch (refreshError) {
-          // If refresh fails, redirect to login page
+          // If refresh fails, redirect to login page (unless already there)
           console.error('Token refresh failed:', refreshError)
-          window.location.href = '/login'
+          if (!isLoginPage) {
+            window.location.href = '/login'
+          }
           throw new Error('Authentication failed')
         }
       }

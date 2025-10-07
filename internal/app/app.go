@@ -73,6 +73,11 @@ func NewApplication(cfg *config.Config, configPath string, installMode bool, sta
 			return nil, fmt.Errorf("failed to migrate database: %w", err)
 		}
 
+		// Seed default data (groups, etc.)
+		if err := database.SeedDefaultData(); err != nil {
+			logrus.Warnf("Failed to seed default data: %v", err)
+		}
+
 		app.db = database
 	}
 

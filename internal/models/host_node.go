@@ -22,12 +22,13 @@ type HostNode struct {
 	HideForGuest bool   `gorm:"default:false" json:"hide_for_guest"`
 
 	// Billing and expiry information
-	MonthlyCost  float64    `gorm:"default:0" json:"monthly_cost"`       // 月费用
-	YearlyCost   float64    `gorm:"default:0" json:"yearly_cost"`        // 年费用
-	RenewalType  string     `gorm:"default:monthly" json:"renewal_type"` // monthly or yearly
+	Cost         float64    `gorm:"default:0" json:"cost"`               // 费用（根据续费周期决定是月费还是年费）
+	RenewalType  string     `gorm:"default:monthly" json:"renewal_type"` // 续费周期：monthly 或 yearly
+	PurchaseDate *time.Time `gorm:"index" json:"purchase_date,omitempty"` // 购买日期
+	ExpiryDate   *time.Time `gorm:"index" json:"expiry_date,omitempty"`  // 到期时间
+	AutoRenew    bool       `gorm:"default:false" json:"auto_renew"`     // 是否自动续费
 	TrafficLimit int64      `gorm:"default:0" json:"traffic_limit"`      // 流量限制 (GB), 0表示无限
 	TrafficUsed  int64      `gorm:"default:0" json:"traffic_used"`       // 已用流量 (GB)
-	ExpiryDate   *time.Time `gorm:"index" json:"expiry_date,omitempty"`  // 到期时间
 
 	// Group associations
 	GroupID  *uuid.UUID `gorm:"type:char(36);index" json:"group_id,omitempty"` // 主分组ID

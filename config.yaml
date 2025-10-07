@@ -6,7 +6,7 @@ server:
     language: zh-CN
 database:
     type: sqlite
-    database: /tmp/tiga.v8.db
+    database: /tmp/tiga.v8.1.db
 security:
-    jwt_secret: 3K1DW1DaLs4hcNFsTNLsDe2gDHVG28gByH3YXMyRaA0=
-    encryption_key: CrT0bVGmtDMNsf7QBXl1xXqECcumyfnR8uPUaNQ4j9Y=
+    jwt_secret: 8zy1VHontLu4loSrU7qRIlFjtGHbITBnRc8rbRbpsxs=
+    encryption_key: _dDUyaopkjKcd6CKQHuy6x1w67kJhccs-zyqxrwFO8M=

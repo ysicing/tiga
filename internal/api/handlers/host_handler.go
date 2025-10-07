@@ -41,15 +41,16 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		HideForGuest bool    `json:"hide_for_guest"`
 
 		// Billing information
-		MonthlyCost  float64 `json:"monthly_cost"`
-		YearlyCost   float64 `json:"yearly_cost"`
+		Cost         float64 `json:"cost"`
 		RenewalType  string  `json:"renewal_type"`
-		TrafficLimit int64   `json:"traffic_limit"`
+		PurchaseDate *string `json:"purchase_date"`
 		ExpiryDate   *string `json:"expiry_date"`
+		AutoRenew    bool    `json:"auto_renew"`
+		TrafficLimit int64   `json:"traffic_limit"`
 
 		// Group
-		GroupID  *uuid.UUID  `json:"group_id"`
-		GroupIDs string `json:"group_ids"`
+		GroupID  *uuid.UUID `json:"group_id"`
+		GroupIDs string     `json:"group_ids"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -61,12 +62,20 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		return
 	}
 
-	// Parse expiry date if provided
+	// Parse dates if provided
 	var expiryDate *time.Time
 	if req.ExpiryDate != nil && *req.ExpiryDate != "" {
 		t, err := time.Parse("2006-01-02", *req.ExpiryDate)
 		if err == nil {
 			expiryDate = &t
+		}
+	}
+
+	var purchaseDate *time.Time
+	if req.PurchaseDate != nil && *req.PurchaseDate != "" {
+		t, err := time.Parse("2006-01-02", *req.PurchaseDate)
+		if err == nil {
+			purchaseDate = &t
 		}
 	}
 
@@ -76,11 +85,12 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		PublicNote:   req.PublicNote,
 		DisplayIndex: req.DisplayIndex,
 		HideForGuest: req.HideForGuest,
-		MonthlyCost:  req.MonthlyCost,
-		YearlyCost:   req.YearlyCost,
+		Cost:         req.Cost,
 		RenewalType:  req.RenewalType,
-		TrafficLimit: req.TrafficLimit,
+		PurchaseDate: purchaseDate,
 		ExpiryDate:   expiryDate,
+		AutoRenew:    req.AutoRenew,
+		TrafficLimit: req.TrafficLimit,
 		GroupID:      req.GroupID,
 		GroupIDs:     req.GroupIDs,
 	}
@@ -109,12 +119,13 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 			"public_note":       hostNode.PublicNote,
 			"display_index":     hostNode.DisplayIndex,
 			"hide_for_guest":    hostNode.HideForGuest,
-			"monthly_cost":      hostNode.MonthlyCost,
-			"yearly_cost":       hostNode.YearlyCost,
+			"cost":              hostNode.Cost,
 			"renewal_type":      hostNode.RenewalType,
+			"purchase_date":     hostNode.PurchaseDate,
+			"expiry_date":       hostNode.ExpiryDate,
+			"auto_renew":        hostNode.AutoRenew,
 			"traffic_limit":     hostNode.TrafficLimit,
 			"traffic_used":      hostNode.TrafficUsed,
-			"expiry_date":       hostNode.ExpiryDate,
 			"group_id":          hostNode.GroupID,
 			"group_ids":         hostNode.GroupIDs,
 			"created_at":        hostNode.CreatedAt,
@@ -162,23 +173,24 @@ func (h *HostHandler) ListHosts(c *gin.Context) {
 	items := make([]map[string]interface{}, len(hosts))
 	for i, host := range hosts {
 		item := map[string]interface{}{
-			"id":            host.ID,
-			"uuid":          host.ID.String(),
-			"name":          host.Name,
-			"note":          host.Note,
-			"public_note":   host.PublicNote,
-			"display_index": host.DisplayIndex,
+			"id":             host.ID,
+			"uuid":           host.ID.String(),
+			"name":           host.Name,
+			"note":           host.Note,
+			"public_note":    host.PublicNote,
+			"display_index":  host.DisplayIndex,
 			"hide_for_guest": host.HideForGuest,
-			"monthly_cost":  host.MonthlyCost,
-			"yearly_cost":   host.YearlyCost,
-			"renewal_type":  host.RenewalType,
-			"traffic_limit": host.TrafficLimit,
-			"traffic_used":  host.TrafficUsed,
-			"expiry_date":   host.ExpiryDate,
-			"group_id":      host.GroupID,
-			"group_ids":     host.GroupIDs,
-			"online":        host.Online,
-			"created_at":    host.CreatedAt,
+			"cost":           host.Cost,
+			"renewal_type":   host.RenewalType,
+			"purchase_date":  host.PurchaseDate,
+			"expiry_date":    host.ExpiryDate,
+			"auto_renew":     host.AutoRenew,
+			"traffic_limit":  host.TrafficLimit,
+			"traffic_used":   host.TrafficUsed,
+			"group_id":       host.GroupID,
+			"group_ids":      host.GroupIDs,
+			"online":         host.Online,
+			"created_at":     host.CreatedAt,
 		}
 
 		if host.LastActive != nil {
@@ -257,12 +269,13 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 		"public_note":   host.PublicNote,
 		"display_index": host.DisplayIndex,
 		"hide_for_guest": host.HideForGuest,
-		"monthly_cost":  host.MonthlyCost,
-		"yearly_cost":   host.YearlyCost,
+		"cost":          host.Cost,
 		"renewal_type":  host.RenewalType,
+		"purchase_date": host.PurchaseDate,
+		"expiry_date":   host.ExpiryDate,
+		"auto_renew":    host.AutoRenew,
 		"traffic_limit": host.TrafficLimit,
 		"traffic_used":  host.TrafficUsed,
-		"expiry_date":   host.ExpiryDate,
 		"group_id":      host.GroupID,
 		"group_ids":     host.GroupIDs,
 		"online":        host.Online,
@@ -315,11 +328,12 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 		HideForGuest bool    `json:"hide_for_guest"`
 
 		// Billing information
-		MonthlyCost  float64 `json:"monthly_cost"`
-		YearlyCost   float64 `json:"yearly_cost"`
+		Cost         float64 `json:"cost"`
 		RenewalType  string  `json:"renewal_type"`
-		TrafficLimit int64   `json:"traffic_limit"`
+		PurchaseDate *string `json:"purchase_date"`
 		ExpiryDate   *string `json:"expiry_date"`
+		AutoRenew    bool    `json:"auto_renew"`
+		TrafficLimit int64   `json:"traffic_limit"`
 
 		// Group
 		GroupID  *uuid.UUID  `json:"group_id"`
@@ -343,7 +357,14 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 		return
 	}
 
-	// Parse expiry date if provided
+	// Parse dates if provided
+	if req.PurchaseDate != nil && *req.PurchaseDate != "" {
+		t, err := time.Parse("2006-01-02", *req.PurchaseDate)
+		if err == nil {
+			host.PurchaseDate = &t
+		}
+	}
+
 	if req.ExpiryDate != nil && *req.ExpiryDate != "" {
 		t, err := time.Parse("2006-01-02", *req.ExpiryDate)
 		if err == nil {
@@ -357,9 +378,9 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 	host.PublicNote = req.PublicNote
 	host.DisplayIndex = req.DisplayIndex
 	host.HideForGuest = req.HideForGuest
-	host.MonthlyCost = req.MonthlyCost
-	host.YearlyCost = req.YearlyCost
+	host.Cost = req.Cost
 	host.RenewalType = req.RenewalType
+	host.AutoRenew = req.AutoRenew
 	host.TrafficLimit = req.TrafficLimit
 	host.GroupID = req.GroupID
 	host.GroupIDs = req.GroupIDs
