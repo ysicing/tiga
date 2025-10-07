@@ -32,9 +32,11 @@ type HostNode struct {
 	// Grouping
 	GroupName string `gorm:"default:'默认分组';index" json:"group_name"` // 分组标签
 
-	// Runtime status (not persisted to database)
-	Online     bool       `gorm:"-" json:"online"`
-	LastActive *time.Time `gorm:"-" json:"last_active,omitempty"`
+	// Connection status
+	LastActive *time.Time `gorm:"index" json:"last_active,omitempty"` // Last time agent was active
+
+	// Runtime status (computed from active connections, not persisted)
+	Online bool `gorm:"-" json:"online"`
 
 	// Relationships
 	HostInfo        *HostInfo          `gorm:"foreignKey:HostNodeID" json:"host_info,omitempty"`

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/proto"
@@ -31,8 +32,9 @@ type AgentConnection struct {
 
 // AgentManager manages agent connections and gRPC streams
 type AgentManager struct {
-	hostRepo repository.HostRepository
-	db       *gorm.DB
+	hostRepo       repository.HostRepository
+	stateCollector *StateCollector
+	db             *gorm.DB
 
 	// Active connections map: UUID -> Connection
 	connections sync.Map
@@ -44,9 +46,10 @@ type AgentManager struct {
 }
 
 // NewAgentManager creates a new AgentManager
-func NewAgentManager(hostRepo repository.HostRepository, db *gorm.DB) *AgentManager {
+func NewAgentManager(hostRepo repository.HostRepository, stateCollector *StateCollector, db *gorm.DB) *AgentManager {
 	return &AgentManager{
 		hostRepo:          hostRepo,
+		stateCollector:    stateCollector,
 		db:                db,
 		heartbeatInterval: 30 * time.Second,
 		heartbeatTimeout:  90 * time.Second,
@@ -220,8 +223,8 @@ func (m *AgentManager) processStateReport(hostNodeID uuid.UUID, state *proto.Hos
 		// TODO: Marshal temperatures to JSON
 	}
 
-	// Save the state to database
-	if err := m.hostRepo.SaveState(context.Background(), hostState); err != nil {
+	// Save the state to database and broadcast to subscribers
+	if err := m.stateCollector.CollectState(context.Background(), hostNodeID, hostState); err != nil {
 		return err
 	}
 
@@ -264,6 +267,13 @@ func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uuid.UUID, str
 	// Update agent connection status in database
 	m.updateConnectionStatus(hostNodeID, models.AgentStatusOnline)
 
+	// Update last active time (online status is runtime only)
+	now := time.Now()
+	m.db.Model(&models.HostNode{}).Where("id = ?", hostNodeID).Update("last_active", now)
+
+	logrus.Infof("[AgentManager] Registered connection: uuid=%s, hostID=%s, connections=%d",
+		uuid, hostNodeID.String(), m.GetActiveConnectionCount())
+
 	// Start heartbeat monitoring for this connection
 	go m.monitorConnection(ctx, uuid)
 }
@@ -278,6 +288,10 @@ func (m *AgentManager) DisconnectAgent(uuid string) {
 
 		// Update database status
 		m.updateConnectionStatus(agentConn.HostNodeID, models.AgentStatusOffline)
+
+		// Update last active time (online status is runtime only)
+		now := time.Now()
+		m.db.Model(&models.HostNode{}).Where("id = ?", agentConn.HostNodeID).Update("last_active", now)
 	}
 }
 
@@ -372,6 +386,16 @@ func (m *AgentManager) GetConnectionByHostID(hostID uuid.UUID) *AgentConnection 
 		return true
 	})
 	return result
+}
+
+// GetActiveConnectionCount returns the number of active connections
+func (m *AgentManager) GetActiveConnectionCount() int {
+	count := 0
+	m.connections.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	return count
 }
 
 // getPendingTasks retrieves and clears pending tasks for an agent

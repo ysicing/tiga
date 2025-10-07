@@ -47,28 +47,8 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	// Connect to gRPC server
-	conn, err := connectToServer(ctx, config)
-	if err != nil {
-		logrus.Fatalf("Failed to connect to server: %v", err)
-	}
-	defer conn.Close()
-
-	logrus.Info("Successfully connected to server")
-
-	// Create gRPC client
-	client := proto.NewHostMonitorClient(conn)
-
-	// Initialize collector
-	col := collector.NewCollector(version)
-
-	// Register agent and get host info
-	if err := registerAgent(ctx, client, config, col); err != nil {
-		logrus.Fatalf("Failed to register agent: %v", err)
-	}
-
-	// Start reporting loop
-	go runReportingLoop(ctx, client, col, config)
+	// Start agent with reconnection loop
+	go runAgentWithReconnect(ctx, config)
 
 	// Wait for shutdown signal
 	<-sigCh
@@ -78,6 +58,85 @@ func main() {
 	// Give some time for cleanup
 	time.Sleep(2 * time.Second)
 	logrus.Info("Agent stopped")
+}
+
+// runAgentWithReconnect runs the agent with automatic reconnection
+func runAgentWithReconnect(ctx context.Context, config *Config) {
+	retryDelay := 5 * time.Second
+	maxRetryDelay := 5 * time.Minute
+	backoffFactor := 2.0
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Connect to gRPC server
+		conn, err := connectToServer(ctx, config)
+		if err != nil {
+			logrus.Errorf("Failed to connect to server: %v", err)
+			logrus.Infof("Retrying in %v...", retryDelay)
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryDelay):
+				// Exponential backoff
+				retryDelay = time.Duration(float64(retryDelay) * backoffFactor)
+				if retryDelay > maxRetryDelay {
+					retryDelay = maxRetryDelay
+				}
+				continue
+			}
+		}
+
+		logrus.Info("Successfully connected to server")
+		retryDelay = 5 * time.Second // Reset retry delay on successful connection
+
+		// Create gRPC client
+		client := proto.NewHostMonitorClient(conn)
+
+		// Initialize collector
+		col := collector.NewCollector(version)
+
+		// Register agent and get host info
+		if err := registerAgent(ctx, client, config, col); err != nil {
+			logrus.Errorf("Failed to register agent: %v", err)
+			conn.Close()
+
+			logrus.Infof("Retrying in %v...", retryDelay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryDelay):
+				retryDelay = time.Duration(float64(retryDelay) * backoffFactor)
+				if retryDelay > maxRetryDelay {
+					retryDelay = maxRetryDelay
+				}
+				continue
+			}
+		}
+
+		// Start reporting loop
+		runReportingLoop(ctx, client, col, config)
+
+		// If we reach here, the reporting loop ended (connection lost)
+		conn.Close()
+		logrus.Warn("Connection lost, reconnecting...")
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(retryDelay):
+			// Exponential backoff
+			retryDelay = time.Duration(float64(retryDelay) * backoffFactor)
+			if retryDelay > maxRetryDelay {
+				retryDelay = maxRetryDelay
+			}
+		}
+	}
 }
 
 func parseFlags() *Config {
@@ -138,10 +197,11 @@ func connectToServer(ctx context.Context, config *Config) (*grpc.ClientConn, err
 	// For now, use insecure connection for development
 	dialOpts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(),
+		grpc.WithBlock(), // Block until connection established or timeout
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	// Use shorter timeout for reconnection attempts
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	conn, err := grpc.DialContext(ctx, config.ServerAddr, dialOpts...)
@@ -203,16 +263,21 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 		return
 	}
 
+	// Channel to signal stream errors
+	streamErr := make(chan error, 1)
+
 	// Start receiving responses in a separate goroutine
 	go func() {
 		for {
 			resp, err := stream.Recv()
 			if err == io.EOF {
 				logrus.Info("Server closed the stream")
+				streamErr <- io.EOF
 				return
 			}
 			if err != nil {
 				logrus.Errorf("Error receiving response: %v", err)
+				streamErr <- err
 				return
 			}
 			if !resp.Success {
@@ -231,25 +296,35 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 	defer ticker.Stop()
 
 	// Report immediately on start
-	reportState(stream, col, config)
+	if err := reportState(stream, col, config); err != nil {
+		logrus.Errorf("Failed to send initial state: %v", err)
+		return
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			stream.CloseSend()
 			return
+		case err := <-streamErr:
+			logrus.Warnf("Stream error detected: %v, will reconnect", err)
+			stream.CloseSend()
+			return
 		case <-ticker.C:
-			reportState(stream, col, config)
+			if err := reportState(stream, col, config); err != nil {
+				logrus.Errorf("Failed to send state: %v, will reconnect", err)
+				stream.CloseSend()
+				return
+			}
 		}
 	}
 }
 
 // reportState collects current state and sends it to server
-func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Collector, config *Config) {
+func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Collector, config *Config) error {
 	state, err := col.CollectHostState()
 	if err != nil {
-		logrus.Errorf("Failed to collect host state: %v", err)
-		return
+		return fmt.Errorf("failed to collect host state: %w", err)
 	}
 
 	// Convert to proto
@@ -286,13 +361,14 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 	}
 
 	if err := stream.Send(req); err != nil {
-		logrus.Errorf("Failed to send state: %v", err)
-		return
+		return fmt.Errorf("failed to send state: %w", err)
 	}
 
 	logrus.Debugf("Reported state: CPU=%.2f%%, Mem=%.2f%%, Disk=%.2f%%, Traffic=%d/%d bytes",
 		state.CPUUsage, state.MemUsage, state.DiskUsage,
 		state.TrafficDeltaSent, state.TrafficDeltaRecv)
+
+	return nil
 }
 
 // handleTask processes tasks sent by the server

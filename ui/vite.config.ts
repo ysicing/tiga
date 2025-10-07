@@ -27,11 +27,7 @@ export default defineConfig({
       '/api/': {
         changeOrigin: true,
         target: 'http://localhost:12306',
-      },
-      '^/ws/.*': {
-        target: 'ws://localhost:12306',
-        ws: true,
-        rewriteWsOrigin: true,
+        ws: true, // Support WebSocket upgrade for /api/v1/vms/ws/* paths
       },
     },
   },

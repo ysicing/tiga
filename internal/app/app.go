@@ -48,6 +48,13 @@ type Application struct {
 	installMode    bool
 	installChannel chan struct{}
 	staticFS       embed.FS
+
+	// Host monitoring services (shared between gRPC and HTTP)
+	hostRepo        repository.HostRepository
+	stateCollector  *host.StateCollector
+	agentManager    *host.AgentManager
+	terminalManager *host.TerminalManager
+	hostService     *host.HostService
 }
 
 // NewApplication creates a new application instance
@@ -181,6 +188,17 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	// Simplified: removed RBAC middleware initialization
 
+	// Initialize host monitoring services (shared between gRPC and HTTP)
+	serverURL := fmt.Sprintf("http://localhost:%d", a.config.Server.Port)
+	a.hostRepo = repository.NewHostRepository(a.db.DB)
+	a.stateCollector = host.NewStateCollector(a.hostRepo)
+	a.agentManager = host.NewAgentManager(a.hostRepo, a.stateCollector, a.db.DB)
+	a.stateCollector.SetAgentManager(a.agentManager) // Complete the circular reference
+	a.terminalManager = host.NewTerminalManager()
+	a.hostService = host.NewHostService(a.hostRepo, a.agentManager, a.stateCollector, serverURL)
+
+	logrus.Info("Host monitoring services initialized")
+
 	// Setup HTTP router
 	routerConfig := &middleware.RouterConfig{
 		Mode:          a.config.Server.Mode,
@@ -189,8 +207,8 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	router := middleware.NewRouter(routerConfig)
 
-	// Register all API handlers - pass the same jwtManager instance used by middleware
-	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret)
+	// Register all API handlers - pass host services to avoid duplicate instances
+	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector)
 
 	// Serve static files from embedded filesystem
 	a.setupStaticFiles(router)
@@ -203,11 +221,8 @@ func (a *Application) Initialize(ctx context.Context) error {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Initialize gRPC server for Agent communication
-	hostRepo := repository.NewHostRepository(a.db.DB)
-	agentManager := host.NewAgentManager(hostRepo, a.db.DB)
-	terminalManager := host.NewTerminalManager()
-	grpcService := host.NewGRPCServer(agentManager, terminalManager)
+	// Initialize gRPC server for Agent communication - use shared services
+	grpcService := host.NewGRPCServer(a.agentManager, a.terminalManager)
 
 	a.grpcServer = grpc.NewServer()
 	proto.RegisterHostMonitorServer(a.grpcServer, grpcService)

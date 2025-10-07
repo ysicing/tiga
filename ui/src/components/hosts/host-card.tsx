@@ -9,7 +9,8 @@ import {
   HardDrive,
   Network,
   Activity,
-  Circle
+  Circle,
+  Calendar
 } from 'lucide-react';
 
 interface HostCardProps {
@@ -18,9 +19,31 @@ interface HostCardProps {
   compact?: boolean;
 }
 
+// Calculate days until expiry
+function getDaysUntilExpiry(expiryDate?: string): number | null {
+  if (!expiryDate) return null;
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  const diffTime = expiry.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+// Get expiry status with color
+function getExpiryStatus(days: number | null): { text: string; color: string } {
+  if (days === null) return { text: '未设置', color: 'text-muted-foreground' };
+  if (days < 0) return { text: `已过期 ${Math.abs(days)} 天`, color: 'text-red-600 font-semibold' };
+  if (days === 0) return { text: '今天到期', color: 'text-red-600 font-semibold' };
+  if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' };
+  if (days <= 30) return { text: `${days} 天后到期`, color: 'text-orange-600' };
+  return { text: `${days} 天后到期`, color: 'text-muted-foreground' };
+}
+
 export function HostCard({ host, onClick, compact = false }: HostCardProps) {
   const state = host.current_state;
   const info = host.host_info;
+  const daysUntilExpiry = getDaysUntilExpiry(host.expiry_date);
+  const expiryStatus = getExpiryStatus(daysUntilExpiry);
 
   const getStatusColor = () => {
     if (!host.online) return 'bg-red-500';
@@ -141,6 +164,14 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
         ) : (
           <div className="text-sm text-muted-foreground">
             等待监控数据...
+          </div>
+        )}
+
+        {/* Expiry Information */}
+        {!compact && host.expiry_date && (
+          <div className={`flex items-center gap-2 text-xs mt-3 pt-3 border-t ${expiryStatus.color}`}>
+            <Calendar className="h-3 w-3" />
+            <span>{expiryStatus.text}</span>
           </div>
         )}
       </CardContent>

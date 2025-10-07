@@ -47,6 +47,26 @@ type HostFormData = {
   group_name?: string;
 };
 
+// Calculate days until expiry
+function getDaysUntilExpiry(expiryDate?: string): number | null {
+  if (!expiryDate) return null;
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  const diffTime = expiry.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+// Get expiry status with color
+function getExpiryStatus(days: number | null): { text: string; color: string } {
+  if (days === null) return { text: '未设置', color: 'text-muted-foreground' };
+  if (days < 0) return { text: `已过期 ${Math.abs(days)} 天`, color: 'text-red-600 font-semibold' };
+  if (days === 0) return { text: '今天到期', color: 'text-red-600 font-semibold' };
+  if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' };
+  if (days <= 30) return { text: `${days} 天后到期`, color: 'text-orange-600' };
+  return { text: `${days} 天后到期`, color: 'text-muted-foreground' };
+}
+
 export function HostListPage() {
   const navigate = useNavigate();
   const { hosts, loading, setHosts, setLoading } = useHostStore();
@@ -332,6 +352,7 @@ export function HostListPage() {
                 <th className="px-4 py-3 text-right text-sm font-medium">内存</th>
                 <th className="px-4 py-3 text-right text-sm font-medium">磁盘</th>
                 <th className="px-4 py-3 text-right text-sm font-medium">网络 ↓/↑</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">到期时间</th>
                 <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
               </tr>
             </thead>
@@ -339,6 +360,8 @@ export function HostListPage() {
               {filteredHosts.map((host) => {
                 const state = host.current_state;
                 const info = host.host_info;
+                const daysUntilExpiry = getDaysUntilExpiry(host.expiry_date);
+                const expiryStatus = getExpiryStatus(daysUntilExpiry);
                 return (
                   <tr
                     key={host.id}
@@ -391,6 +414,11 @@ export function HostListPage() {
                           {(state.net_out_speed / 1024 / 1024).toFixed(1)}M
                         </span>
                       ) : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={expiryStatus.color}>
+                        {expiryStatus.text}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button

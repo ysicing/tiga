@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -37,10 +38,10 @@ type StateCollector struct {
 }
 
 // NewStateCollector creates a new StateCollector
-func NewStateCollector(hostRepo repository.HostRepository, agentMgr *AgentManager) *StateCollector {
+func NewStateCollector(hostRepo repository.HostRepository) *StateCollector {
 	sc := &StateCollector{
 		hostRepo:          hostRepo,
-		agentMgr:          agentMgr,
+		agentMgr:          nil, // Will be set later via SetAgentManager
 		retentionRealtime: 24 * time.Hour,
 		retentionShort:    7 * 24 * time.Hour,
 		retentionLong:     30 * 24 * time.Hour,
@@ -53,6 +54,11 @@ func NewStateCollector(hostRepo repository.HostRepository, agentMgr *AgentManage
 	return sc
 }
 
+// SetAgentManager sets the agent manager reference (for breaking circular dependency)
+func (sc *StateCollector) SetAgentManager(agentMgr *AgentManager) {
+	sc.agentMgr = agentMgr
+}
+
 // CollectState processes a new state report from an agent
 func (sc *StateCollector) CollectState(ctx context.Context, hostID uuid.UUID, state *models.HostState) error {
 	// Save to database
@@ -62,6 +68,16 @@ func (sc *StateCollector) CollectState(ctx context.Context, hostID uuid.UUID, st
 
 	// Update cache
 	sc.latestStates.Store(hostID, state)
+
+	// Get subscriber count
+	subscriberCount := 0
+	sc.subscribers.Range(func(key, value interface{}) bool {
+		subscriberCount++
+		return true
+	})
+
+	logrus.Debugf("[StateCollector] State collected for host %s, broadcasting to %d subscribers",
+		hostID.String(), subscriberCount)
 
 	// Broadcast to subscribers
 	sc.broadcastState(state)
@@ -277,9 +293,11 @@ func (sc *StateCollector) GetRealtimeMetrics() map[string]interface{} {
 	activeAgents := 0
 	totalHosts := 0
 
-	// Count active agents
-	connections := sc.agentMgr.GetActiveConnections()
-	activeAgents = len(connections)
+	// Count active agents (if agentMgr is set)
+	if sc.agentMgr != nil {
+		connections := sc.agentMgr.GetActiveConnections()
+		activeAgents = len(connections)
+	}
 
 	// Count total states in cache
 	sc.latestStates.Range(func(key, value interface{}) bool {

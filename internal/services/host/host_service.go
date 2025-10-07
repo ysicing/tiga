@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -27,6 +28,11 @@ func NewHostService(hostRepo repository.HostRepository, agentMgr *AgentManager, 
 		stateCollector: stateCollector,
 		serverURL:      serverURL,
 	}
+}
+
+// GetAgentManager returns the agent manager instance
+func (s *HostService) GetAgentManager() *AgentManager {
+	return s.agentMgr
 }
 
 // CreateHost creates a new host node with generated secret key
@@ -175,7 +181,11 @@ func (s *HostService) GetHostStateHistory(ctx context.Context, id uuid.UUID, sta
 // enrichHostWithRuntimeData adds online status and latest state to host
 func (s *HostService) enrichHostWithRuntimeData(host *models.HostNode) {
 	// Check online status
-	host.Online = s.agentMgr.IsAgentOnline(host.ID.String())
+	uuidStr := host.ID.String()
+	host.Online = s.agentMgr.IsAgentOnline(uuidStr)
+
+	logrus.Debugf("[HostService] Enrich host %s (uuid=%s): online=%v",
+		host.Name, uuidStr, host.Online)
 
 	// Get connection info if online
 	if host.Online {
