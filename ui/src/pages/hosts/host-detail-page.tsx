@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Terminal, Settings } from 'lucide-react';
 import { formatBytes } from '@/lib/utils';
+import { devopsAPI } from '@/lib/api-client';
 
 export function HostDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,15 +26,12 @@ export function HostDetailPage() {
         const end = new Date().toISOString();
         const start = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Last 24h
 
-        const response = await fetch(
-          `/api/v1/vms/hosts/${id}/state/history?start=${start}&end=${end}&interval=5m`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-          }
-        );
-        const data = await response.json();
+        const data: any = await devopsAPI.vms.hosts.getHistoryState(id, {
+          start,
+          end,
+          interval: '5m',
+        });
+
         if (data.code === 0) {
           setHistoryData(processHistoryData(data.data.points));
         }

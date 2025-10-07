@@ -65,6 +65,11 @@ func (HostState) TableName() string {
 
 // BeforeCreate sets the timestamp if not provided
 func (h *HostState) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := h.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if h.Timestamp.IsZero() {
 		h.Timestamp = time.Now()
 	}

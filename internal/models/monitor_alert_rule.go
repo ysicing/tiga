@@ -64,6 +64,11 @@ func (MonitorAlertRule) TableName() string {
 
 // BeforeCreate validates the model before creation
 func (m *MonitorAlertRule) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := m.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if m.Duration <= 0 {
 		m.Duration = 300 // Default 5 minutes
 	}

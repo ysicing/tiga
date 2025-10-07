@@ -24,10 +24,12 @@ var (
 )
 
 type Config struct {
-	ServerAddr string
-	UUID       string
-	SecretKey  string
-	LogLevel   string
+	ServerAddr     string
+	UUID           string
+	SecretKey      string
+	LogLevel       string
+	ReportInterval int  // Report interval in seconds
+	DisableWebSSH  bool // Disable WebSSH terminal functionality
 }
 
 func main() {
@@ -85,6 +87,8 @@ func parseFlags() *Config {
 	flag.StringVar(&config.UUID, "uuid", "", "Host UUID")
 	flag.StringVar(&config.SecretKey, "key", "", "Secret key for authentication")
 	flag.StringVar(&config.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
+	flag.IntVar(&config.ReportInterval, "interval", 30, "Report interval in seconds (default: 30)")
+	flag.BoolVar(&config.DisableWebSSH, "disable-webssh", false, "Disable WebSSH terminal functionality")
 
 	showVersion := flag.Bool("version", false, "Show version information")
 	flag.Parse()
@@ -100,6 +104,16 @@ func parseFlags() *Config {
 
 	if config.SecretKey == "" {
 		logrus.Fatal("Secret key is required (use --key flag)")
+	}
+
+	// Validate report interval
+	if config.ReportInterval < 5 {
+		logrus.Warn("Report interval too small, setting to minimum: 5 seconds")
+		config.ReportInterval = 5
+	}
+	if config.ReportInterval > 300 {
+		logrus.Warn("Report interval too large, setting to maximum: 300 seconds")
+		config.ReportInterval = 300
 	}
 
 	return config
@@ -159,9 +173,6 @@ func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *
 		SwapTotal:       hostInfo.SwapTotal,
 		AgentVersion:    hostInfo.AgentVersion,
 		BootTime:        int64(hostInfo.BootTime),
-		SshEnabled:      hostInfo.SSHEnabled,
-		SshPort:         int32(hostInfo.SSHPort),
-		SshUser:         hostInfo.SSHUser,
 	}
 
 	// Register with server
@@ -210,13 +221,13 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 
 			// Handle tasks from server
 			for _, task := range resp.Tasks {
-				go handleTask(client, task)
+				go handleTask(client, task, config)
 			}
 		}
 	}()
 
-	// Report state every 30 seconds
-	ticker := time.NewTicker(30 * time.Second)
+	// Report state at configured interval
+	ticker := time.NewTicker(time.Duration(config.ReportInterval) * time.Second)
 	defer ticker.Stop()
 
 	// Report immediately on start
@@ -285,11 +296,16 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 }
 
 // handleTask processes tasks sent by the server
-func handleTask(client proto.HostMonitorClient, task *proto.AgentTask) {
+func handleTask(client proto.HostMonitorClient, task *proto.AgentTask, config *Config) {
 	logrus.Infof("Received task: id=%s type=%s", task.TaskId, task.TaskType)
 
 	switch task.TaskType {
 	case "terminal":
+		// Check if WebSSH is disabled
+		if config.DisableWebSSH {
+			logrus.Warnf("Terminal task rejected: WebSSH functionality is disabled (--disable-webssh)")
+			return
+		}
 		// Get streamID from task params
 		streamID, ok := task.Params["stream_id"]
 		if !ok {

@@ -160,7 +160,6 @@ func (d *Database) AutoMigrate() error {
 		&models.HostNode{},
 		&models.HostInfo{},
 		&models.HostState{},
-		&models.HostGroup{},
 		&models.ServiceMonitor{},
 		&models.ServiceProbeResult{},
 		&models.ServiceAvailability{},
@@ -187,28 +186,8 @@ func (d *Database) AutoMigrate() error {
 func (d *Database) SeedDefaultData() error {
 	logrus.Info("Seeding default data...")
 
-	// Create default host groups if none exist
-	var groupCount int64
-	if err := d.DB.Model(&models.HostGroup{}).Count(&groupCount).Error; err != nil {
-		return fmt.Errorf("failed to count host groups: %w", err)
-	}
-
-	if groupCount == 0 {
-		defaultGroups := []models.HostGroup{
-			{
-				Name:        "默认分组",
-				Description: "系统自动创建的默认主机分组",
-			},
-		}
-
-		for _, group := range defaultGroups {
-			if err := d.DB.Create(&group).Error; err != nil {
-				logrus.Warnf("Failed to create default group '%s': %v", group.Name, err)
-			} else {
-				logrus.Infof("Created default host group: %s", group.Name)
-			}
-		}
-	}
+	// Note: Default host groups are no longer needed as we use simple string grouping
+	// Hosts will default to "默认分组" via model BeforeCreate hook
 
 	logrus.Info("Default data seeding completed")
 	return nil

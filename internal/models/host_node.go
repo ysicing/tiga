@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -30,9 +29,8 @@ type HostNode struct {
 	TrafficLimit int64      `gorm:"default:0" json:"traffic_limit"`      // 流量限制 (GB), 0表示无限
 	TrafficUsed  int64      `gorm:"default:0" json:"traffic_used"`       // 已用流量 (GB)
 
-	// Group associations
-	GroupID  *uuid.UUID `gorm:"type:char(36);index" json:"group_id,omitempty"` // 主分组ID
-	GroupIDs string     `gorm:"type:text" json:"group_ids"`                    // 多分组支持（JSON array）
+	// Grouping
+	GroupName string `gorm:"default:'默认分组';index" json:"group_name"` // 分组标签
 
 	// Runtime status (not persisted to database)
 	Online     bool       `gorm:"-" json:"online"`
@@ -53,9 +51,20 @@ func (HostNode) TableName() string {
 
 // BeforeCreate validates the model before creation
 func (h *HostNode) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := h.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	// Set default renewal type if not specified
 	if h.RenewalType == "" {
 		h.RenewalType = "monthly"
 	}
+
+	// Set default group name if not specified
+	if h.GroupName == "" {
+		h.GroupName = "默认分组"
+	}
+
 	return nil
 }

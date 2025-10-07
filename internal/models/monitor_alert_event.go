@@ -61,6 +61,11 @@ func (MonitorAlertEvent) TableName() string {
 
 // BeforeCreate sets initial values
 func (a *MonitorAlertEvent) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := a.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if a.TriggeredAt.IsZero() {
 		a.TriggeredAt = time.Now()
 	}

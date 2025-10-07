@@ -13,7 +13,7 @@ import (
 type HostFilter struct {
 	Page       int
 	PageSize   int
-	GroupID    uint
+	GroupName  string // Filter by group name
 	Online     *bool
 	Search     string // Search in name or note
 	Sort       string // display_index/-display_index/name/-name/created_at/-created_at
@@ -35,9 +35,7 @@ type HostRepository interface {
 	GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]*models.HostState, error)
 
 	// Group related
-	AddToGroup(ctx context.Context, hostID, groupID uuid.UUID) error
-	RemoveFromGroup(ctx context.Context, hostID, groupID uuid.UUID) error
-	GetHostsByGroup(ctx context.Context, groupID uuid.UUID) ([]*models.HostNode, error)
+	GetHostsByGroupName(ctx context.Context, groupName string) ([]*models.HostNode, error)
 }
 
 // hostRepository implements HostRepository
@@ -91,8 +89,8 @@ func (r *hostRepository) List(ctx context.Context, filter HostFilter) ([]*models
 	query := r.db.WithContext(ctx).Model(&models.HostNode{})
 
 	// Apply filters
-	if filter.GroupID > 0 {
-		query = query.Where("group_ids LIKE ?", "%\""+string(rune(filter.GroupID))+"\"%")
+	if filter.GroupName != "" {
+		query = query.Where("group_name = ?", filter.GroupName)
 	}
 
 	if filter.Search != "" {
@@ -213,36 +211,11 @@ func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uuid.U
 	return states, err
 }
 
-// AddToGroup adds a host to a group (simplified JSON implementation)
-func (r *hostRepository) AddToGroup(ctx context.Context, hostID, groupID uuid.UUID) error {
-	// In production, consider using a proper join table for many-to-many
-	// This is a simplified implementation using JSON array
-	var host models.HostNode
-	if err := r.db.WithContext(ctx).First(&host, hostID).Error; err != nil {
-		return err
-	}
-
-	// Parse existing group IDs and add new one
-	// Note: This is simplified; in production use proper JSON handling
-	return r.db.WithContext(ctx).Model(&host).Update("group_ids", host.GroupIDs).Error
-}
-
-// RemoveFromGroup removes a host from a group
-func (r *hostRepository) RemoveFromGroup(ctx context.Context, hostID, groupID uuid.UUID) error {
-	// Simplified implementation
-	var host models.HostNode
-	if err := r.db.WithContext(ctx).First(&host, hostID).Error; err != nil {
-		return err
-	}
-
-	return r.db.WithContext(ctx).Model(&host).Update("group_ids", host.GroupIDs).Error
-}
-
-// GetHostsByGroup retrieves all hosts in a group
-func (r *hostRepository) GetHostsByGroup(ctx context.Context, groupID uuid.UUID) ([]*models.HostNode, error) {
+// GetHostsByGroupName retrieves all hosts in a group by group name
+func (r *hostRepository) GetHostsByGroupName(ctx context.Context, groupName string) ([]*models.HostNode, error) {
 	var hosts []*models.HostNode
 	err := r.db.WithContext(ctx).
-		Where("group_ids LIKE ?", "%\""+groupID.String()+"\"%").
+		Where("group_name = ?", groupName).
 		Preload("HostInfo").
 		Find(&hosts).Error
 	return hosts, err

@@ -47,6 +47,11 @@ func (WebSSHSession) TableName() string {
 
 // BeforeCreate sets initial values
 func (w *WebSSHSession) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := w.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if w.StartTime.IsZero() {
 		w.StartTime = time.Now()
 	}

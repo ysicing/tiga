@@ -353,20 +353,6 @@ export const devopsAPI = {
         apiClient.get(`/vms/hosts/${id}/state/history`, params),
     },
 
-    // Host groups
-    hostGroups: {
-      list: () => apiClient.get('/vms/host-groups'),
-      create: (data: { name: string; description?: string }) =>
-        apiClient.post('/vms/host-groups', data),
-      update: (id: string, data: { name: string; description?: string }) =>
-        apiClient.put(`/vms/host-groups/${id}`, data),
-      delete: (id: string) => apiClient.delete(`/vms/host-groups/${id}`),
-      addHosts: (id: string, hostIds: string[]) =>
-        apiClient.post(`/vms/host-groups/${id}/hosts`, { host_ids: hostIds }),
-      removeHost: (groupId: string, hostId: string) =>
-        apiClient.delete(`/vms/host-groups/${groupId}/hosts/${hostId}`),
-    },
-
     // Service monitors
     serviceMonitors: {
       list: () => apiClient.get('/vms/service-monitors'),

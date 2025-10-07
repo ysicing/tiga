@@ -1,12 +1,10 @@
 package collector
 
 import (
-	"os"
 	"runtime"
 
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/process"
 )
 
 // SystemCollector collects system information for HostInfo
@@ -60,12 +58,6 @@ func (c *SystemCollector) CollectHostInfo() (*HostInfo, error) {
 	// Disk information (root filesystem)
 	info.DiskTotal = getTotalDiskSpace()
 
-	// SSH configuration detection
-	sshInfo := detectSSHConfig()
-	info.SSHEnabled = sshInfo.Enabled
-	info.SSHPort = sshInfo.Port
-	info.SSHUser = sshInfo.DefaultUser
-
 	return info, nil
 }
 
@@ -103,100 +95,4 @@ type HostInfo struct {
 	AgentVersion    string
 	BootTime        uint64
 	GPUModel        string // Optional
-
-	// SSH configuration (detected by Agent)
-	SSHEnabled  bool
-	SSHPort     int
-	SSHUser     string
-}
-
-// SSHInfo represents SSH service detection result
-type SSHInfo struct {
-	Enabled     bool
-	Port        int
-	DefaultUser string
-}
-
-// detectSSHConfig detects if SSH service is running and its configuration
-func detectSSHConfig() SSHInfo {
-	info := SSHInfo{
-		Enabled:     false,
-		Port:        22,
-		DefaultUser: "root",
-	}
-
-	// Check if sshd process is running
-	processes, err := process.Processes()
-	if err != nil {
-		return info
-	}
-
-	for _, proc := range processes {
-		name, err := proc.Name()
-		if err != nil {
-			continue
-		}
-		// Check for sshd (Unix/Linux) or sshd.exe (Windows)
-		if name == "sshd" || name == "sshd.exe" {
-			info.Enabled = true
-			break
-		}
-	}
-
-	// If SSH is not running, return disabled
-	if !info.Enabled {
-		return info
-	}
-
-	// Try to detect SSH port from common config files
-	// Default to 22 if can't detect
-	info.Port = detectSSHPort()
-
-	// Detect default user based on OS
-	info.DefaultUser = detectDefaultSSHUser()
-
-	return info
-}
-
-// detectSSHPort tries to detect SSH port from sshd_config
-func detectSSHPort() int {
-	// Common sshd_config locations
-	configPaths := []string{
-		"/etc/ssh/sshd_config",
-		"/usr/local/etc/ssh/sshd_config",
-	}
-
-	for _, path := range configPaths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-
-		// Simple parsing - look for "Port" directive
-		lines := string(data)
-		// This is a simplified parser, production code should be more robust
-		_ = lines
-		// For now, just return default port
-		// TODO: Implement proper config parsing
-	}
-
-	return 22 // Default SSH port
-}
-
-// detectDefaultSSHUser detects the default SSH user based on OS
-func detectDefaultSSHUser() string {
-	switch runtime.GOOS {
-	case "linux":
-		return "root"
-	case "darwin":
-		// macOS typically uses the current user
-		if user := os.Getenv("USER"); user != "" {
-			return user
-		}
-		return "root"
-	case "windows":
-		return "Administrator"
-	default:
-		return "root"
-	}
 }

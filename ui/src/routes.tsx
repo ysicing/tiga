@@ -28,7 +28,6 @@ import { HostEditPage } from './pages/hosts/host-edit-page'
 import { HostSSHPage } from './pages/hosts/host-ssh-page'
 import { ServiceMonitorPage } from './pages/hosts/service-monitor-page'
 import { AlertEventsPage } from './pages/hosts/alert-events-page'
-import { HostGroupsPage } from './pages/hosts/host-groups-page'
 
 // DevOps Platform Pages
 import AlertsPage from './pages/alerts'
@@ -120,11 +119,6 @@ export const router = createBrowserRouter([
       {
         path: 'alert-events',
         element: <AlertEventsPage />,
-      },
-      // 主机分组管理
-      {
-        path: 'host-groups',
-        element: <HostGroupsPage />,
       },
     ],
   },

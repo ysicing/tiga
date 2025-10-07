@@ -59,9 +59,8 @@ export interface Host {
   traffic_limit: number;     // GB, 0 means unlimited
   traffic_used: number;      // GB
 
-  // Group associations
-  group_id?: string;
-  group_ids?: string;
+  // Group name (simple string grouping)
+  group_name: string;
 
   online: boolean;
   last_active?: string;
@@ -71,13 +70,8 @@ export interface Host {
   current_state?: HostState;
 }
 
-export interface HostGroup {
-  id: string;
-  name: string;
-  description?: string;
-  host_count?: number;
-  created_at: string;
-}
+// Host groups are now just string names (no separate table)
+export type HostGroupName = string;
 
 export interface ServiceMonitor {
   id: string;
@@ -118,7 +112,7 @@ interface HostStoreState {
   hosts: Host[];
   selectedHost: Host | null;
   hostStates: Map<string, HostState>; // hostId -> latest state
-  hostGroups: HostGroup[];
+  hostGroupNames: string[]; // List of unique group names
   serviceMonitors: ServiceMonitor[];
 
   // Loading states
@@ -139,8 +133,8 @@ interface HostStoreState {
   updateHostState: (hostId: string, state: HostState) => void;
   updateHostStates: (states: Map<string, HostState>) => void;
 
-  // Groups
-  setHostGroups: (groups: HostGroup[]) => void;
+  // Group names
+  setHostGroupNames: (names: string[]) => void;
 
   // Monitors
   setServiceMonitors: (monitors: ServiceMonitor[]) => void;
@@ -166,7 +160,7 @@ const initialState = {
   hosts: [],
   selectedHost: null,
   hostStates: new Map<string, HostState>(),
-  hostGroups: [],
+  hostGroupNames: [],
   serviceMonitors: [],
   loading: false,
   error: null,
@@ -225,8 +219,8 @@ export const useHostStore = create<HostStoreState>()(
 
       updateHostStates: (states) => set({ hostStates: states }),
 
-      // Groups
-      setHostGroups: (groups) => set({ hostGroups: groups }),
+      // Group names
+      setHostGroupNames: (names) => set({ hostGroupNames: names }),
 
       // Monitors
       setServiceMonitors: (monitors) => set({ serviceMonitors: monitors }),
@@ -289,8 +283,8 @@ export const selectOnlineHosts = (state: HostStoreState) =>
 export const selectOfflineHosts = (state: HostStoreState) =>
   state.hosts.filter((h) => !h.online);
 
-export const selectHostsByGroup = (groupId: string) => (state: HostStoreState) =>
-  state.hosts.filter((h) => h.group_ids?.includes(groupId));
+export const selectHostsByGroupName = (groupName: string) => (state: HostStoreState) =>
+  state.hosts.filter((h) => h.group_name === groupName);
 
 export const selectEnabledMonitors = (state: HostStoreState) =>
   state.serviceMonitors.filter((m) => m.enabled);

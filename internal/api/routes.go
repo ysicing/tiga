@@ -336,14 +336,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, configPath string, jwtManager 
 					hostsGroup.GET("/:id/state/history", hostHandler.GetHistoryState)
 				}
 
-				// Host groups
+				// Host groups (simplified - just list unique group names)
 				hostGroupsGroup := vmsGroup.Group("/host-groups")
 				{
-					hostGroupsGroup.POST("", hostGroupHandler.CreateGroup)
 					hostGroupsGroup.GET("", hostGroupHandler.ListGroups)
-					hostGroupsGroup.DELETE("/:id", hostGroupHandler.DeleteGroup)
-					hostGroupsGroup.POST("/:id/hosts", hostGroupHandler.AddHosts)
-					hostGroupsGroup.DELETE("/:id/hosts/:host_id", hostGroupHandler.RemoveHost)
 				}
 
 				// Service monitoring

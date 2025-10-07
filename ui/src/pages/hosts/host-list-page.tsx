@@ -42,8 +42,8 @@ type HostFormData = {
   auto_renew: boolean;
   traffic_limit: number;
 
-  // Group
-  group_id?: string;
+  // Group (simple string grouping)
+  group_name?: string;
 };
 
 export function HostListPage() {
@@ -52,7 +52,6 @@ export function HostListPage() {
   const { connected, reconnecting } = useHostMonitor({ autoConnect: true });
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [installCmdDialog, setInstallCmdDialog] = useState<{
     open: boolean;
     id?: string;
@@ -76,7 +75,6 @@ export function HostListPage() {
   // Fetch hosts on mount
   useEffect(() => {
     fetchHosts();
-    fetchGroups();
   }, []);
 
   const fetchHosts = async () => {
@@ -94,31 +92,11 @@ export function HostListPage() {
     }
   };
 
-  const fetchGroups = async () => {
-    try {
-      const data: any = await devopsAPI.vms.hostGroups.list();
-      if (data.code === 0) {
-        setGroups(data.data.items || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch groups:', error);
-    }
-  };
-
   const handleCreateHost = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const response = await fetch('/api/v1/vms/hosts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hosts.create(formData);
       if (data.code === 0) {
         toast.success('主机创建成功');
         setIsCreateDialogOpen(false);
@@ -162,14 +140,7 @@ export function HostListPage() {
     }
 
     try {
-      const response = await fetch(`/api/v1/vms/hosts/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hosts.delete(id);
       if (data.code === 0) {
         toast.success('主机删除成功');
         fetchHosts();
@@ -415,23 +386,16 @@ export function HostListPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="group_id">主机分组</Label>
-                  <Select
-                    value={formData.group_id || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, group_id: value === "none" ? undefined : value })}
-                  >
-                    <SelectTrigger id="group_id">
-                      <SelectValue placeholder="选择分组（可选）" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">无分组</SelectItem>
-                      {groups.map((group) => (
-                        <SelectItem key={group.id} value={group.id}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="group_name">主机分组</Label>
+                  <Input
+                    id="group_name"
+                    value={formData.group_name || ''}
+                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    placeholder="例如：生产环境、测试环境"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    用于分组管理主机
+                  </p>
                 </div>
               </div>
 

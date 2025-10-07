@@ -5,7 +5,6 @@ import {
   IconLayoutDashboard,
   IconActivity,
   IconAlertTriangle,
-  IconFolders,
 } from '@tabler/icons-react'
 import {
   Sidebar,
@@ -36,11 +35,6 @@ const menuItems = [
     title: '告警事件',
     icon: IconAlertTriangle,
     path: '/vms/alert-events',
-  },
-  {
-    title: '主机分组',
-    icon: IconFolders,
-    path: '/vms/host-groups',
   },
 ]
 

@@ -37,6 +37,11 @@ func (ServiceProbeResult) TableName() string {
 
 // BeforeCreate sets the timestamp if not provided
 func (s *ServiceProbeResult) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := s.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if s.Timestamp.IsZero() {
 		s.Timestamp = time.Now()
 	}

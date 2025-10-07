@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { devopsAPI } from '@/lib/api-client';
 
 type HostFormData = {
   name: string;
@@ -32,8 +33,8 @@ type HostFormData = {
   auto_renew: boolean;
   traffic_limit: number;
 
-  // Group
-  group_id?: string;
+  // Group (simple string grouping)
+  group_name?: string;
 };
 
 export function HostEditPage() {
@@ -41,7 +42,6 @@ export function HostEditPage() {
   const navigate = useNavigate();
   const { hosts } = useHostStore();
   const host = hosts.find((h) => h.id === id);
-  const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
 
   const [formData, setFormData] = useState<HostFormData>({
     name: '',
@@ -58,10 +58,6 @@ export function HostEditPage() {
   });
 
   useEffect(() => {
-    fetchGroups();
-  }, []);
-
-  useEffect(() => {
     if (host) {
       setFormData({
         name: host.name,
@@ -75,26 +71,10 @@ export function HostEditPage() {
         expiry_date: host.expiry_date ? host.expiry_date.split('T')[0] : '',
         auto_renew: host.auto_renew || false,
         traffic_limit: host.traffic_limit || 0,
-        group_id: host.group_id,
+        group_name: host.group_name || '',
       });
     }
   }, [host]);
-
-  const fetchGroups = async () => {
-    try {
-      const response = await fetch('/api/v1/vms/host-groups', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await response.json();
-      if (data.code === 0) {
-        setGroups(data.data.items || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch groups:', error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,16 +82,7 @@ export function HostEditPage() {
     if (!id) return;
 
     try {
-      const response = await fetch(`/api/v1/vms/hosts/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
+      const data: any = await devopsAPI.vms.hosts.update(id, formData);
       if (data.code === 0) {
         toast.success('主机更新成功');
         navigate(`/vms/hosts/${id}`);
@@ -264,23 +235,16 @@ export function HostEditPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="group_id">主机分组</Label>
-                <Select
-                  value={formData.group_id || "none"}
-                  onValueChange={(value) => setFormData({ ...formData, group_id: value === "none" ? undefined : value })}
-                >
-                  <SelectTrigger id="group_id">
-                    <SelectValue placeholder="选择分组（可选）" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">无分组</SelectItem>
-                    {groups.map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="group_name">主机分组</Label>
+                <Input
+                  id="group_name"
+                  value={formData.group_name || ''}
+                  onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                  placeholder="例如：生产环境、测试环境"
+                />
+                <p className="text-xs text-muted-foreground">
+                  用于分组管理主机
+                </p>
               </div>
             </div>
 

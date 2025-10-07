@@ -64,6 +64,11 @@ func (ServiceMonitor) TableName() string {
 
 // BeforeCreate validates the model before creation
 func (s *ServiceMonitor) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := s.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	// Set default thresholds
 	if s.FailureThreshold <= 0 {
 		s.FailureThreshold = 3

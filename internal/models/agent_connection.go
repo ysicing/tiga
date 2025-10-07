@@ -54,6 +54,11 @@ func (AgentConnection) TableName() string {
 
 // BeforeCreate sets initial values
 func (a *AgentConnection) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := a.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if a.LastHeartbeat.IsZero() {
 		a.LastHeartbeat = time.Now()
 	}

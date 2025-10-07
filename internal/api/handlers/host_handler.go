@@ -49,8 +49,8 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		TrafficLimit int64   `json:"traffic_limit"`
 
 		// Group
-		GroupID  *uuid.UUID `json:"group_id"`
-		GroupIDs string     `json:"group_ids"`
+		GroupName string `json:"group_name"`
+		
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -91,8 +91,8 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		ExpiryDate:   expiryDate,
 		AutoRenew:    req.AutoRenew,
 		TrafficLimit: req.TrafficLimit,
-		GroupID:      req.GroupID,
-		GroupIDs:     req.GroupIDs,
+		GroupName: req.GroupName,
+		
 	}
 
 	if err := h.hostService.CreateHost(c.Request.Context(), hostNode); err != nil {
@@ -126,8 +126,8 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 			"auto_renew":        hostNode.AutoRenew,
 			"traffic_limit":     hostNode.TrafficLimit,
 			"traffic_used":      hostNode.TrafficUsed,
-			"group_id":          hostNode.GroupID,
-			"group_ids":         hostNode.GroupIDs,
+			"group_name": hostNode.GroupName,
+			
 			"created_at":        hostNode.CreatedAt,
 			"updated_at":        hostNode.UpdatedAt,
 		},
@@ -140,7 +140,7 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 // @Produce json
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
-// @Param group_id query int false "Group ID filter"
+// @Param group_name query string false "Group name filter"
 // @Param search query string false "Search keyword"
 // @Param sort query string false "Sort field"
 // @Success 200 {object} map[string]interface{}
@@ -148,16 +148,16 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 func (h *HostHandler) ListHosts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	groupID, _ := strconv.Atoi(c.Query("group_id"))
+	groupName := c.Query("group_name")
 	search := c.Query("search")
 	sort := c.Query("sort")
 
 	filter := repository.HostFilter{
-		Page:     page,
-		PageSize: pageSize,
-		GroupID:  uint(groupID),
-		Search:   search,
-		Sort:     sort,
+		Page:      page,
+		PageSize:  pageSize,
+		GroupName: groupName,
+		Search:    search,
+		Sort:      sort,
 	}
 
 	hosts, total, err := h.hostService.ListHosts(c.Request.Context(), filter)
@@ -187,8 +187,8 @@ func (h *HostHandler) ListHosts(c *gin.Context) {
 			"auto_renew":     host.AutoRenew,
 			"traffic_limit":  host.TrafficLimit,
 			"traffic_used":   host.TrafficUsed,
-			"group_id":       host.GroupID,
-			"group_ids":      host.GroupIDs,
+			"group_name": host.GroupName,
+			
 			"online":         host.Online,
 			"created_at":     host.CreatedAt,
 		}
@@ -276,8 +276,8 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 		"auto_renew":    host.AutoRenew,
 		"traffic_limit": host.TrafficLimit,
 		"traffic_used":  host.TrafficUsed,
-		"group_id":      host.GroupID,
-		"group_ids":     host.GroupIDs,
+		"group_name": host.GroupName,
+		
 		"online":        host.Online,
 		"created_at":    host.CreatedAt,
 		"updated_at":    host.UpdatedAt,
@@ -336,8 +336,8 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 		TrafficLimit int64   `json:"traffic_limit"`
 
 		// Group
-		GroupID  *uuid.UUID  `json:"group_id"`
-		GroupIDs string `json:"group_ids"`
+		GroupName string `json:"group_name"`
+		
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -382,8 +382,8 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 	host.RenewalType = req.RenewalType
 	host.AutoRenew = req.AutoRenew
 	host.TrafficLimit = req.TrafficLimit
-	host.GroupID = req.GroupID
-	host.GroupIDs = req.GroupIDs
+	host.GroupName = req.GroupName
+	
 
 	if err := h.hostService.UpdateHost(c.Request.Context(), host); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
