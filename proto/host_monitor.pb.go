@@ -632,6 +632,7 @@ type ReportStateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // 是否成功
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`  // 消息
+	Tasks         []*AgentTask           `protobuf:"bytes,3,rep,name=tasks,proto3" json:"tasks,omitempty"`      // 待执行任务
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -680,6 +681,74 @@ func (x *ReportStateResponse) GetMessage() string {
 	return ""
 }
 
+func (x *ReportStateResponse) GetTasks() []*AgentTask {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
+// Agent任务
+type AgentTask struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`                                                             // 任务ID
+	TaskType      string                 `protobuf:"bytes,2,opt,name=task_type,json=taskType,proto3" json:"task_type,omitempty"`                                                       // 任务类型(terminal/probe/command)
+	Params        map[string]string      `protobuf:"bytes,3,rep,name=params,proto3" json:"params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 任务参数
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentTask) Reset() {
+	*x = AgentTask{}
+	mi := &file_proto_host_monitor_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentTask) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentTask) ProtoMessage() {}
+
+func (x *AgentTask) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_host_monitor_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentTask.ProtoReflect.Descriptor instead.
+func (*AgentTask) Descriptor() ([]byte, []int) {
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AgentTask) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *AgentTask) GetTaskType() string {
+	if x != nil {
+		return x.TaskType
+	}
+	return ""
+}
+
+func (x *AgentTask) GetParams() map[string]string {
+	if x != nil {
+		return x.Params
+	}
+	return nil
+}
+
 // 心跳请求
 type HeartbeatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -691,7 +760,7 @@ type HeartbeatRequest struct {
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_proto_host_monitor_proto_msgTypes[7]
+	mi := &file_proto_host_monitor_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -703,7 +772,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_host_monitor_proto_msgTypes[7]
+	mi := &file_proto_host_monitor_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -716,7 +785,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_proto_host_monitor_proto_rawDescGZIP(), []int{7}
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *HeartbeatRequest) GetUuid() string {
@@ -744,7 +813,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_proto_host_monitor_proto_msgTypes[8]
+	mi := &file_proto_host_monitor_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -756,7 +825,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_host_monitor_proto_msgTypes[8]
+	mi := &file_proto_host_monitor_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -769,7 +838,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_proto_host_monitor_proto_rawDescGZIP(), []int{8}
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *HeartbeatResponse) GetSuccess() bool {
@@ -796,7 +865,7 @@ type IOStreamData struct {
 
 func (x *IOStreamData) Reset() {
 	*x = IOStreamData{}
-	mi := &file_proto_host_monitor_proto_msgTypes[9]
+	mi := &file_proto_host_monitor_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -808,7 +877,7 @@ func (x *IOStreamData) String() string {
 func (*IOStreamData) ProtoMessage() {}
 
 func (x *IOStreamData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_host_monitor_proto_msgTypes[9]
+	mi := &file_proto_host_monitor_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -821,7 +890,7 @@ func (x *IOStreamData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IOStreamData.ProtoReflect.Descriptor instead.
 func (*IOStreamData) Descriptor() ([]byte, []int) {
-	return file_proto_host_monitor_proto_rawDescGZIP(), []int{9}
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *IOStreamData) GetData() []byte {
@@ -898,10 +967,18 @@ const file_proto_host_monitor_proto_rawDesc = "" +
 	"serverTime\"P\n" +
 	"\x12ReportStateRequest\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12&\n" +
-	"\x05state\x18\x02 \x01(\v2\x10.proto.HostStateR\x05state\"I\n" +
+	"\x05state\x18\x02 \x01(\v2\x10.proto.HostStateR\x05state\"q\n" +
 	"\x13ReportStateResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"D\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12&\n" +
+	"\x05tasks\x18\x03 \x03(\v2\x10.proto.AgentTaskR\x05tasks\"\xb2\x01\n" +
+	"\tAgentTask\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1b\n" +
+	"\ttask_type\x18\x02 \x01(\tR\btaskType\x124\n" +
+	"\x06params\x18\x03 \x03(\v2\x1c.proto.AgentTask.ParamsEntryR\x06params\x1a9\n" +
+	"\vParamsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"D\n" +
 	"\x10HeartbeatRequest\x12\x12\n" +
 	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\"N\n" +
@@ -929,7 +1006,7 @@ func file_proto_host_monitor_proto_rawDescGZIP() []byte {
 	return file_proto_host_monitor_proto_rawDescData
 }
 
-var file_proto_host_monitor_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_proto_host_monitor_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_proto_host_monitor_proto_goTypes = []any{
 	(*HostInfo)(nil),              // 0: proto.HostInfo
 	(*HostState)(nil),             // 1: proto.HostState
@@ -938,27 +1015,31 @@ var file_proto_host_monitor_proto_goTypes = []any{
 	(*RegisterAgentResponse)(nil), // 4: proto.RegisterAgentResponse
 	(*ReportStateRequest)(nil),    // 5: proto.ReportStateRequest
 	(*ReportStateResponse)(nil),   // 6: proto.ReportStateResponse
-	(*HeartbeatRequest)(nil),      // 7: proto.HeartbeatRequest
-	(*HeartbeatResponse)(nil),     // 8: proto.HeartbeatResponse
-	(*IOStreamData)(nil),          // 9: proto.IOStreamData
+	(*AgentTask)(nil),             // 7: proto.AgentTask
+	(*HeartbeatRequest)(nil),      // 8: proto.HeartbeatRequest
+	(*HeartbeatResponse)(nil),     // 9: proto.HeartbeatResponse
+	(*IOStreamData)(nil),          // 10: proto.IOStreamData
+	nil,                           // 11: proto.AgentTask.ParamsEntry
 }
 var file_proto_host_monitor_proto_depIdxs = []int32{
-	2, // 0: proto.HostState.temperatures:type_name -> proto.Temperature
-	0, // 1: proto.RegisterAgentRequest.host_info:type_name -> proto.HostInfo
-	1, // 2: proto.ReportStateRequest.state:type_name -> proto.HostState
-	5, // 3: proto.HostMonitor.ReportState:input_type -> proto.ReportStateRequest
-	3, // 4: proto.HostMonitor.RegisterAgent:input_type -> proto.RegisterAgentRequest
-	7, // 5: proto.HostMonitor.Heartbeat:input_type -> proto.HeartbeatRequest
-	9, // 6: proto.HostMonitor.IOStream:input_type -> proto.IOStreamData
-	6, // 7: proto.HostMonitor.ReportState:output_type -> proto.ReportStateResponse
-	4, // 8: proto.HostMonitor.RegisterAgent:output_type -> proto.RegisterAgentResponse
-	8, // 9: proto.HostMonitor.Heartbeat:output_type -> proto.HeartbeatResponse
-	9, // 10: proto.HostMonitor.IOStream:output_type -> proto.IOStreamData
-	7, // [7:11] is the sub-list for method output_type
-	3, // [3:7] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2,  // 0: proto.HostState.temperatures:type_name -> proto.Temperature
+	0,  // 1: proto.RegisterAgentRequest.host_info:type_name -> proto.HostInfo
+	1,  // 2: proto.ReportStateRequest.state:type_name -> proto.HostState
+	7,  // 3: proto.ReportStateResponse.tasks:type_name -> proto.AgentTask
+	11, // 4: proto.AgentTask.params:type_name -> proto.AgentTask.ParamsEntry
+	5,  // 5: proto.HostMonitor.ReportState:input_type -> proto.ReportStateRequest
+	3,  // 6: proto.HostMonitor.RegisterAgent:input_type -> proto.RegisterAgentRequest
+	8,  // 7: proto.HostMonitor.Heartbeat:input_type -> proto.HeartbeatRequest
+	10, // 8: proto.HostMonitor.IOStream:input_type -> proto.IOStreamData
+	6,  // 9: proto.HostMonitor.ReportState:output_type -> proto.ReportStateResponse
+	4,  // 10: proto.HostMonitor.RegisterAgent:output_type -> proto.RegisterAgentResponse
+	9,  // 11: proto.HostMonitor.Heartbeat:output_type -> proto.HeartbeatResponse
+	10, // 12: proto.HostMonitor.IOStream:output_type -> proto.IOStreamData
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_proto_host_monitor_proto_init() }
@@ -972,7 +1053,7 @@ func file_proto_host_monitor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_host_monitor_proto_rawDesc), len(file_proto_host_monitor_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

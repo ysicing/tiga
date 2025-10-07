@@ -207,6 +207,11 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 			if !resp.Success {
 				logrus.Warnf("Server response: %s", resp.Message)
 			}
+
+			// Handle tasks from server
+			for _, task := range resp.Tasks {
+				go handleTask(client, task)
+			}
 		}
 	}()
 
@@ -277,4 +282,32 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 	logrus.Debugf("Reported state: CPU=%.2f%%, Mem=%.2f%%, Disk=%.2f%%, Traffic=%d/%d bytes",
 		state.CPUUsage, state.MemUsage, state.DiskUsage,
 		state.TrafficDeltaSent, state.TrafficDeltaRecv)
+}
+
+// handleTask processes tasks sent by the server
+func handleTask(client proto.HostMonitorClient, task *proto.AgentTask) {
+	logrus.Infof("Received task: id=%s type=%s", task.TaskId, task.TaskType)
+
+	switch task.TaskType {
+	case "terminal":
+		// Get streamID from task params
+		streamID, ok := task.Params["stream_id"]
+		if !ok {
+			logrus.Errorf("Terminal task missing stream_id parameter")
+			return
+		}
+		// Start terminal session
+		handleTerminalSession(client, streamID)
+
+	case "probe":
+		// TODO: Handle service probe tasks
+		logrus.Warnf("Probe tasks not yet implemented")
+
+	case "command":
+		// TODO: Handle command execution tasks
+		logrus.Warnf("Command tasks not yet implemented")
+
+	default:
+		logrus.Warnf("Unknown task type: %s", task.TaskType)
+	}
 }

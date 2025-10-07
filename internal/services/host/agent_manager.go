@@ -22,6 +22,10 @@ type AgentConnection struct {
 	Connected  time.Time
 	LastSeen   time.Time
 	cancel     context.CancelFunc
+
+	// Task queue for pending tasks
+	taskQueue chan *proto.AgentTask
+	taskMu    sync.Mutex
 }
 
 // AgentManager manages agent connections and gRPC streams
@@ -168,10 +172,11 @@ func (m *AgentManager) HandleReportState(stream proto.HostMonitor_ReportStateSer
 				}
 			}
 
-			// Send acknowledgment
+			// Send acknowledgment with any pending tasks
 			resp := &proto.ReportStateResponse{
 				Success: true,
 				Message: "State received",
+				Tasks:   m.getPendingTasks(currentUUID),
 			}
 			if err := stream.Send(resp); err != nil {
 				return err
@@ -250,6 +255,7 @@ func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uint, stream p
 		Connected:  time.Now(),
 		LastSeen:   time.Now(),
 		cancel:     cancel,
+		taskQueue:  make(chan *proto.AgentTask, 100), // Buffered channel
 	}
 
 	m.connections.Store(uuid, conn)
@@ -365,4 +371,43 @@ func (m *AgentManager) GetConnectionByHostID(hostID uint) *AgentConnection {
 		return true
 	})
 	return result
+}
+
+// getPendingTasks retrieves and clears pending tasks for an agent
+func (m *AgentManager) getPendingTasks(uuid string) []*proto.AgentTask {
+	conn, ok := m.connections.Load(uuid)
+	if !ok {
+		return nil
+	}
+
+	agentConn := conn.(*AgentConnection)
+	var tasks []*proto.AgentTask
+
+	// Drain all tasks from the queue without blocking
+	for {
+		select {
+		case task := <-agentConn.taskQueue:
+			tasks = append(tasks, task)
+		default:
+			return tasks
+		}
+	}
+}
+
+// QueueTask adds a task to the agent's queue
+func (m *AgentManager) QueueTask(uuid string, task *proto.AgentTask) error {
+	conn, ok := m.connections.Load(uuid)
+	if !ok {
+		return fmt.Errorf("agent not connected: %s", uuid)
+	}
+
+	agentConn := conn.(*AgentConnection)
+
+	// Non-blocking send to avoid deadlock
+	select {
+	case agentConn.taskQueue <- task:
+		return nil
+	default:
+		return fmt.Errorf("task queue full for agent: %s", uuid)
+	}
 }

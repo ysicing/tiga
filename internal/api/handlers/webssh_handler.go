@@ -12,6 +12,7 @@ import (
 
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/webssh"
+	"github.com/ysicing/tiga/proto"
 )
 
 var upgrader = websocket.Upgrader{
@@ -227,14 +228,20 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 
 // notifyAgentCreateTerminal sends a task to Agent to create terminal
 func (h *WebSSHHandler) notifyAgentCreateTerminal(uuid, streamID string) error {
-	// For now, we'll rely on the Agent to poll for tasks
-	// In a full implementation, you would send a Task through the ReportState stream
-	// or have a separate task queue system
+	// Queue terminal task for the Agent
+	task := &proto.AgentTask{
+		TaskId:   uuid + "-terminal-" + streamID,
+		TaskType: "terminal",
+		Params: map[string]string{
+			"stream_id": streamID,
+		},
+	}
 
-	// The Agent will call handleTerminalSession when it receives the streamID
-	logrus.Infof("Notified agent %s to create terminal session %s", uuid, streamID)
+	if err := h.agentManager.QueueTask(uuid, task); err != nil {
+		logrus.Errorf("Failed to queue terminal task: %v", err)
+		return err
+	}
 
-	// TODO: Implement actual task notification mechanism
-	// For now, return success as the terminal will be created when Agent connects IOStream
+	logrus.Infof("Queued terminal task for agent %s, session %s", uuid, streamID)
 	return nil
 }

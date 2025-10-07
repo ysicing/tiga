@@ -95,6 +95,14 @@ message ReportStateRequest {
 message ReportStateResponse {
   bool success = 1;                 // 是否成功
   string message = 2;               // 消息
+  repeated AgentTask tasks = 3;     // 待执行任务
+}
+
+// Agent任务
+message AgentTask {
+  string task_id = 1;               // 任务ID
+  string task_type = 2;             // 任务类型(terminal/probe/command)
+  map<string, string> params = 3;   // 任务参数
 }
 
 // 心跳请求
