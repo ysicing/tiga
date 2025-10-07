@@ -174,6 +174,21 @@ func (m *AgentManager) HandleReportState(stream proto.HostMonitor_ReportStateSer
 					// Log error but don't disconnect
 					fmt.Printf("Error processing state: %v\n", err)
 				}
+
+				// Update LastSeen to treat state report as heartbeat
+				if conn, ok := m.connections.Load(currentUUID); ok {
+					agentConn := conn.(*AgentConnection)
+					agentConn.LastSeen = time.Now()
+
+					// Also update database heartbeat record
+					var dbConn models.AgentConnection
+					if err := m.db.Where("host_node_id = ?", hostNodeID).First(&dbConn).Error; err == nil {
+						dbConn.UpdateHeartbeat()
+						m.db.Save(&dbConn)
+					}
+
+					logrus.Debugf("[AgentManager] Updated LastSeen and DB heartbeat for agent %s", currentUUID)
+				}
 			}
 
 			// Send acknowledgment with any pending tasks

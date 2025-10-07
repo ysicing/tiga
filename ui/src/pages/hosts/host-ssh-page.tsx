@@ -1,24 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useHostStore } from '@/stores/host-store';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 import { toast } from 'sonner';
+import { devopsAPI } from '@/lib/api-client';
 
 export function HostSSHPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { hosts } = useHostStore();
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminalInstanceRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
-  const host = hosts.find((h) => h.id === id);
+  // Fetch host data from API
+  const { data: hostResponse, isLoading, isError } = useQuery({
+    queryKey: ['host', id],
+    queryFn: async () => {
+      if (!id) throw new Error('No host ID provided');
+      return devopsAPI.vms.hosts.get(id);
+    },
+    enabled: !!id,
+  });
+
+  const host = hostResponse?.data;
 
   useEffect(() => {
     if (!terminalRef.current || !host || !host.host_info?.ssh_enabled) return;
@@ -139,10 +149,20 @@ export function HostSSHPage() {
     };
   }, [id, host]);
 
-  if (!host) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError || !host) {
     return (
       <div className="text-center py-12">
-        <p>主机未找到</p>
+        <p className="text-muted-foreground mb-4">
+          {isError ? '加载失败' : '主机未找到'}
+        </p>
         <Button onClick={() => navigate('/vms/hosts')} className="mt-4">
           返回列表
         </Button>
