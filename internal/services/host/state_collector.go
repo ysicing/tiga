@@ -156,14 +156,48 @@ func (sc *StateCollector) containsHostID(hostIDs []uuid.UUID, targetID uuid.UUID
 
 // GetHistoricalStates retrieves historical states for a time range
 func (sc *StateCollector) GetHistoricalStates(ctx context.Context, hostID uuid.UUID, start, end time.Time, interval string) ([]*models.HostState, error) {
-	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end)
-	if err != nil {
-		return nil, err
+	// Calculate interval in seconds
+	intervalSeconds := 0
+	switch interval {
+	case "1m":
+		intervalSeconds = 60
+	case "5m":
+		intervalSeconds = 300
+	case "15m":
+		intervalSeconds = 900
+	case "30m":
+		intervalSeconds = 1800
+	case "1h":
+		intervalSeconds = 3600
+	case "3h":
+		intervalSeconds = 10800
+	case "6h":
+		intervalSeconds = 21600
+	case "12h":
+		intervalSeconds = 43200
+	case "1d":
+		intervalSeconds = 86400
+	case "auto":
+		// Auto-calculate interval based on time range
+		duration := end.Sub(start)
+		if duration.Hours() <= 1 {
+			intervalSeconds = 60      // 1 minute for 1 hour range
+		} else if duration.Hours() <= 6 {
+			intervalSeconds = 300     // 5 minutes for 6 hours
+		} else if duration.Hours() <= 12 {
+			intervalSeconds = 300     // 5 minutes for 12 hours
+		} else if duration.Hours() <= 24 {
+			intervalSeconds = 600     // 10 minutes for 1 day
+		} else if duration.Hours() <= 168 {
+			intervalSeconds = 3600    // 1 hour for 1 week
+		} else {
+			intervalSeconds = 86400   // 1 day for longer ranges
+		}
 	}
 
-	// Apply interval aggregation if needed
-	if interval != "" && interval != "auto" {
-		states = sc.aggregateStates(states, interval)
+	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end, intervalSeconds)
+	if err != nil {
+		return nil, err
 	}
 
 	return states, nil
@@ -178,7 +212,8 @@ func (sc *StateCollector) aggregateStates(states []*models.HostState, interval s
 
 // GetStateStatistics calculates statistics for a time period
 func (sc *StateCollector) GetStateStatistics(ctx context.Context, hostID uuid.UUID, start, end time.Time) (map[string]interface{}, error) {
-	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end)
+	// Get all states without interval aggregation (0 = no aggregation)
+	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +315,8 @@ func (sc *StateCollector) monitorSubscribers() {
 
 // ExportStates exports states to JSON format
 func (sc *StateCollector) ExportStates(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]byte, error) {
-	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end)
+	// Get all states without interval aggregation (0 = no aggregation)
+	states, err := sc.hostRepo.GetStatesByTimeRange(ctx, hostID, start, end, 0)
 	if err != nil {
 		return nil, err
 	}

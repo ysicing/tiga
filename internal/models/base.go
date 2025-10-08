@@ -55,6 +55,12 @@ func (m *AppendOnlyModel) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// TimeSeriesModel is optimized for time-series data with auto-increment ID
+// Use this for high-volume monitoring/metrics data where UUID overhead is unnecessary
+type TimeSeriesModel struct {
+	ID uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
+}
+
 // Usage examples:
 //
 // 1. Standard model with soft delete (most common):

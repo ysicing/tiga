@@ -4,13 +4,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 // HostState represents real-time monitoring metrics snapshot
 // Updated every 30 seconds by Agent
+// Optimized for time-series data with auto-increment ID
 type HostState struct {
-	BaseModel
+	TimeSeriesModel
 
 	HostNodeID uuid.UUID `gorm:"type:char(36);index:idx_host_timestamp,priority:1;not null" json:"host_node_id"`
 	Timestamp  time.Time `gorm:"index:idx_host_timestamp,priority:2;index;not null" json:"timestamp"`
@@ -61,17 +61,4 @@ type HostState struct {
 // TableName specifies the table name for HostState
 func (HostState) TableName() string {
 	return "host_states"
-}
-
-// BeforeCreate sets the timestamp if not provided
-func (h *HostState) BeforeCreate(tx *gorm.DB) error {
-	// Call BaseModel's BeforeCreate to generate UUID
-	if err := h.BaseModel.BeforeCreate(tx); err != nil {
-		return err
-	}
-
-	if h.Timestamp.IsZero() {
-		h.Timestamp = time.Now()
-	}
-	return nil
 }

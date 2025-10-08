@@ -1,0 +1,613 @@
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
+import {
+  Activity,
+  Globe,
+  Server,
+  Wifi,
+  RefreshCw,
+  Edit,
+  Play,
+  Pause,
+  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from 'lucide-react';
+import { format, subHours, subDays } from 'date-fns';
+import { toast } from 'sonner';
+import { ServiceMonitorService } from '@/services/service-monitor';
+
+const ServiceMonitorDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [timePeriod, setTimePeriod] = useState<'15m' | '1h' | '6h' | '12h' | '1d' | '1w' | '1m'>('1d');
+
+  // Fetch monitor details
+  const { data: monitor, isLoading: monitorLoading } = useQuery({
+    queryKey: ['service-monitor', id],
+    queryFn: () => ServiceMonitorService.get(id!),
+    enabled: !!id,
+  });
+
+  // Fetch probe history
+  const { data: probeHistory = [] } = useQuery({
+    queryKey: ['service-monitor-history', id, timePeriod],
+    queryFn: () => {
+      const now = new Date();
+      let startTime: Date;
+
+      switch (timePeriod) {
+        case '15m':
+          startTime = new Date(now.getTime() - 15 * 60 * 1000); // 15 minutes
+          break;
+        case '1h':
+          startTime = subHours(now, 1);
+          break;
+        case '6h':
+          startTime = subHours(now, 6);
+          break;
+        case '12h':
+          startTime = subHours(now, 12);
+          break;
+        case '1d':
+          startTime = subDays(now, 1);
+          break;
+        case '1w':
+          startTime = subDays(now, 7);
+          break;
+        case '1m':
+          startTime = subDays(now, 30);
+          break;
+        default:
+          startTime = subDays(now, 1);
+      }
+
+      return ServiceMonitorService.getProbeHistory(id!, {
+        start_time: startTime.toISOString(),
+        end_time: now.toISOString(),
+        limit: 1000,
+      });
+    },
+    enabled: !!id,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch availability stats
+  const { data: stats } = useQuery({
+    queryKey: ['service-monitor-stats', id, timePeriod],
+    queryFn: () => {
+      // Map our time periods to the API expected format
+      const periodMap = {
+        '15m': '15m',
+        '1h': '1h',
+        '6h': '6h',
+        '12h': '12h',
+        '1d': '24h',
+        '1w': '7d',
+        '1m': '30d',
+      };
+      return ServiceMonitorService.getAvailabilityStats(id!, {
+        period: periodMap[timePeriod] as any
+      });
+    },
+    enabled: !!id,
+  });
+
+  // Toggle enabled mutation
+  const toggleMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      ServiceMonitorService.update(id!, { enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-monitor', id] });
+      toast.success('监控状态已更新');
+    },
+  });
+
+  // Trigger manual probe
+  const triggerProbeMutation = useMutation({
+    mutationFn: () => ServiceMonitorService.triggerProbe(id!),
+    onSuccess: () => {
+      toast.success('探测任务已触发');
+      queryClient.invalidateQueries({ queryKey: ['service-monitor-history', id] });
+    },
+  });
+
+  const getTypeIcon = (type?: string) => {
+    switch (type) {
+      case 'HTTP':
+        return <Globe className="h-5 w-5" />;
+      case 'TCP':
+        return <Server className="h-5 w-5" />;
+      case 'ICMP':
+        return <Wifi className="h-5 w-5" />;
+      default:
+        return <Activity className="h-5 w-5" />;
+    }
+  };
+
+  const getStatusIcon = (status?: string) => {
+    switch (status) {
+      case 'up':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'down':
+        return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'degraded':
+        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
+      default:
+        return <AlertCircle className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  // Convert UTC time to Beijing time (UTC+8)
+  const toBeijingTime = (date: Date): Date => {
+    return new Date(date.getTime() + (8 * 60 * 60 * 1000));
+  };
+
+  // Prepare chart data with appropriate time formatting based on period
+  const getTimeFormat = (date: Date) => {
+    const beijingDate = toBeijingTime(date);
+    switch (timePeriod) {
+      case '15m':
+      case '1h':
+      case '6h':
+      case '12h':
+        return format(beijingDate, 'HH:mm');
+      case '1d':
+        return format(beijingDate, 'HH:mm');
+      case '1w':
+        return format(beijingDate, 'MM-dd HH:mm');
+      case '1m':
+        return format(beijingDate, 'MM-dd');
+      default:
+        return format(beijingDate, 'HH:mm');
+    }
+  };
+
+  const chartData = probeHistory
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .map(result => ({
+      time: getTimeFormat(new Date(result.timestamp)),
+      latency: result.latency,
+      status: result.success ? 1 : 0,
+    }));
+
+  // Calculate uptime timeline with appropriate grouping based on time period
+  const getGroupingFormat = (date: Date) => {
+    const beijingDate = toBeijingTime(date);
+    switch (timePeriod) {
+      case '15m':
+      case '1h':
+        return format(beijingDate, 'HH:mm'); // Group by minute
+      case '6h':
+      case '12h':
+      case '1d':
+        return format(beijingDate, 'HH:00'); // Group by hour
+      case '1w':
+        return format(beijingDate, 'MM-dd'); // Group by day
+      case '1m':
+        return format(beijingDate, 'MM-dd'); // Group by day
+      default:
+        return format(beijingDate, 'HH:00');
+    }
+  };
+
+  const uptimeData = probeHistory
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .reduce((acc: any[], result) => {
+      const groupKey = getGroupingFormat(new Date(result.timestamp));
+      const existing = acc.find(item => item.time === groupKey);
+
+      if (existing) {
+        existing.total += 1;
+        if (result.success) existing.successful += 1;
+      } else {
+        acc.push({
+          time: groupKey,
+          total: 1,
+          successful: result.success ? 1 : 0,
+          percentage: 0,
+        });
+      }
+
+      return acc;
+    }, []).map(item => ({
+      ...item,
+      percentage: (item.successful / item.total) * 100,
+    }));
+
+  if (monitorLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="mt-2 text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!monitor) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">监控服务未找到</p>
+          <Button className="mt-4" onClick={() => navigate('/hosts/service-monitors')}>
+            返回列表
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/hosts/service-monitors')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              {getTypeIcon(monitor.type)}
+              <h1 className="text-2xl font-bold">{monitor.name}</h1>
+              {getStatusIcon(monitor.status)}
+            </div>
+            <p className="text-muted-foreground">{monitor.target}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => triggerProbeMutation.mutate()}
+            disabled={triggerProbeMutation.isPending}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            手动探测
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => toggleMutation.mutate(!monitor.enabled)}
+          >
+            {monitor.enabled ? (
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                暂停监控
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                启用监控
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={() => navigate(`/hosts/service-monitors/${id}/edit`)}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            编辑
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">当前状态</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {monitor.status === 'up' && (
+              <Badge className="bg-green-500">在线</Badge>
+            )}
+            {monitor.status === 'down' && (
+              <Badge variant="destructive">离线</Badge>
+            )}
+            {monitor.status === 'degraded' && (
+              <Badge className="bg-yellow-500">降级</Badge>
+            )}
+            {!monitor.status && (
+              <Badge variant="outline">未知</Badge>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">可用率</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats?.uptime_percentage?.toFixed(2) || 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.successful_checks || 0}/{stats?.total_checks || 0} 成功
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">平均延迟</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats?.average_latency || 0}ms
+            </div>
+            <p className="text-xs text-muted-foreground">
+              P95: {stats?.p95_latency || 0}ms
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">检测间隔</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{monitor.interval}s</div>
+            <p className="text-xs text-muted-foreground">
+              超时: {monitor.timeout}s
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">最后检测</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm">
+              {monitor.last_check_time
+                ? format(toBeijingTime(new Date(monitor.last_check_time)), 'MM-dd HH:mm:ss')
+                : '-'}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Time Period Selector */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>监控数据</CardTitle>
+            <Select value={timePeriod} onValueChange={(value: any) => setTimePeriod(value)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="15m">最近15分钟</SelectItem>
+                <SelectItem value="1h">最近1小时</SelectItem>
+                <SelectItem value="6h">最近6小时</SelectItem>
+                <SelectItem value="12h">最近12小时</SelectItem>
+                <SelectItem value="1d">最近1天</SelectItem>
+                <SelectItem value="1w">最近1周</SelectItem>
+                <SelectItem value="1m">最近1月</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Charts */}
+      <Tabs defaultValue="latency" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="latency">响应时间</TabsTrigger>
+          <TabsTrigger value="availability">可用性</TabsTrigger>
+          <TabsTrigger value="logs">探测日志</TabsTrigger>
+          <TabsTrigger value="config">配置信息</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="latency" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>响应时间趋势</CardTitle>
+              <CardDescription>
+                显示服务的响应时间变化趋势（毫秒）
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="latency"
+                    stroke="#3b82f6"
+                    name="延迟(ms)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="availability" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>可用性时间线</CardTitle>
+              <CardDescription>
+                {(timePeriod === '15m' || timePeriod === '1h') && '显示每分钟的服务可用率'}
+                {(timePeriod === '6h' || timePeriod === '12h' || timePeriod === '1d') && '显示每小时的服务可用率'}
+                {(timePeriod === '1w' || timePeriod === '1m') && '显示每天的服务可用率'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={uptimeData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar
+                    dataKey="percentage"
+                    fill="#22c55e"
+                    name="可用率(%)"
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="logs" className="space-y-4">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>时间</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead>延迟</TableHead>
+                    <TableHead>状态码</TableHead>
+                    <TableHead>错误信息</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {probeHistory.slice(0, 50).map((result) => (
+                    <TableRow key={result.id}>
+                      <TableCell>
+                        {format(toBeijingTime(new Date(result.timestamp)), 'MM-dd HH:mm:ss')}
+                      </TableCell>
+                      <TableCell>
+                        {result.success ? (
+                          <Badge className="bg-green-500">成功</Badge>
+                        ) : (
+                          <Badge variant="destructive">失败</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{result.latency}ms</TableCell>
+                      <TableCell>
+                        {result.http_status_code || '-'}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {result.error_message || '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="config" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>监控配置</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium">类型</p>
+                  <p className="text-sm text-muted-foreground">{monitor.type}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">目标</p>
+                  <p className="text-sm text-muted-foreground font-mono">{monitor.target}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">检测间隔</p>
+                  <p className="text-sm text-muted-foreground">{monitor.interval}秒</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">超时时间</p>
+                  <p className="text-sm text-muted-foreground">{monitor.timeout}秒</p>
+                </div>
+                {monitor.type === 'HTTP' && (
+                  <>
+                    <div>
+                      <p className="text-sm font-medium">HTTP方法</p>
+                      <p className="text-sm text-muted-foreground">
+                        {monitor.http_method || 'GET'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">期望状态码</p>
+                      <p className="text-sm text-muted-foreground">
+                        {monitor.expect_status || 200}
+                      </p>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <p className="text-sm font-medium">失败阈值</p>
+                  <p className="text-sm text-muted-foreground">
+                    {monitor.failure_threshold}次连续失败
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">恢复阈值</p>
+                  <p className="text-sm text-muted-foreground">
+                    {monitor.recovery_threshold}次连续成功
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">失败通知</p>
+                  <p className="text-sm text-muted-foreground">
+                    {monitor.notify_on_failure ? '启用' : '禁用'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">创建时间</p>
+                  <p className="text-sm text-muted-foreground">
+                    {format(toBeijingTime(new Date(monitor.created_at)), 'yyyy-MM-dd HH:mm:ss')}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default ServiceMonitorDetailPage;

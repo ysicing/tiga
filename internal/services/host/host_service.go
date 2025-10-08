@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -173,9 +175,85 @@ func (s *HostService) GetHostState(ctx context.Context, id uuid.UUID) (*models.H
 // GetHostStateHistory retrieves historical states for a host
 func (s *HostService) GetHostStateHistory(ctx context.Context, id uuid.UUID, start, end string, interval string) ([]*models.HostState, error) {
 	// Parse time strings
-	// TODO: Implement time parsing
-	// For now, simplified version
-	return s.hostRepo.GetLatestStates(ctx, id, 100)
+	startTime, err := time.Parse(time.RFC3339, start)
+	if err != nil {
+		logrus.Warnf("Failed to parse start time: %v, using default", err)
+		startTime = time.Now().Add(-24 * time.Hour) // Default to 24 hours ago
+	}
+
+	endTime, err := time.Parse(time.RFC3339, end)
+	if err != nil {
+		logrus.Warnf("Failed to parse end time: %v, using default", err)
+		endTime = time.Now()
+	}
+
+	// Calculate interval in seconds based on the interval parameter
+	var intervalSeconds int
+	switch interval {
+	case "1m":
+		intervalSeconds = 60
+	case "5m":
+		intervalSeconds = 300
+	case "15m":
+		intervalSeconds = 900
+	case "30m":
+		intervalSeconds = 1800
+	case "1h":
+		intervalSeconds = 3600
+	case "3h":
+		intervalSeconds = 10800
+	case "6h":
+		intervalSeconds = 21600
+	case "12h":
+		intervalSeconds = 43200
+	case "1d":
+		intervalSeconds = 86400
+	case "auto":
+		// Auto-calculate interval based on time range
+		duration := endTime.Sub(startTime)
+		if duration.Hours() <= 1 {
+			intervalSeconds = 60      // 1 minute for 1 hour range
+		} else if duration.Hours() <= 6 {
+			intervalSeconds = 300     // 5 minutes for 6 hours
+		} else if duration.Hours() <= 12 {
+			intervalSeconds = 300     // 5 minutes for 12 hours
+		} else if duration.Hours() <= 24 {
+			intervalSeconds = 600     // 10 minutes for 1 day
+		} else if duration.Hours() <= 168 {
+			intervalSeconds = 3600    // 1 hour for 1 week
+		} else {
+			intervalSeconds = 86400   // 1 day for longer ranges
+		}
+	default:
+		// Try to parse as integer seconds
+		if val, err := strconv.Atoi(interval); err == nil && val > 0 {
+			intervalSeconds = val
+		} else {
+			// Default to auto for invalid values
+			duration := endTime.Sub(startTime)
+			if duration.Hours() <= 1 {
+				intervalSeconds = 60
+			} else if duration.Hours() <= 6 {
+				intervalSeconds = 300
+			} else if duration.Hours() <= 12 {
+				intervalSeconds = 300
+			} else if duration.Hours() <= 24 {
+				intervalSeconds = 600
+			} else {
+				intervalSeconds = 3600
+			}
+		}
+	}
+
+	// Get states from repository with time range
+	states, err := s.hostRepo.GetStatesByTimeRange(ctx, id, startTime, endTime, intervalSeconds)
+	if err != nil {
+		logrus.Errorf("Failed to get host states by time range: %v", err)
+		// Fallback to latest states
+		return s.hostRepo.GetLatestStates(ctx, id, 100)
+	}
+
+	return states, nil
 }
 
 // enrichHostWithRuntimeData adds online status and latest state to host

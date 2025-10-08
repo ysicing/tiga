@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -151,6 +152,18 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 
 	logrus.Infof("WebSocket connected for session: %s", streamID)
 
+	// Send connected message using new protocol
+	connMsg, _ := webssh.NewMessage(webssh.MessageTypeConnected, &webssh.ConnectedMessage{
+		SessionID: streamID,
+		HostName:  "Host", // TODO: Get actual host name
+		HostID:    session.HostID.String(),
+		Cols:      80,
+		Rows:      24,
+	})
+	if msgBytes, err := json.Marshal(connMsg); err == nil {
+		ws.WriteMessage(websocket.TextMessage, msgBytes)
+	}
+
 	// Set WebSocket timeouts
 	ws.SetReadDeadline(time.Now().Add(60 * time.Second))
 	ws.SetPongHandler(func(string) error {
@@ -158,7 +171,7 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		return nil
 	})
 
-	// Start ping ticker
+	// Start ping ticker using new protocol
 	done := make(chan struct{})
 	defer close(done)
 
@@ -168,14 +181,28 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
-					return
+				pingMsg, _ := webssh.NewMessage(webssh.MessageTypePing, nil)
+				if msgBytes, err := json.Marshal(pingMsg); err == nil {
+					if err := ws.WriteMessage(websocket.TextMessage, msgBytes); err != nil {
+						return
+					}
 				}
 			case <-done:
 				return
 			}
 		}
 	}()
+
+	// Error handler helper
+	sendError := func(code string, message string) {
+		errMsg, _ := webssh.NewMessage(webssh.MessageTypeError, &webssh.ErrorMessage{
+			Code:    code,
+			Message: message,
+		})
+		if msgBytes, err := json.Marshal(errMsg); err == nil {
+			ws.WriteMessage(websocket.TextMessage, msgBytes)
+		}
+	}
 
 	// Read from WebSocket and send to Agent
 	go func() {
@@ -188,29 +215,54 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 			}
 
 			if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
-				// Parse message from frontend
-				var msg map[string]interface{}
-				if err := json.Unmarshal(data, &msg); err == nil {
-					if msgType, ok := msg["type"].(string); ok {
-						switch msgType {
-						case "resize":
-							// Window resize: {"type":"resize","cols":80,"rows":24}
-							cols := int(msg["cols"].(float64))
-							rows := int(msg["rows"].(float64))
-							resizeData, _ := json.Marshal(map[string]int{"cols": cols, "rows": rows})
-							session.SendToAgent(append([]byte{0x01}, resizeData...))
-						case "input":
-							// Terminal input: {"type":"input","data":"ls\n"}
-							if input, ok := msg["data"].(string); ok {
-								session.SendToAgent(append([]byte{0x00}, []byte(input)...))
-							}
-						}
-						continue
-					}
+				// Parse message using our new protocol
+				msg, err := webssh.ParseMessage(data)
+				if err != nil {
+					sendError(webssh.ErrCodeInvalidInput, "Invalid message format")
+					continue
 				}
 
-				// Fallback: treat as raw input
-				session.SendToAgent(append([]byte{0x00}, data...))
+				switch msg.Type {
+				case webssh.MessageTypeInput:
+					inputMsg, err := msg.GetInputMessage()
+					if err != nil {
+						sendError(webssh.ErrCodeInvalidInput, "Invalid input message")
+						continue
+					}
+					// Decode base64 input for binary safety
+					inputBytes, err := base64.StdEncoding.DecodeString(inputMsg.Input)
+					if err != nil {
+						sendError(webssh.ErrCodeInvalidInput, "Invalid base64 input")
+						continue
+					}
+					session.SendToAgent(append([]byte{0x00}, inputBytes...))
+
+				case webssh.MessageTypeResize:
+					resizeMsg, err := msg.GetResizeMessage()
+					if err != nil {
+						sendError(webssh.ErrCodeInvalidInput, "Invalid resize message")
+						continue
+					}
+					resizeData, _ := json.Marshal(map[string]int{"cols": resizeMsg.Cols, "rows": resizeMsg.Rows})
+					session.SendToAgent(append([]byte{0x01}, resizeData...))
+
+				case webssh.MessageTypeCommand:
+					cmdMsg, err := msg.GetCommandMessage()
+					if err != nil {
+						sendError(webssh.ErrCodeInvalidInput, "Invalid command message")
+						continue
+					}
+					if cmdMsg.Command == "close" {
+						return
+					}
+
+				case webssh.MessageTypePing:
+					// Send pong response
+					pongMsg, _ := webssh.NewMessage(webssh.MessageTypePong, nil)
+					if msgBytes, err := json.Marshal(pongMsg); err == nil {
+						ws.WriteMessage(websocket.TextMessage, msgBytes)
+					}
+				}
 			}
 		}
 	}()
@@ -220,14 +272,26 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		data, err := session.ReceiveFromAgent()
 		if err != nil {
 			logrus.Errorf("Failed to receive from agent: %v", err)
+			sendError(webssh.ErrCodeConnectionClosed, "Connection to agent lost")
 			break
 		}
 
-		// Send output to WebSocket
-		if err := ws.WriteMessage(websocket.BinaryMessage, data); err != nil {
-			logrus.Errorf("WebSocket write error: %v", err)
-			break
+		// Encode output as base64 for binary safety
+		outputMsg, _ := webssh.NewMessage(webssh.MessageTypeOutput, &webssh.OutputMessage{
+			Output: base64.StdEncoding.EncodeToString(data),
+		})
+		if msgBytes, err := json.Marshal(outputMsg); err == nil {
+			if err := ws.WriteMessage(websocket.TextMessage, msgBytes); err != nil {
+				logrus.Errorf("WebSocket write error: %v", err)
+				break
+			}
 		}
+	}
+
+	// Send disconnected message
+	disconnMsg, _ := webssh.NewMessage(webssh.MessageTypeDisconnected, nil)
+	if msgBytes, err := json.Marshal(disconnMsg); err == nil {
+		ws.WriteMessage(websocket.TextMessage, msgBytes)
 	}
 
 	logrus.Infof("WebSocket closed for session: %s", streamID)

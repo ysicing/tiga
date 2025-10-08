@@ -1,0 +1,245 @@
+// Service Monitor API Service
+
+export interface ServiceMonitor {
+  id: string;
+  name: string;
+  type: 'HTTP' | 'TCP' | 'ICMP';
+  target: string;
+  interval: number;
+  timeout: number;
+  enabled: boolean;
+  host_node_id?: string;
+  http_method?: string;
+  http_headers?: string;
+  http_body?: string;
+  expect_status?: number;
+  expect_body?: string;
+  tcp_send?: string;
+  tcp_expect?: string;
+  notify_on_failure: boolean;
+  failure_threshold: number;
+  recovery_threshold: number;
+  status?: 'up' | 'down' | 'degraded' | 'unknown';
+  last_check_time?: string;
+  uptime_24h?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceProbeResult {
+  id: string;
+  service_monitor_id: string;
+  timestamp: string;
+  success: boolean;
+  latency: number;
+  error_message?: string;
+  http_status_code?: number;
+  http_response_body?: string;
+  tcp_response?: string;
+}
+
+export interface ServiceMonitorListParams {
+  search?: string;
+  type?: string;
+  status?: string;
+  enabled?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+export interface ServiceMonitorFormData {
+  name: string;
+  type: 'HTTP' | 'TCP' | 'ICMP';
+  target: string;
+  interval: number;
+  timeout: number;
+  enabled: boolean;
+  host_node_id?: string;
+  http_method?: string;
+  http_headers?: string;
+  http_body?: string;
+  expect_status?: number;
+  expect_body?: string;
+  tcp_send?: string;
+  tcp_expect?: string;
+  notify_on_failure: boolean;
+  failure_threshold: number;
+  recovery_threshold: number;
+}
+
+export const ServiceMonitorService = {
+  // List service monitors
+  async list(params?: ServiceMonitorListParams): Promise<ServiceMonitor[]> {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.type) queryParams.append('type', params.type);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.enabled !== undefined) queryParams.append('enabled', String(params.enabled));
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.page_size) queryParams.append('page_size', String(params.page_size));
+
+    const response = await fetch(`/api/v1/service-monitors?${queryParams.toString()}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch service monitors');
+    }
+    const data = await response.json();
+    return data.data || [];
+  },
+
+  // Get single service monitor
+  async get(id: string): Promise<ServiceMonitor> {
+    const response = await fetch(`/api/v1/service-monitors/${id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch service monitor');
+    }
+    const data = await response.json();
+    return data.data;
+  },
+
+  // Create service monitor
+  async create(data: ServiceMonitorFormData): Promise<ServiceMonitor> {
+    const response = await fetch('/api/v1/service-monitors', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create service monitor');
+    }
+    const result = await response.json();
+    return result.data;
+  },
+
+  // Update service monitor
+  async update(id: string, data: Partial<ServiceMonitorFormData>): Promise<ServiceMonitor> {
+    const response = await fetch(`/api/v1/service-monitors/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update service monitor');
+    }
+    const result = await response.json();
+    return result.data;
+  },
+
+  // Delete service monitor
+  async delete(id: string): Promise<void> {
+    const response = await fetch(`/api/v1/service-monitors/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete service monitor');
+    }
+  },
+
+  // Trigger manual probe
+  async triggerProbe(id: string): Promise<ServiceProbeResult> {
+    const response = await fetch(`/api/v1/service-monitors/${id}/trigger`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to trigger probe');
+    }
+    const data = await response.json();
+    return data.data;
+  },
+
+  // Get probe history
+  async getProbeHistory(
+    id: string,
+    params?: {
+      start_time?: string;
+      end_time?: string;
+      limit?: number
+    }
+  ): Promise<ServiceProbeResult[]> {
+    const queryParams = new URLSearchParams();
+    if (params?.start_time) queryParams.append('start_time', params.start_time);
+    if (params?.end_time) queryParams.append('end_time', params.end_time);
+    if (params?.limit) queryParams.append('limit', String(params.limit));
+
+    const response = await fetch(`/api/v1/service-monitors/${id}/history?${queryParams.toString()}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch probe history');
+    }
+    const data = await response.json();
+    return data.data || [];
+  },
+
+  // Get availability stats
+  async getAvailabilityStats(
+    id: string,
+    params?: {
+      period?: '1h' | '12h' | '24h' | '7d' | '30d';
+    }
+  ): Promise<{
+    uptime_percentage: number;
+    total_checks: number;
+    successful_checks: number;
+    failed_checks: number;
+    average_latency: number;
+    p95_latency: number;
+    p99_latency: number;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+
+    const response = await fetch(`/api/v1/service-monitors/${id}/stats?${queryParams.toString()}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch availability stats');
+    }
+    const data = await response.json();
+    return data.data;
+  },
+
+  // Batch enable/disable monitors
+  async batchUpdate(
+    ids: string[],
+    action: 'enable' | 'disable'
+  ): Promise<void> {
+    const response = await fetch('/api/v1/service-monitors/batch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ids,
+        action,
+        enabled: action === 'enable',
+      }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to batch update monitors');
+    }
+  },
+
+  // Export monitors configuration
+  async export(format: 'json' | 'yaml' = 'json'): Promise<Blob> {
+    const response = await fetch(`/api/v1/service-monitors/export?format=${format}`);
+    if (!response.ok) {
+      throw new Error('Failed to export monitors');
+    }
+    return response.blob();
+  },
+
+  // Import monitors configuration
+  async import(file: File): Promise<{ imported: number; failed: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch('/api/v1/service-monitors/import', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to import monitors');
+    }
+    const data = await response.json();
+    return data.data;
+  },
+};

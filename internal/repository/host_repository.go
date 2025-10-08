@@ -32,7 +32,7 @@ type HostRepository interface {
 	SaveState(ctx context.Context, state *models.HostState) error
 	GetLatestState(ctx context.Context, hostID uuid.UUID) (*models.HostState, error)
 	GetLatestStates(ctx context.Context, hostID uuid.UUID, limit int) ([]*models.HostState, error)
-	GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]*models.HostState, error)
+	GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time, intervalSeconds int) ([]*models.HostState, error)
 
 	// Group related
 	GetHostsByGroupName(ctx context.Context, groupName string) ([]*models.HostNode, error)
@@ -201,13 +201,123 @@ func (r *hostRepository) GetLatestStates(ctx context.Context, hostID uuid.UUID, 
 	return states, err
 }
 
-// GetStatesByTimeRange retrieves states within a time range
-func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time) ([]*models.HostState, error) {
+// GetStatesByTimeRange retrieves states within a time range with optional interval aggregation
+func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uuid.UUID, start, end time.Time, intervalSeconds int) ([]*models.HostState, error) {
+	// If interval is 0 or very small, return all points
+	if intervalSeconds <= 0 {
+		var states []*models.HostState
+		err := r.db.WithContext(ctx).
+			Where("host_node_id = ? AND timestamp >= ? AND timestamp <= ?", hostID, start, end).
+			Order("timestamp ASC").
+			Find(&states).Error
+		return states, err
+	}
+
+	// For shorter time ranges (up to 24 hours), get all points to ensure we have enough data
+	duration := end.Sub(start)
+	if duration.Hours() <= 24 {
+		var states []*models.HostState
+		err := r.db.WithContext(ctx).
+			Where("host_node_id = ? AND timestamp >= ? AND timestamp <= ?", hostID, start, end).
+			Order("timestamp ASC").
+			Find(&states).Error
+
+		// If we have data, return it
+		if err == nil && len(states) > 0 {
+			return states, nil
+		}
+
+		// If no data in the time range, get the latest state
+		if len(states) == 0 {
+			var latestState models.HostState
+			err = r.db.WithContext(ctx).
+				Where("host_node_id = ?", hostID).
+				Order("timestamp DESC").
+				First(&latestState).Error
+			if err == nil {
+				// Create a synthetic data point at the start time with the latest values
+				states = []*models.HostState{&latestState}
+			}
+		}
+		return states, err
+	}
+
+	// Use raw SQL for time bucket aggregation for longer time ranges
+	// This groups data into time intervals and averages the values within each bucket
+	query := `
+		SELECT
+			host_node_id,
+			datetime((strftime('%s', timestamp) / ?) * ?, 'unixepoch') as timestamp,
+			AVG(cpu_usage) as cpu_usage,
+			AVG(mem_usage) as mem_usage,
+			AVG(disk_usage) as disk_usage,
+			AVG(net_in_speed) as net_in_speed,
+			AVG(net_out_speed) as net_out_speed,
+			AVG(net_in_transfer) as net_in_transfer,
+			AVG(net_out_transfer) as net_out_transfer,
+			AVG(load1) as load1,
+			AVG(load5) as load5,
+			AVG(load15) as load15,
+			AVG(tcp_conn_count) as tcp_conn_count,
+			AVG(udp_conn_count) as udp_conn_count,
+			AVG(process_count) as process_count,
+			MAX(uptime) as uptime
+		FROM host_states
+		WHERE host_node_id = ?
+			AND timestamp >= ?
+			AND timestamp <= ?
+		GROUP BY datetime((strftime('%s', timestamp) / ?) * ?, 'unixepoch')
+		ORDER BY timestamp ASC
+	`
+
 	var states []*models.HostState
 	err := r.db.WithContext(ctx).
-		Where("host_node_id = ? AND timestamp >= ? AND timestamp <= ?", hostID, start, end).
-		Order("timestamp ASC").
-		Find(&states).Error
+		Raw(query, intervalSeconds, intervalSeconds, hostID, start, end, intervalSeconds, intervalSeconds).
+		Scan(&states).Error
+
+	// If the database doesn't support the aggregation query, fallback to simple sampling
+	if err != nil || len(states) == 0 {
+		// Fallback: get all states and sample them based on interval
+		var allStates []*models.HostState
+		err = r.db.WithContext(ctx).
+			Where("host_node_id = ? AND timestamp >= ? AND timestamp <= ?", hostID, start, end).
+			Order("timestamp ASC").
+			Find(&allStates).Error
+		if err != nil {
+			return nil, err
+		}
+
+		// Sample the states based on interval
+		if len(allStates) == 0 {
+			// If no data in the time range, get the latest state
+			var latestState models.HostState
+			err = r.db.WithContext(ctx).
+				Where("host_node_id = ?", hostID).
+				Order("timestamp DESC").
+				First(&latestState).Error
+			if err == nil {
+				allStates = []*models.HostState{&latestState}
+			}
+			return allStates, nil
+		}
+
+		sampled := make([]*models.HostState, 0)
+		lastTime := start
+		for _, state := range allStates {
+			if state.Timestamp.Sub(lastTime).Seconds() >= float64(intervalSeconds) {
+				sampled = append(sampled, state)
+				lastTime = state.Timestamp
+			}
+		}
+
+		// Always include the last state if not already included
+		if len(sampled) == 0 || sampled[len(sampled)-1].ID != allStates[len(allStates)-1].ID {
+			sampled = append(sampled, allStates[len(allStates)-1])
+		}
+
+		return sampled, nil
+	}
+
 	return states, err
 }
 

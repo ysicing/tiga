@@ -2,12 +2,19 @@ package monitor
 
 import (
 	"context"
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -27,6 +34,7 @@ type ServiceProbeScheduler struct {
 	cron        *cron.Cron
 	tasks       sync.Map // map[uuid.UUID]*ProbeTask
 	mu          sync.RWMutex
+	httpClient  *http.Client // HTTP client for probes
 
 	// Agent communication (for distributed probing)
 	agentStreams sync.Map // map[string]proto.ServiceProbe_ExecuteProbeServer
@@ -37,6 +45,17 @@ func NewServiceProbeScheduler(serviceRepo repository.ServiceRepository) *Service
 	return &ServiceProbeScheduler{
 		serviceRepo: serviceRepo,
 		cron:        cron.New(cron.WithSeconds()), // Support second-level precision
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, // TODO: Make configurable
+				},
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
 	}
 }
 
@@ -168,15 +187,117 @@ func (s *ServiceProbeScheduler) executeProbe(monitor *models.ServiceMonitor) {
 
 // executeHTTPProbe executes an HTTP/HTTPS probe
 func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *models.ServiceMonitor) *models.ServiceProbeResult {
-	// TODO: Implement HTTP probe using net/http
-	// For now, return a mock result
+	start := time.Now()
 	result := &models.ServiceProbeResult{
 		ServiceMonitorID: monitor.ID,
-		Timestamp:        time.Now(),
-		Success:          true,
-		Latency:          50, // milliseconds
-		HTTPStatusCode:   200,
+		Timestamp:        start,
+		Success:          false,
 	}
+
+	// Parse target URL
+	targetURL := monitor.Target
+	if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+		targetURL = "http://" + targetURL
+	}
+
+	parsedURL, err := url.Parse(targetURL)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Invalid URL: %v", err)
+		logrus.Errorf("HTTP probe failed for %s: %v", monitor.Name, err)
+		return result
+	}
+
+	// Create HTTP request
+	method := monitor.HTTPMethod
+	if method == "" {
+		method = "GET"
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, parsedURL.String(), nil)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Failed to create request: %v", err)
+		logrus.Errorf("HTTP probe failed for %s: %v", monitor.Name, err)
+		return result
+	}
+
+	// Parse and add custom headers if configured
+	if monitor.HTTPHeaders != "" {
+		var headers map[string]string
+		if err := json.Unmarshal([]byte(monitor.HTTPHeaders), &headers); err == nil {
+			for key, value := range headers {
+				req.Header.Set(key, value)
+			}
+		}
+	}
+
+	// Add default headers
+	req.Header.Set("User-Agent", "Tiga/1.0 ServiceProbe")
+
+	// Execute request
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Request failed: %v", err)
+		logrus.Errorf("HTTP probe failed for %s: %v", monitor.Name, err)
+		return result
+	}
+	defer resp.Body.Close()
+
+	// Calculate response time
+	responseTime := time.Since(start)
+	result.Latency = int(responseTime.Milliseconds())
+	result.HTTPStatusCode = resp.StatusCode
+
+	// Check status code
+	expectedStatus := monitor.ExpectStatus
+	if expectedStatus == 0 {
+		expectedStatus = 200
+	}
+
+	if resp.StatusCode != expectedStatus {
+		result.Success = false
+		result.ErrorMessage = fmt.Sprintf("Unexpected status code: %d (expected %d)", resp.StatusCode, expectedStatus)
+	} else {
+		result.Success = true
+	}
+
+	// Check response content if configured
+	if result.Success && monitor.ExpectBody != "" {
+		// Read response body (limited to 10KB)
+		bodyBytes := make([]byte, 1024*10)
+		n, _ := io.ReadFull(resp.Body, bodyBytes)
+		body := string(bodyBytes[:n])
+
+		// Store first 1KB in result
+		if len(body) > 1024 {
+			result.HTTPResponseBody = body[:1024]
+		} else {
+			result.HTTPResponseBody = body
+		}
+
+		// Check for expected content (substring match)
+		if !strings.Contains(body, monitor.ExpectBody) {
+			result.Success = false
+			result.ErrorMessage = "Content validation failed: expected content not found"
+		}
+	}
+
+	// SSL certificate validation for HTTPS
+	if parsedURL.Scheme == "https" && resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
+		cert := resp.TLS.PeerCertificates[0]
+		daysUntilExpiry := int(time.Until(cert.NotAfter).Hours() / 24)
+
+		// Warn if certificate expiring soon
+		if daysUntilExpiry < 30 && result.Success {
+			// Don't fail the probe, but add a warning
+			if result.ErrorMessage == "" {
+				result.ErrorMessage = fmt.Sprintf("Warning: SSL certificate expiring in %d days", daysUntilExpiry)
+			}
+		}
+	}
+
+	logrus.Debugf("HTTP probe %s completed: success=%v, status=%d, latency=%dms",
+		monitor.Name, result.Success, result.HTTPStatusCode, result.Latency)
+
 	return result
 }
 

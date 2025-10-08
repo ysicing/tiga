@@ -37,6 +37,30 @@ export function MultiLineChart({
     return `${value.toFixed(2)}${unit}`;
   };
 
+  // Convert UTC time to Beijing time (UTC+8)
+  const toBeijingTime = (date: Date): Date => {
+    return new Date(date.getTime() + (8 * 60 * 60 * 1000));
+  };
+
+  const formatTime = (value: string, format: 'short' | 'full' = 'short'): string => {
+    const date = new Date(value);
+    const beijingDate = toBeijingTime(date);
+
+    if (format === 'short') {
+      const hours = beijingDate.getHours().toString().padStart(2, '0');
+      const minutes = beijingDate.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } else {
+      const year = beijingDate.getFullYear();
+      const month = (beijingDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = beijingDate.getDate().toString().padStart(2, '0');
+      const hours = beijingDate.getHours().toString().padStart(2, '0');
+      const minutes = beijingDate.getMinutes().toString().padStart(2, '0');
+      const seconds = beijingDate.getSeconds().toString().padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+  };
+
   return (
     <div className="w-full">
       <h3 className="text-sm font-medium mb-2">{title}</h3>
@@ -46,13 +70,7 @@ export function MultiLineChart({
           <XAxis
             dataKey="timestamp"
             tick={{ fontSize: 12 }}
-            tickFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleTimeString('zh-CN', {
-                hour: '2-digit',
-                minute: '2-digit',
-              });
-            }}
+            tickFormatter={(value) => formatTime(value, 'short')}
           />
           <YAxis
             tick={{ fontSize: 12 }}
@@ -64,7 +82,7 @@ export function MultiLineChart({
               border: '1px solid hsl(var(--border))',
               borderRadius: '8px',
             }}
-            labelFormatter={(value) => new Date(value).toLocaleString('zh-CN')}
+            labelFormatter={(value) => formatTime(value, 'full')}
             formatter={(value: number, name: string) => [
               defaultFormatter(value),
               name,

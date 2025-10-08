@@ -103,7 +103,12 @@ class ApiClient {
     }
   }
 
-  async get<T>(url: string, options?: RequestInit): Promise<T> {
+  async get<T>(url: string, params?: Record<string, any>, options?: RequestInit): Promise<T> {
+    // If params are provided, append them as query string
+    if (params && Object.keys(params).length > 0) {
+      const queryString = new URLSearchParams(params).toString()
+      url = `${url}${url.includes('?') ? '&' : '?'}${queryString}`
+    }
     return this.makeRequest<T>(url, { ...options, method: 'GET' })
   }
 
@@ -211,7 +216,7 @@ export const devopsAPI = {
 
   // Instances
   instances: {
-    list: (params?: Record<string, any>) => apiClient.get('/instances', { ...params }),
+    list: (params?: Record<string, any>) => apiClient.get('/instances', params),
     get: (id: string) => apiClient.get(`/instances/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/instances', data),
     update: (id: string, data: Record<string, any>) => apiClient.patch(`/instances/${id}`, data),
@@ -225,22 +230,22 @@ export const devopsAPI = {
 
   // Metrics
   metrics: {
-    query: (params: Record<string, any>) => apiClient.get('/metrics', { ...params }),
+    query: (params: Record<string, any>) => apiClient.get('/metrics', params),
     create: (data: Record<string, any>) => apiClient.post('/metrics', data),
-    aggregate: (params: Record<string, any>) => apiClient.get('/metrics/aggregate', { ...params }),
-    timeseries: (params: Record<string, any>) => apiClient.get('/metrics/timeseries', { ...params }),
+    aggregate: (params: Record<string, any>) => apiClient.get('/metrics/aggregate', params),
+    timeseries: (params: Record<string, any>) => apiClient.get('/metrics/timeseries', params),
   },
 
   // Alerts
   alerts: {
-    listRules: (params?: Record<string, any>) => apiClient.get('/alerts', { ...params }),
+    listRules: (params?: Record<string, any>) => apiClient.get('/alerts', params),
     getRule: (id: string) => apiClient.get(`/alerts/${id}`),
     createRule: (data: Record<string, any>) => apiClient.post('/alerts', data),
     updateRule: (id: string, data: Record<string, any>) => apiClient.patch(`/alerts/${id}`, data),
     deleteRule: (id: string) => apiClient.delete(`/alerts/${id}`),
     toggleRule: (id: string, enabled: boolean) =>
       apiClient.patch(`/alerts/${id}/toggle`, { enabled }),
-    listEvents: (params?: Record<string, any>) => apiClient.get('/alerts/events', { ...params }),
+    listEvents: (params?: Record<string, any>) => apiClient.get('/alerts/events', params),
     acknowledgeEvent: (eventId: string, note?: string) =>
       apiClient.post(`/alerts/events/${eventId}/acknowledge`, { note }),
     resolveEvent: (eventId: string, note?: string) =>
@@ -261,7 +266,7 @@ export const devopsAPI = {
 
   // Users
   users: {
-    list: (params?: Record<string, any>) => apiClient.get('/users', { ...params }),
+    list: (params?: Record<string, any>) => apiClient.get('/users', params),
     get: (id: string) => apiClient.get(`/users/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/users', data),
     update: (id: string, data: Record<string, any>) => apiClient.patch(`/users/${id}`, data),
@@ -272,7 +277,7 @@ export const devopsAPI = {
 
   // Roles
   roles: {
-    list: (params?: Record<string, any>) => apiClient.get('/roles', { ...params }),
+    list: (params?: Record<string, any>) => apiClient.get('/roles', params),
     get: (id: string) => apiClient.get(`/roles/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/roles', data),
     update: (id: string, data: Record<string, any>) => apiClient.patch(`/roles/${id}`, data),

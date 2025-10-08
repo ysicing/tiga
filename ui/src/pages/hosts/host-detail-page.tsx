@@ -11,10 +11,12 @@ import { ArrowLeft, Terminal, Settings, Loader2 } from 'lucide-react';
 import { formatBytes } from '@/lib/utils';
 import { devopsAPI } from '@/lib/api-client';
 
-type TimeRange = '1h' | '12h' | '1d' | '7d' | '30d';
+type TimeRange = '15m' | '1h' | '6h' | '12h' | '1d' | '7d' | '30d';
 
 const TIME_RANGES = {
+  '15m': { label: '最近15分钟', duration: 15 * 60 * 1000, interval: '1m' },
   '1h': { label: '最近1小时', duration: 60 * 60 * 1000, interval: '1m' },
+  '6h': { label: '最近6小时', duration: 6 * 60 * 60 * 1000, interval: '5m' },
   '12h': { label: '最近12小时', duration: 12 * 60 * 60 * 1000, interval: '5m' },
   '1d': { label: '最近1天', duration: 24 * 60 * 60 * 1000, interval: '5m' },
   '7d': { label: '最近一周', duration: 7 * 24 * 60 * 60 * 1000, interval: '1h' },
