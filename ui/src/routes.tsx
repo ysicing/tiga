@@ -27,7 +27,11 @@ import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-p
 import { HostEditPage } from './pages/hosts/host-edit-page'
 import { HostSSHPage } from './pages/hosts/host-ssh-page'
 import { ServiceMonitorPage } from './pages/hosts/service-monitor-page'
+import ServiceOverviewPage from './pages/hosts/service-overview-page'
+import ServiceMonitorListPage from './pages/hosts/service-monitor-list'
+import ServiceMonitorDetailPage from './pages/hosts/service-monitor-detail'
 import { AlertEventsPage } from './pages/hosts/alert-events-page'
+import AlertRulesPage from './pages/hosts/alert-rules-page'
 
 // DevOps Platform Pages
 import AlertsPage from './pages/alerts'
@@ -113,12 +117,42 @@ export const router = createBrowserRouter([
       // 服务监控管理
       {
         path: 'service-monitors',
-        element: <ServiceMonitorPage />,
+        children: [
+          {
+            index: true,
+            element: <Navigate to="overview" replace />,
+          },
+          {
+            path: 'overview',
+            element: <ServiceOverviewPage />,
+          },
+          {
+            path: 'list',
+            element: <ServiceMonitorListPage />,
+          },
+          {
+            path: 'new',
+            element: <ServiceMonitorPage />,
+          },
+          {
+            path: ':id',
+            element: <ServiceMonitorDetailPage />,
+          },
+          {
+            path: ':id/edit',
+            element: <ServiceMonitorPage />,
+          },
+        ],
       },
       // 告警事件管理
       {
         path: 'alert-events',
         element: <AlertEventsPage />,
+      },
+      // 告警规则管理
+      {
+        path: 'alert-rules',
+        element: <AlertRulesPage />,
       },
     ],
   },

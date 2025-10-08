@@ -216,6 +216,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 	// Initialize service monitoring (ServiceProbeScheduler + ServiceSentinel)
 	// Use serviceRepo and alertEngine initialized earlier
 	a.probeScheduler = monitor.NewServiceProbeScheduler(serviceRepo, alertEngine)
+	a.probeScheduler.SetAgentManager(a.agentManager) // Wire up agent task distribution
 
 	logrus.Info("Service monitoring initialized")
 

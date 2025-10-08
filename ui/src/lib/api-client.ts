@@ -375,14 +375,14 @@ export const devopsAPI = {
 
     // Alert rules
     alertRules: {
-      list: () => apiClient.get('/vms/alert-rules'),
-      get: (id: string) => apiClient.get(`/vms/alert-rules/${id}`),
-      create: (data: Record<string, any>) => apiClient.post('/vms/alert-rules', data),
+      list: () => apiClient.get('/alerts/rules'),
+      get: (id: string) => apiClient.get(`/alerts/rules/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/alerts/rules', data),
       update: (id: string, data: Record<string, any>) =>
-        apiClient.put(`/vms/alert-rules/${id}`, data),
-      delete: (id: string) => apiClient.delete(`/vms/alert-rules/${id}`),
+        apiClient.put(`/alerts/rules/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/alerts/rules/${id}`),
       toggle: (id: string, enabled: boolean) =>
-        apiClient.post(`/vms/alert-rules/${id}/toggle`, { enabled }),
+        apiClient.post(`/alerts/rules/${id}/toggle`, { enabled }),
     },
 
     // Alert events

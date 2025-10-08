@@ -10,12 +10,14 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
+	"github.com/ysicing/tiga/internal/services/alert"
 )
 
 // ServiceSentinel manages service monitoring data aggregation and caching
 // It maintains 30-day historical data in memory and periodically flushes to database
 type ServiceSentinel struct {
 	serviceRepo repository.ServiceRepository
+	alertEngine *alert.AlertEngine
 	mu          sync.RWMutex
 
 	// serviceReportChannel receives probe results from agents/scheduler
@@ -54,9 +56,9 @@ type MonthlyStatus struct {
 	ServiceMonitorID uuid.UUID
 	HostNodeID       uuid.UUID
 	// Arrays for 30 days, index 0 is today, 29 is 30 days ago
-	AvgDelay [30]float32 // Average delay per day
-	Up       [30]uint64  // Successful probe count per day
-	Down     [30]uint64  // Failed probe count per day
+	AvgDelay   [30]float32 // Average delay per day
+	Up         [30]uint64  // Successful probe count per day
+	Down       [30]uint64  // Failed probe count per day
 	LastUpdate time.Time
 }
 
@@ -83,9 +85,10 @@ type TodayStats struct {
 }
 
 // NewServiceSentinel creates a new ServiceSentinel
-func NewServiceSentinel(serviceRepo repository.ServiceRepository) *ServiceSentinel {
+func NewServiceSentinel(serviceRepo repository.ServiceRepository, alertEngine *alert.AlertEngine) *ServiceSentinel {
 	return &ServiceSentinel{
 		serviceRepo:          serviceRepo,
+		alertEngine:          alertEngine,
 		serviceReportChannel: make(chan *ProbeReport, 1000),
 		monthlyStatus:        make(map[string]*MonthlyStatus),
 		pingBatch:            make(map[string]*PingBatch),
@@ -206,6 +209,9 @@ func (s *ServiceSentinel) processReport(report *ProbeReport) {
 		batch.Down++
 	}
 	batch.LastData = report.Data
+
+	// Evaluate alert rules for this service
+	s.evaluateAlerts(report.ServiceMonitorID)
 
 	// Flush batch if it has accumulated enough samples (e.g., 20 probes)
 	if batch.Count >= 20 {
@@ -560,4 +566,58 @@ func getStatusCodeString(uptimePercent float64) string {
 		return "LowAvailability"
 	}
 	return "Down"
+}
+
+// evaluateAlerts evaluates alert rules for a service monitor
+func (s *ServiceSentinel) evaluateAlerts(serviceMonitorID uuid.UUID) {
+	if s.alertEngine == nil {
+		return
+	}
+
+	// Calculate current availability for this service
+	var totalUp, totalDown uint64
+	var totalLatency float32
+
+	// Aggregate across all hosts for this service
+	for key, todayStats := range s.statusToday {
+		if todayStats.ServiceMonitorID == serviceMonitorID {
+			totalUp += todayStats.Up
+			totalDown += todayStats.Down
+			totalLatency += todayStats.TotalLatency
+		}
+		_ = key // Suppress unused variable warning
+	}
+
+	totalChecks := totalUp + totalDown
+	if totalChecks == 0 {
+		return // No data to evaluate
+	}
+
+	uptimePercentage := float64(totalUp) / float64(totalChecks) * 100
+	avgLatency := float32(0)
+	if totalUp > 0 {
+		avgLatency = totalLatency / float32(totalUp)
+	}
+
+	// Create availability snapshot for alert evaluation
+	availability := &models.ServiceAvailability{
+		ServiceMonitorID: serviceMonitorID,
+		Period:           "realtime",
+		StartTime:        time.Now().Add(-time.Minute),
+		EndTime:          time.Now(),
+		TotalChecks:      int(totalChecks),
+		SuccessfulChecks: int(totalUp),
+		FailedChecks:     int(totalDown),
+		UptimePercentage: uptimePercentage,
+		AvgLatency:       float64(avgLatency),
+		MinLatency:       0,
+		MaxLatency:       0,
+		DowntimeSeconds:  0,
+	}
+
+	// Evaluate alert rules
+	ctx := context.Background()
+	if err := s.alertEngine.EvaluateServiceRules(ctx, serviceMonitorID, availability); err != nil {
+		logrus.Errorf("Failed to evaluate service alert rules for %s: %v", serviceMonitorID, err)
+	}
 }

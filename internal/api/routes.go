@@ -101,7 +101,7 @@ func SetupRoutes(
 	hostGroupHandler := handlers.NewHostGroupHandler(db)
 	serviceMonitorHandler := handlers.NewServiceMonitorHandler(probeService)
 	hostActivityHandler := handlers.NewHostActivityHandler(db)
-	// TODO: Create monitor_alert_handler.go for MonitorAlertRule/MonitorAlertEvent
+	monitorAlertHandler := handlers.NewMonitorAlertRuleHandler(monitorAlertRepo)
 	websshHandler := handlers.NewWebSSHHandler(sessionManager, terminalManager, agentManager, db)
 	websocketHandler := handlers.NewWebSocketHandler(stateCollector)
 
@@ -364,6 +364,7 @@ func SetupRoutes(
 				{
 					serviceMonitorsGroup.GET("", serviceMonitorHandler.ListMonitors)
 					serviceMonitorsGroup.GET("/overview", serviceMonitorHandler.GetOverview)
+					serviceMonitorsGroup.GET("/topology", serviceMonitorHandler.GetNetworkTopology)
 					serviceMonitorsGroup.POST("", serviceMonitorHandler.CreateMonitor)
 					serviceMonitorsGroup.GET("/:id", serviceMonitorHandler.GetMonitor)
 					serviceMonitorsGroup.PUT("/:id", serviceMonitorHandler.UpdateMonitor)
@@ -382,6 +383,23 @@ func SetupRoutes(
 					websshGroup.GET("/sessions/:session_id/playback", websshHandler.GetRecording)
 					websshGroup.DELETE("/sessions/:session_id", websshHandler.CloseSession)
 					websshGroup.GET("/:session_id", websshHandler.HandleWebSocket)
+				}
+
+				// Monitor alert rules and events
+				alertRulesGroup := vmsGroup.Group("/alert-rules")
+				{
+					alertRulesGroup.POST("", monitorAlertHandler.CreateRule)
+					alertRulesGroup.GET("", monitorAlertHandler.ListRules)
+					alertRulesGroup.GET("/:id", monitorAlertHandler.GetRule)
+					alertRulesGroup.PUT("/:id", monitorAlertHandler.UpdateRule)
+					alertRulesGroup.DELETE("/:id", monitorAlertHandler.DeleteRule)
+				}
+
+				alertEventsGroup := vmsGroup.Group("/alert-events")
+				{
+					alertEventsGroup.GET("", monitorAlertHandler.ListEvents)
+					alertEventsGroup.POST("/:id/acknowledge", monitorAlertHandler.AcknowledgeEvent)
+					alertEventsGroup.POST("/:id/resolve", monitorAlertHandler.ResolveEvent)
 				}
 
 				// WebSocket real-time monitoring

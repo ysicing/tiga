@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { validateAndCleanTarget, type ProbeType } from '@/lib/validate';
 import {
   Table,
   TableBody,
@@ -52,6 +53,7 @@ export function ServiceMonitorPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMonitor, setEditingMonitor] = useState<ServiceMonitor | null>(null);
+  const [targetError, setTargetError] = useState<string>('');
   const [formData, setFormData] = useState<MonitorFormData>({
     name: '',
     type: 'HTTP',
@@ -145,6 +147,7 @@ export function ServiceMonitorPage() {
 
   const handleCreate = () => {
     setEditingMonitor(null);
+    setTargetError('');
     setFormData({
       name: '',
       type: 'HTTP',
@@ -160,6 +163,7 @@ export function ServiceMonitorPage() {
 
   const handleEdit = (monitor: ServiceMonitor) => {
     setEditingMonitor(monitor);
+    setTargetError('');
     // Parse probe_node_ids from JSON string
     let nodeIds: string[] = [];
     if (monitor.probe_node_ids) {
@@ -204,6 +208,17 @@ export function ServiceMonitorPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Final validation before submit
+    const validation = validateAndCleanTarget(
+      formData.target,
+      formData.type as ProbeType
+    );
+
+    if (!validation.valid) {
+      setTargetError(validation.error || '目标格式无效');
+      return;
+    }
+
     const url = editingMonitor
       ? `/api/v1/vms/service-monitors/${editingMonitor.id}`
       : '/api/v1/vms/service-monitors';
@@ -211,8 +226,10 @@ export function ServiceMonitorPage() {
     const method = editingMonitor ? 'PUT' : 'POST';
 
     // Convert probe_node_ids array to JSON string for backend
+    // Use cleaned target value from validation
     const payload = {
       ...formData,
+      target: validation.cleanedValue,
       probe_node_ids: formData.probe_node_ids && formData.probe_node_ids.length > 0
         ? JSON.stringify(formData.probe_node_ids)
         : undefined,
@@ -231,6 +248,11 @@ export function ServiceMonitorPage() {
       if (data.code === 0) {
         setIsDialogOpen(false);
         fetchMonitors();
+      } else if (data.message) {
+        // Display backend validation error
+        if (data.message.includes('target') || data.message.includes('目标')) {
+          setTargetError(data.message);
+        }
       }
     } catch (error) {
       console.error('Failed to save monitor:', error);
@@ -323,12 +345,6 @@ export function ServiceMonitorPage() {
       default:
         return '服务端';
     }
-  };
-
-  const getHostName = (hostId?: string) => {
-    if (!hostId) return '服务端';
-    const host = hosts.find(h => h.id === hostId);
-    return host ? `${host.name} (${host.ip})` : '未知节点';
   };
 
   return (
@@ -521,9 +537,21 @@ export function ServiceMonitorPage() {
                 <Label htmlFor="type">探测类型</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value: 'HTTP' | 'TCP' | 'ICMP') =>
-                    setFormData({ ...formData, type: value })
-                  }
+                  onValueChange={(value: 'HTTP' | 'TCP' | 'ICMP') => {
+                    setFormData({ ...formData, type: value });
+                    // Re-validate target when type changes
+                    if (formData.target.trim()) {
+                      const validation = validateAndCleanTarget(
+                        formData.target,
+                        value as ProbeType
+                      );
+                      if (!validation.valid) {
+                        setTargetError(validation.error || '目标格式无效');
+                      } else {
+                        setTargetError('');
+                      }
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -548,11 +576,31 @@ export function ServiceMonitorPage() {
                       : '192.168.1.1'
                   }
                   value={formData.target}
-                  onChange={(e) =>
-                    setFormData({ ...formData, target: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const newTarget = e.target.value;
+                    setFormData({ ...formData, target: newTarget });
+
+                    // Validate target on change
+                    if (newTarget.trim()) {
+                      const validation = validateAndCleanTarget(
+                        newTarget,
+                        formData.type as ProbeType
+                      );
+                      if (!validation.valid) {
+                        setTargetError(validation.error || '目标格式无效');
+                      } else {
+                        setTargetError('');
+                      }
+                    } else {
+                      setTargetError('');
+                    }
+                  }}
                   required
+                  className={targetError ? 'border-red-500' : ''}
                 />
+                {targetError && (
+                  <p className="text-xs text-red-500">{targetError}</p>
+                )}
               </div>
 
               <div className="grid gap-2">

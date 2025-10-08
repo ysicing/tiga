@@ -51,7 +51,7 @@ export function HostEditPage() {
     enabled: !!id,
   });
 
-  const host = hostResponse?.data;
+  const host = (hostResponse as any)?.data;
 
   const [formData, setFormData] = useState<HostFormData>({
     name: '',

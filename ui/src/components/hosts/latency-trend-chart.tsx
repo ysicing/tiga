@@ -143,7 +143,7 @@ export function LatencyTrendChart({
                 borderRadius: '8px',
               }}
               labelFormatter={formatFullTime}
-              formatter={(value: number, name: string, props: any) => {
+              formatter={(value: number, _name: string, props: any) => {
                 const status = props.payload.success ? 'Success' : 'Failed';
                 const statusColor = props.payload.success ? 'text-green-600' : 'text-red-600';
                 return [

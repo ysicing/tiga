@@ -287,6 +287,16 @@ export const ServiceMonitorService = {
     const data = await response.json();
     return data.data || [];
   },
+
+  // Get network topology matrix data
+  async getNetworkTopology(hours: number = 1): Promise<NetworkTopologyResponse> {
+    const response = await fetch(`/api/v1/vms/service-monitors/topology?hours=${hours}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch network topology');
+    }
+    const data = await response.json();
+    return data.data;
+  },
 };
 
 // 30-day service statistics response
@@ -325,4 +335,30 @@ export interface ServiceHistoryInfo {
   timestamps: number[];         // Unix timestamps in milliseconds
   avg_delays: number[];         // Average delays in milliseconds
   uptimes: number[];            // Uptime percentages
+}
+
+// Network topology types
+export interface NetworkTopologyNode {
+  id: string;
+  name: string;
+  type: 'host' | 'service';
+  is_online: boolean;
+}
+
+export interface NetworkTopologyEdge {
+  source_id: string;
+  target_id: string;
+  avg_latency: number;
+  min_latency: number;
+  max_latency: number;
+  packet_loss: number;
+  success_rate: number;
+  probe_count: number;
+  last_probe_time: string;
+}
+
+export interface NetworkTopologyResponse {
+  nodes: NetworkTopologyNode[];
+  edges: NetworkTopologyEdge[];
+  matrix: Record<string, Record<string, NetworkTopologyEdge>>;
 }

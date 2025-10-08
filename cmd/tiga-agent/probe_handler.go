@@ -40,8 +40,6 @@ func (h *ProbeTaskHandler) Stop() {
 
 // HandleProbeTask executes a probe task and reports the result
 func (h *ProbeTaskHandler) HandleProbeTask(task *proto.AgentTask, config *Config) {
-	logrus.Debugf("[ProbeTask] Handling probe task: %+v", task.Params)
-
 	// Parse probe parameters
 	probeType, ok := task.Params["type"]
 	if !ok {
@@ -61,6 +59,10 @@ func (h *ProbeTaskHandler) HandleProbeTask(task *proto.AgentTask, config *Config
 		return
 	}
 
+	// Log detailed task information
+	logrus.Debugf("[ProbeTask] 收到服务监控任务 - 类型: %s, 目标: %s, 监控ID: %s, TaskID: %d",
+		probeType, target, monitorIDStr, task.TaskId)
+
 	// Execute probe based on type
 	var result *probe.ProbeResult
 	var err error
@@ -71,12 +73,15 @@ func (h *ProbeTaskHandler) HandleProbeTask(task *proto.AgentTask, config *Config
 		if method == "" {
 			method = "GET"
 		}
+		logrus.Debugf("[ProbeTask] 执行HTTP探测 - 方法: %s, URL: %s", method, target)
 		result = h.executeHTTPProbe(target, method, task.Params)
 
 	case "tcp", "TCP":
+		logrus.Debugf("[ProbeTask] 执行TCP探测 - 地址: %s", target)
 		result = h.executeTCPProbe(target)
 
 	case "icmp", "ICMP":
+		logrus.Debugf("[ProbeTask] 执行ICMP探测 - 主机: %s", target)
 		result = h.executeICMPProbe(target)
 
 	default:
@@ -87,6 +92,15 @@ func (h *ProbeTaskHandler) HandleProbeTask(task *proto.AgentTask, config *Config
 	if err != nil {
 		logrus.Errorf("[ProbeTask] Probe execution failed: %v", err)
 		return
+	}
+
+	// Log probe result summary
+	if result != nil {
+		if result.Success {
+			logrus.Debugf("[ProbeTask] 探测成功 - 延迟: %dms, 状态码: %d", result.Latency, result.StatusCode)
+		} else {
+			logrus.Debugf("[ProbeTask] 探测失败 - 错误: %s", result.Error)
+		}
 	}
 
 	// Report result back to server (using buffer for batch reporting)

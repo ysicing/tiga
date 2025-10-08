@@ -1,8 +1,13 @@
 package handlers
 
 import (
+	"fmt"
+	"net"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,10 +46,17 @@ func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 		return
 	}
 
+	// Validate and clean target
+	cleanedTarget, err := validateAndCleanTarget(req.Target, models.ProbeType(req.Type))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40002, "message": fmt.Sprintf("Invalid target: %v", err)})
+		return
+	}
+
 	mon := &models.ServiceMonitor{
 		Name:            req.Name,
 		Type:            models.ProbeType(req.Type),
-		Target:          req.Target,
+		Target:          cleanedTarget, // Use cleaned target
 		Interval:        req.Interval,
 		Timeout:         req.Timeout,
 		ProbeStrategy:   models.ProbeStrategy(req.ProbeStrategy),
@@ -124,7 +136,13 @@ func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
 		mon.Type = models.ProbeType(*req.Type)
 	}
 	if req.Target != nil {
-		mon.Target = *req.Target
+		// Validate and clean target when updating
+		cleanedTarget, err := validateAndCleanTarget(*req.Target, mon.Type)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 40002, "message": fmt.Sprintf("Invalid target: %v", err)})
+			return
+		}
+		mon.Target = cleanedTarget
 	}
 	if req.Interval != nil {
 		mon.Interval = *req.Interval
@@ -266,4 +284,151 @@ func (h *ServiceMonitorHandler) GetOverview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": overview})
+}
+
+// GetNetworkTopology gets network topology matrix data showing latencies between nodes
+// This endpoint aggregates probe results to show connectivity between monitoring nodes
+func (h *ServiceMonitorHandler) GetNetworkTopology(c *gin.Context) {
+	// Get time range (default to last 1 hour)
+	hoursStr := c.DefaultQuery("hours", "1")
+	hours, err := strconv.Atoi(hoursStr)
+	if err != nil || hours <= 0 || hours > 24 {
+		hours = 1
+	}
+
+	topology, err := h.probeService.GetNetworkTopology(c.Request.Context(), hours)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get network topology"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": topology})
+}
+
+// validateAndCleanTarget validates and cleans the monitoring target
+// It removes leading/trailing whitespace and special characters, and validates format
+func validateAndCleanTarget(target string, probeType models.ProbeType) (string, error) {
+	// Trim all leading/trailing whitespace including spaces, tabs, newlines
+	cleaned := strings.TrimSpace(target)
+	cleaned = strings.Trim(cleaned, "\t\n\r")
+
+	// Additional cleanup: remove any control characters
+	cleaned = strings.Map(func(r rune) rune {
+		if r < 32 && r != '\t' && r != '\n' && r != '\r' {
+			return -1 // Remove control characters
+		}
+		return r
+	}, cleaned)
+	cleaned = strings.TrimSpace(cleaned) // Final trim
+
+	if cleaned == "" {
+		return "", fmt.Errorf("target cannot be empty")
+	}
+
+	switch probeType {
+	case models.ProbeTypeHTTP:
+		return validateHTTPTarget(cleaned)
+	case models.ProbeTypeICMP:
+		return validateICMPTarget(cleaned)
+	case models.ProbeTypeTCP:
+		return validateTCPTarget(cleaned)
+	default:
+		return "", fmt.Errorf("unsupported probe type: %s", probeType)
+	}
+}
+
+// validateHTTPTarget validates HTTP/HTTPS URL format
+func validateHTTPTarget(target string) (string, error) {
+	// Add http:// prefix if missing
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		target = "http://" + target
+	}
+
+	// Parse URL
+	u, err := url.Parse(target)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL format: %v", err)
+	}
+
+	// Validate scheme
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("URL scheme must be http or https")
+	}
+
+	// Validate host
+	if u.Host == "" {
+		return "", fmt.Errorf("URL must have a valid host")
+	}
+
+	// Return the cleaned URL
+	return u.String(), nil
+}
+
+// validateICMPTarget validates IP address or domain name for ICMP ping
+func validateICMPTarget(target string) (string, error) {
+	// Check if it's a valid IP address
+	if ip := net.ParseIP(target); ip != nil {
+		return target, nil
+	}
+
+	// Check if it's a valid domain name
+	domainRegex := regexp.MustCompile(`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
+	if domainRegex.MatchString(target) {
+		return target, nil
+	}
+
+	// Also allow simple hostnames (no dots)
+	hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
+	if hostnameRegex.MatchString(target) {
+		return target, nil
+	}
+
+	return "", fmt.Errorf("target must be a valid IP address or domain name")
+}
+
+// validateTCPTarget validates TCP target in format "host:port" or "host" (port optional)
+func validateTCPTarget(target string) (string, error) {
+	// Check if port is specified
+	host, port, err := net.SplitHostPort(target)
+	if err != nil {
+		// If error, assume no port specified - validate as host only
+		if validateHost(target) {
+			return target, nil
+		}
+		return "", fmt.Errorf("invalid TCP target format (expected host:port or host)")
+	}
+
+	// Validate host
+	if !validateHost(host) {
+		return "", fmt.Errorf("invalid host in TCP target")
+	}
+
+	// Validate port
+	portNum, err := strconv.Atoi(port)
+	if err != nil {
+		return "", fmt.Errorf("invalid port number: %s", port)
+	}
+	if portNum < 1 || portNum > 65535 {
+		return "", fmt.Errorf("port must be between 1 and 65535")
+	}
+
+	return net.JoinHostPort(host, port), nil
+}
+
+// validateHost validates if a string is a valid IP or domain name
+func validateHost(host string) bool {
+	// Check if it's a valid IP address
+	if ip := net.ParseIP(host); ip != nil {
+		return true
+	}
+
+	// Check if it's a valid domain name
+	domainRegex := regexp.MustCompile(`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
+	if domainRegex.MatchString(host) {
+		return true
+	}
+
+	// Also allow simple hostnames (no dots)
+	hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
+	return hostnameRegex.MatchString(host)
 }

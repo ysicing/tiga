@@ -503,6 +503,21 @@ func (m *AgentManager) getPendingTasks(uuid string) []*proto.AgentTask {
 		case task := <-agentConn.taskQueue:
 			tasks = append(tasks, task)
 		default:
+			// Log tasks being sent to agent
+			if len(tasks) > 0 {
+				logrus.Debugf("[TaskDispatch] 服务端发送 %d 个任务给Agent %s", len(tasks), uuid)
+				for _, task := range tasks {
+					taskType := "unknown"
+					if t, ok := task.Params["type"]; ok {
+						taskType = t
+					}
+					target := "unknown"
+					if tgt, ok := task.Params["target"]; ok {
+						target = tgt
+					}
+					logrus.Debugf("[TaskDispatch] -> 任务ID: %d, 类型: %s, 目标: %s", task.TaskId, taskType, target)
+				}
+			}
 			return tasks
 		}
 	}
@@ -517,11 +532,35 @@ func (m *AgentManager) QueueTask(uuid string, task *proto.AgentTask) error {
 
 	agentConn := conn.(*AgentConnection)
 
+	// Log task queuing
+	taskType := "unknown"
+	if t, ok := task.Params["type"]; ok {
+		taskType = t
+	}
+	target := "unknown"
+	if tgt, ok := task.Params["target"]; ok {
+		target = tgt
+	}
+	logrus.Debugf("[TaskQueue] 服务端将任务加入队列 - Agent: %s, 任务ID: %d, 类型: %s, 目标: %s",
+		uuid, task.TaskId, taskType, target)
+
 	// Non-blocking send to avoid deadlock
 	select {
 	case agentConn.taskQueue <- task:
+		logrus.Debugf("[TaskQueue] 任务入队成功 - Agent: %s, 任务ID: %d", uuid, task.TaskId)
 		return nil
 	default:
+		logrus.Errorf("[TaskQueue] 任务队列已满 - Agent: %s, 任务ID: %d", uuid, task.TaskId)
 		return fmt.Errorf("task queue full for agent: %s", uuid)
 	}
+}
+
+// GetAllAgentUUIDs returns all connected agent UUIDs
+func (m *AgentManager) GetAllAgentUUIDs() []string {
+	var uuids []string
+	m.connections.Range(func(key, value interface{}) bool {
+		uuids = append(uuids, key.(string))
+		return true
+	})
+	return uuids
 }

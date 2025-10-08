@@ -192,3 +192,138 @@ func (s *ServiceProbeService) GetOverview(ctx context.Context) (*ServiceOverview
 		Services: stats,
 	}, nil
 }
+
+// NetworkTopologyNode represents a node in the network topology
+type NetworkTopologyNode struct {
+	ID       uuid.UUID `json:"id"`
+	Name     string    `json:"name"`
+	Type     string    `json:"type"` // "host" or "service"
+	IsOnline bool      `json:"is_online"`
+}
+
+// NetworkTopologyEdge represents connectivity between nodes
+type NetworkTopologyEdge struct {
+	SourceID      uuid.UUID `json:"source_id"`
+	TargetID      uuid.UUID `json:"target_id"`
+	AvgLatency    float32   `json:"avg_latency"`    // Average latency in ms
+	MinLatency    float32   `json:"min_latency"`    // Minimum latency in ms
+	MaxLatency    float32   `json:"max_latency"`    // Maximum latency in ms
+	PacketLoss    float64   `json:"packet_loss"`    // Packet loss percentage
+	SuccessRate   float64   `json:"success_rate"`   // Success rate percentage
+	ProbeCount    int       `json:"probe_count"`    // Number of probes
+	LastProbeTime time.Time `json:"last_probe_time"`
+}
+
+// NetworkTopologyResponse contains the network topology data
+type NetworkTopologyResponse struct {
+	Nodes []NetworkTopologyNode `json:"nodes"`
+	Edges []NetworkTopologyEdge `json:"edges"`
+	// Matrix provides direct access as a 2D array [source][target]
+	Matrix map[string]map[string]*NetworkTopologyEdge `json:"matrix"`
+}
+
+// GetNetworkTopology gets network topology matrix showing connectivity between nodes
+func (s *ServiceProbeService) GetNetworkTopology(ctx context.Context, hours int) (*NetworkTopologyResponse, error) {
+	start := time.Now().Add(-time.Duration(hours) * time.Hour)
+	end := time.Now()
+
+	// Get all hosts that are participating in monitoring
+	hosts, err := s.serviceRepo.GetActiveHostNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all service monitors
+	monitors, _, err := s.serviceRepo.List(ctx, repository.ServiceFilter{
+		Page:     1,
+		PageSize: 1000,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Build nodes list
+	nodes := make([]NetworkTopologyNode, 0)
+	nodeMap := make(map[uuid.UUID]NetworkTopologyNode)
+
+	// Add host nodes
+	for _, host := range hosts {
+		node := NetworkTopologyNode{
+			ID:       host.ID,
+			Name:     host.Name,
+			Type:     "host",
+			IsOnline: host.Online, // Use the Online field directly
+		}
+		nodes = append(nodes, node)
+		nodeMap[host.ID] = node
+	}
+
+	// Add service monitor nodes (targets)
+	for _, monitor := range monitors {
+		node := NetworkTopologyNode{
+			ID:       monitor.ID,
+			Name:     monitor.Name,
+			Type:     "service",
+			IsOnline: monitor.Status == "online",
+		}
+		nodes = append(nodes, node)
+		nodeMap[monitor.ID] = node
+	}
+
+	// Get probe results for the time period to build edges
+	edges := make([]NetworkTopologyEdge, 0)
+	matrix := make(map[string]map[string]*NetworkTopologyEdge)
+
+	// For each host-service pair, calculate statistics
+	for _, host := range hosts {
+		matrix[host.ID.String()] = make(map[string]*NetworkTopologyEdge)
+
+		for _, monitor := range monitors {
+			// Get probe results for this host-service pair
+			results, err := s.serviceRepo.GetProbeResultsByHostAndService(ctx, host.ID, monitor.ID, start, end)
+			if err != nil || len(results) == 0 {
+				continue
+			}
+
+			// Calculate statistics
+			var totalLatency float32
+			var minLatency float32 = float32(^uint32(0) >> 1) // Max float32
+			var maxLatency float32
+			successCount := 0
+
+			for _, result := range results {
+				totalLatency += float32(result.Latency)
+				if float32(result.Latency) < minLatency {
+					minLatency = float32(result.Latency)
+				}
+				if float32(result.Latency) > maxLatency {
+					maxLatency = float32(result.Latency)
+				}
+				if result.Success {
+					successCount++
+				}
+			}
+
+			edge := &NetworkTopologyEdge{
+				SourceID:      host.ID,
+				TargetID:      monitor.ID,
+				AvgLatency:    totalLatency / float32(len(results)),
+				MinLatency:    minLatency,
+				MaxLatency:    maxLatency,
+				SuccessRate:   float64(successCount) / float64(len(results)) * 100,
+				PacketLoss:    float64(len(results)-successCount) / float64(len(results)) * 100,
+				ProbeCount:    len(results),
+				LastProbeTime: results[len(results)-1].Timestamp,
+			}
+
+			edges = append(edges, *edge)
+			matrix[host.ID.String()][monitor.ID.String()] = edge
+		}
+	}
+
+	return &NetworkTopologyResponse{
+		Nodes:  nodes,
+		Edges:  edges,
+		Matrix: matrix,
+	}, nil
+}

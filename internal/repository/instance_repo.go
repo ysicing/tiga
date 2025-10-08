@@ -148,7 +148,23 @@ func (r *InstanceRepository) ListInstances(ctx context.Context, filter *ListInst
 	if len(filter.Tags) > 0 {
 		// Tags filter with AND logic: instance must have all specified tags
 		for _, tag := range filter.Tags {
-			query = query.Where("? = ANY(tags)", tag)
+			tag = strings.TrimSpace(tag)
+			if tag == "" {
+				continue
+			}
+
+			// Build JSON array snippet for parameter binding
+			jsonArray := fmt.Sprintf(`["%s"]`, strings.ReplaceAll(tag, `"`, `\"`))
+
+			switch r.db.Dialector.Name() {
+			case "postgres":
+				query = query.Where("(tags)::jsonb @> ?::jsonb", jsonArray)
+			case "mysql":
+				query = query.Where("JSON_CONTAINS(CAST(tags AS JSON), CAST(? AS JSON))", jsonArray)
+			default:
+				// Fallback to LIKE matching for other dialects (e.g. sqlite)
+				query = query.Where("tags LIKE ?", fmt.Sprintf(`%%"%s"%%`, tag))
+			}
 		}
 	}
 

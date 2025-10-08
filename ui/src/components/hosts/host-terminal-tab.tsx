@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { Play, Clock, User, Monitor, Download, Loader2, XCircle, AlertTriangle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Play, Monitor, Download, Loader2, XCircle, AlertTriangle } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -76,7 +76,7 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
         page: 1,
         page_size: 50,
       });
-      return response.data;
+      return (response as any).data;
     },
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
@@ -115,7 +115,7 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
 
       try {
         // Fetch with authentication headers (returns asciicast text string directly)
-        const recording = await devopsAPI.vms.webssh.getRecording(selectedSession);
+        const recording = await devopsAPI.vms.webssh.getRecording(selectedSession) as any;
         console.log('Recording fetched, length:', recording.length);
 
         // Create player with fetched asciicast data (pass as data object, not URL)

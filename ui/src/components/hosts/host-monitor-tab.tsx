@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { MonitorChart } from '@/components/hosts/monitor-chart';
 import { MultiLineChart } from '@/components/hosts/multi-line-chart';
+import { NodeProbeChart } from '@/components/service-monitor/node-probe-chart';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatBytes } from '@/lib/utils';
 import { devopsAPI } from '@/lib/api-client';
+import { ServiceMonitorService } from '@/services/service-monitor';
 
 type TimeRange = '15m' | '1h' | '6h' | '12h' | '1d' | '7d' | '30d';
 
@@ -28,6 +31,17 @@ export function HostMonitorTab({ hostId }: HostMonitorTabProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>(() => {
     const saved = localStorage.getItem('host-monitor-time-range');
     return (saved as TimeRange) || '1d';
+  });
+
+  // Fetch probe history data
+  const { data: probeHistory = [] } = useQuery({
+    queryKey: ['host-probe-history', hostId, timeRange],
+    queryFn: () => {
+      const hours = parseInt(TIME_RANGES[timeRange].duration / (60 * 60 * 1000) as any);
+      return ServiceMonitorService.getHostProbeHistory(hostId, hours);
+    },
+    enabled: !!hostId,
+    refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   useEffect(() => {
@@ -114,6 +128,7 @@ export function HostMonitorTab({ hostId }: HostMonitorTabProps) {
           <TabsTrigger value="disk">磁盘</TabsTrigger>
           <TabsTrigger value="connections">连接数</TabsTrigger>
           <TabsTrigger value="network">网络</TabsTrigger>
+          <TabsTrigger value="probes">服务探测</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -259,6 +274,35 @@ export function HostMonitorTab({ hostId }: HostMonitorTabProps) {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="probes" className="space-y-4">
+          <div className="grid gap-4">
+            {probeHistory.length > 0 ? (
+              <>
+                <NodeProbeChart
+                  data={probeHistory}
+                  title={`服务探测延迟（${TIME_RANGES[timeRange].label}）`}
+                  description="显示此节点对各服务的探测延迟变化趋势"
+                  metricType="latency"
+                />
+                <NodeProbeChart
+                  data={probeHistory}
+                  title={`服务探测可用率（${TIME_RANGES[timeRange].label}）`}
+                  description="显示此节点对各服务的探测成功率变化趋势"
+                  metricType="uptime"
+                />
+              </>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8 text-gray-500">
+                    该节点暂无服务探测任务
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

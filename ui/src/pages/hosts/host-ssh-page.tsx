@@ -23,7 +23,7 @@ export function HostSSHPage() {
     staleTime: 10_000,
   });
 
-  const host = hostResponse?.data;
+  const host = (hostResponse as any)?.data;
 
   const createSession = useCallback(async () => {
     if (!host || !host.online || isCreating) return;
@@ -32,9 +32,7 @@ export function HostSSHPage() {
     try {
       const response = await devopsAPI.vms.webssh.createSession({
         host_id: host.id,
-        width: 160,
-        height: 40,
-      });
+      }) as any;
 
       if (response.code !== 0) {
         throw new Error(response.message || '创建 WebSSH 会话失败');

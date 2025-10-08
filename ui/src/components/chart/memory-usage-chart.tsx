@@ -47,7 +47,11 @@ const MemoryUsageChart = React.memo((prop: MemoryUsageChartProps) => {
   // Determine if we should use GB instead of MB
   const useGB = React.useMemo(() => {
     if (!memoryChartData.length) return false
-    const maxMemory = Math.max(...memoryChartData.map((point) => point.memory))
+    const validMemoryValues = memoryChartData
+      .map((point) => point.memory)
+      .filter((memory): memory is number => memory !== null)
+    if (validMemoryValues.length === 0) return false
+    const maxMemory = Math.max(...validMemoryValues)
     return maxMemory > 900
   }, [memoryChartData])
 
@@ -56,7 +60,7 @@ const MemoryUsageChart = React.memo((prop: MemoryUsageChartProps) => {
     if (!useGB) return memoryChartData
     return memoryChartData.map((point) => ({
       ...point,
-      memory: point.memory / 1024, // Convert MB to GB
+      memory: point.memory !== null ? point.memory / 1024 : null, // Convert MB to GB, preserve null
     }))
   }, [memoryChartData, useGB])
 

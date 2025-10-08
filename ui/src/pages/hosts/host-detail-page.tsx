@@ -30,7 +30,7 @@ export function HostDetailPage() {
     staleTime: 10000, // 10 seconds
   });
 
-  const host = hostResponse?.data;
+  const host = (hostResponse as any)?.data;
 
   // Save active tab to localStorage
   useEffect(() => {

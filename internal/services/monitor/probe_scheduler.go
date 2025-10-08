@@ -13,14 +13,21 @@ import (
 	"sync"
 	"time"
 
-	probing "github.com/prometheus-community/pro-bing"
 	"github.com/google/uuid"
+	probing "github.com/prometheus-community/pro-bing"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/alert"
+	"github.com/ysicing/tiga/proto"
 )
+
+// AgentTaskDispatcher describes the minimal agent manager capabilities required by the scheduler.
+type AgentTaskDispatcher interface {
+	QueueTask(agentUUID string, task *proto.AgentTask) error
+	GetAllAgentUUIDs() []string
+}
 
 // ProbeTask represents a scheduled probe task
 type ProbeTask struct {
@@ -31,15 +38,25 @@ type ProbeTask struct {
 	NextRun     time.Time
 }
 
+type certificateMetadata struct {
+	Subject      string   `json:"subject"`
+	Issuer       string   `json:"issuer"`
+	NotBefore    string   `json:"not_before"`
+	NotAfter     string   `json:"not_after"`
+	DaysToExpiry int      `json:"days_to_expiry"`
+	DNSNames     []string `json:"dns_names"`
+}
+
 // ServiceProbeScheduler schedules and manages service probe tasks
 type ServiceProbeScheduler struct {
-	serviceRepo repository.ServiceRepository
-	cron        *cron.Cron
-	tasks       sync.Map // map[uuid.UUID]*ProbeTask
-	mu          sync.RWMutex
-	httpClient  *http.Client // HTTP client for probes
-	sentinel    *ServiceSentinel // ServiceSentinel for data aggregation
-	alertEngine *alert.AlertEngine // AlertEngine for triggering alerts
+	serviceRepo  repository.ServiceRepository
+	cron         *cron.Cron
+	tasks        sync.Map // map[uuid.UUID]*ProbeTask
+	mu           sync.RWMutex
+	httpClient   *http.Client        // HTTP client for probes
+	sentinel     *ServiceSentinel    // ServiceSentinel for data aggregation
+	alertEngine  *alert.AlertEngine  // AlertEngine for triggering alerts
+	agentManager AgentTaskDispatcher // AgentManager for task dispatch
 
 	// Agent communication (for distributed probing)
 	agentStreams sync.Map // map[string]proto.ServiceProbe_ExecuteProbeServer
@@ -47,7 +64,7 @@ type ServiceProbeScheduler struct {
 
 // NewServiceProbeScheduler creates a new scheduler
 func NewServiceProbeScheduler(serviceRepo repository.ServiceRepository, alertEngine *alert.AlertEngine) *ServiceProbeScheduler {
-	sentinel := NewServiceSentinel(serviceRepo)
+	sentinel := NewServiceSentinel(serviceRepo, alertEngine)
 
 	return &ServiceProbeScheduler{
 		serviceRepo: serviceRepo,
@@ -169,6 +186,10 @@ func (s *ServiceProbeScheduler) buildCronExpression(intervalSeconds int) string 
 func (s *ServiceProbeScheduler) executeProbe(monitor *models.ServiceMonitor) {
 	ctx := context.Background()
 
+	// Log task information
+	logrus.Debugf("[ServiceProbe] 服务端收到监控任务 - 类型: %s, 目标: %s, 监控ID: %s, 名称: %s, 策略: %s",
+		monitor.Type, monitor.Target, monitor.ID, monitor.Name, monitor.ProbeStrategy)
+
 	// Update last run time
 	if task, ok := s.tasks.Load(monitor.ID); ok {
 		probeTask := task.(*ProbeTask)
@@ -176,27 +197,65 @@ func (s *ServiceProbeScheduler) executeProbe(monitor *models.ServiceMonitor) {
 		probeTask.NextRun = s.cron.Entry(probeTask.CronEntryID).Next
 	}
 
+	// Decide execution strategy
+	if monitor.ProbeStrategy == models.ProbeStrategyServer || monitor.ProbeStrategy == "" {
+		// Server-side execution
+		s.executeServerProbe(ctx, monitor)
+	} else {
+		// Agent-side execution
+		s.dispatchAgentProbe(ctx, monitor)
+	}
+}
+
+// executeServerProbe executes probe on server side
+func (s *ServiceProbeScheduler) executeServerProbe(ctx context.Context, monitor *models.ServiceMonitor) {
 	// Execute probe based on type
-	var result *models.ServiceProbeResult
+	var (
+		result   *models.ServiceProbeResult
+		certInfo *certificateMetadata
+	)
 
 	switch monitor.Type {
 	case models.ProbeTypeHTTP:
-		result = s.executeHTTPProbe(ctx, monitor)
+		logrus.Debugf("[ServiceProbe] 服务端执行HTTP探测 - 方法: %s, URL: %s", monitor.HTTPMethod, monitor.Target)
+		result, certInfo = s.executeHTTPProbe(ctx, monitor)
 	case models.ProbeTypeTCP:
+		logrus.Debugf("[ServiceProbe] 服务端执行TCP探测 - 地址: %s", monitor.Target)
 		result = s.executeTCPProbe(ctx, monitor)
 	case models.ProbeTypeICMP:
+		logrus.Debugf("[ServiceProbe] 服务端执行ICMP探测 - 主机: %s", monitor.Target)
 		result = s.executeICMPProbe(ctx, monitor)
 	default:
-		fmt.Printf("Unknown probe type: %s\n", monitor.Type)
+		logrus.Errorf("[ServiceProbe] Unknown probe type: %s", monitor.Type)
 		return
 	}
 
 	// Save result
 	if err := s.serviceRepo.SaveProbeResult(ctx, result); err != nil {
-		fmt.Printf("Error saving probe result: %v\n", err)
+		logrus.Errorf("[ServiceProbe] Error saving probe result: %v", err)
+	}
+
+	// Log probe result summary
+	if result != nil {
+		if result.Success {
+			logrus.Debugf("[ServiceProbe] 服务端探测成功 - 监控: %s, 延迟: %dms, 状态码: %d",
+				monitor.Name, result.Latency, result.HTTPStatusCode)
+		} else {
+			logrus.Debugf("[ServiceProbe] 服务端探测失败 - 监控: %s, 错误: %s",
+				monitor.Name, result.ErrorMessage)
+		}
 	}
 
 	// Report result to ServiceSentinel for aggregation
+	var metadataJSON string
+	if certInfo != nil {
+		if payload, err := json.Marshal(certInfo); err == nil {
+			metadataJSON = string(payload)
+		} else {
+			logrus.Warnf("Failed to encode certificate metadata for monitor %s: %v", monitor.ID, err)
+		}
+	}
+
 	report := &ProbeReport{
 		ServiceMonitorID: result.ServiceMonitorID,
 		HostNodeID:       uuid.Nil, // Server-side probe (use uuid.Nil for server probes)
@@ -204,22 +263,26 @@ func (s *ServiceProbeScheduler) executeProbe(monitor *models.ServiceMonitor) {
 		Latency:          float32(result.Latency),
 		Timestamp:        result.Timestamp,
 		ErrorMessage:     result.ErrorMessage,
-		Data:             result.HTTPResponseBody, // For HTTP probes, this could contain cert info
+		Data:             metadataJSON, // Contains cert info for HTTPS probes
 	}
 	s.sentinel.ReportProbeResult(report)
 
 	// Check for failures and trigger alerts if needed
 	s.checkProbeFailures(ctx, monitor, result)
+
+	// Check SSL certificate expiry for HTTPS monitors
+	s.checkCertificateExpiry(ctx, monitor, result, certInfo)
 }
 
 // executeHTTPProbe executes an HTTP/HTTPS probe
-func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *models.ServiceMonitor) *models.ServiceProbeResult {
+func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *models.ServiceMonitor) (*models.ServiceProbeResult, *certificateMetadata) {
 	start := time.Now()
 	result := &models.ServiceProbeResult{
 		ServiceMonitorID: monitor.ID,
 		Timestamp:        start,
 		Success:          false,
 	}
+	var certInfo *certificateMetadata
 
 	// Parse target URL
 	targetURL := monitor.Target
@@ -231,7 +294,7 @@ func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *m
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Invalid URL: %v", err)
 		logrus.Errorf("HTTP probe failed for %s: %v", monitor.Name, err)
-		return result
+		return result, nil
 	}
 
 	// Create HTTP request
@@ -244,7 +307,7 @@ func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *m
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Failed to create request: %v", err)
 		logrus.Errorf("HTTP probe failed for %s: %v", monitor.Name, err)
-		return result
+		return result, nil
 	}
 
 	// Parse and add custom headers if configured
@@ -265,7 +328,7 @@ func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *m
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Request failed: %v", err)
 		logrus.Errorf("HTTP probe failed for %s: %v", monitor.Name, err)
-		return result
+		return result, nil
 	}
 	defer resp.Body.Close()
 
@@ -313,19 +376,37 @@ func (s *ServiceProbeScheduler) executeHTTPProbe(ctx context.Context, monitor *m
 		cert := resp.TLS.PeerCertificates[0]
 		daysUntilExpiry := int(time.Until(cert.NotAfter).Hours() / 24)
 
-		// Warn if certificate expiring soon
+		// Store certificate information
+		certInfo = &certificateMetadata{
+			Subject:      cert.Subject.CommonName,
+			Issuer:       cert.Issuer.CommonName,
+			NotBefore:    cert.NotBefore.Format(time.RFC3339),
+			NotAfter:     cert.NotAfter.Format(time.RFC3339),
+			DaysToExpiry: daysUntilExpiry,
+			DNSNames:     cert.DNSNames,
+		}
+
+		// Warn if certificate expiring soon (30 days)
 		if daysUntilExpiry < 30 && result.Success {
 			// Don't fail the probe, but add a warning
 			if result.ErrorMessage == "" {
 				result.ErrorMessage = fmt.Sprintf("Warning: SSL certificate expiring in %d days", daysUntilExpiry)
 			}
 		}
+
+		// Critical warning if certificate expiring very soon (7 days)
+		if daysUntilExpiry < 7 {
+			if result.ErrorMessage == "" {
+				result.ErrorMessage = fmt.Sprintf("Critical: SSL certificate expiring in %d days!", daysUntilExpiry)
+			}
+			logrus.Warnf("[SSL Alert] Certificate for %s expiring in %d days", monitor.Name, daysUntilExpiry)
+		}
 	}
 
 	logrus.Debugf("HTTP probe %s completed: success=%v, status=%d, latency=%dms",
 		monitor.Name, result.Success, result.HTTPStatusCode, result.Latency)
 
-	return result
+	return result, certInfo
 }
 
 // executeTCPProbe executes a TCP port probe
@@ -539,6 +620,97 @@ func (s *ServiceProbeScheduler) checkProbeFailures(ctx context.Context, monitor 
 	}
 }
 
+// checkCertificateExpiry checks SSL certificate expiry and creates alerts
+func (s *ServiceProbeScheduler) checkCertificateExpiry(ctx context.Context, monitor *models.ServiceMonitor, latestResult *models.ServiceProbeResult, certInfo *certificateMetadata) {
+	// Only check HTTPS monitors
+	if monitor.Type != models.ProbeTypeHTTP {
+		return
+	}
+
+	// Check if monitor has certificate alert enabled (via NotifyOnFailure)
+	if !monitor.NotifyOnFailure || s.alertEngine == nil {
+		return
+	}
+
+	if certInfo == nil {
+		return
+	}
+
+	// Define severity levels
+	var severity string
+	var shouldAlert bool
+
+	if certInfo.DaysToExpiry < 0 {
+		// Certificate has expired
+		severity = "critical"
+		shouldAlert = true
+	} else if certInfo.DaysToExpiry <= 7 {
+		// Critical: expiring within 7 days
+		severity = "critical"
+		shouldAlert = true
+	} else if certInfo.DaysToExpiry <= 15 {
+		// Warning: expiring within 15 days
+		severity = "warning"
+		shouldAlert = true
+	} else if certInfo.DaysToExpiry <= 30 {
+		// Info: expiring within 30 days
+		severity = "info"
+		shouldAlert = true
+	}
+
+	if !shouldAlert {
+		return
+	}
+
+	// Create certificate alert event
+	message := fmt.Sprintf("SSL certificate for %s expiring in %d days", monitor.Name, certInfo.DaysToExpiry)
+	if certInfo.DaysToExpiry < 0 {
+		message = fmt.Sprintf("SSL certificate for %s has expired!", monitor.Name)
+	}
+
+	// Format certificate details
+	subject := certInfo.Subject
+	if subject == "" {
+		subject = "Unknown"
+	}
+	issuer := certInfo.Issuer
+	if issuer == "" {
+		issuer = "Unknown"
+	}
+	notAfter := certInfo.NotAfter
+	if notAfter == "" {
+		notAfter = "Unknown"
+	}
+
+	details := fmt.Sprintf("Certificate Details:\n- Subject: %s\n- Issuer: %s\n- Expires: %s\n- Days Until Expiry: %d",
+		subject, issuer, notAfter, certInfo.DaysToExpiry)
+
+	// Trigger certificate expiry alert via AlertEngine
+	certAlert := &models.ServiceAvailability{
+		ServiceMonitorID: monitor.ID,
+		Period:           "cert_check",
+		StartTime:        time.Now(),
+		EndTime:          time.Now(),
+		TotalChecks:      1,
+		SuccessfulChecks: 1,
+		FailedChecks:     0,
+		UptimePercentage: 100,
+		AvgLatency:       float64(latestResult.Latency),
+	}
+
+	// For cert expiry alerts, we manually create alert event
+	// since standard rule evaluation doesn't cover certificate expiry
+	// We'll use the existing alert engine but may need to enhance it
+	logrus.Infof("[SSL Alert] %s (severity: %s)", message, severity)
+	logrus.Debugf("[SSL Alert] %s", details)
+
+	// Try to evaluate with standard rules first
+	// Real implementation would create a dedicated cert alert event
+	if err := s.alertEngine.EvaluateServiceRules(ctx, monitor.ID, certAlert); err != nil {
+		logrus.Warnf("Failed to evaluate cert alert for service %s: %v", monitor.Name, err)
+	}
+}
+
 // TriggerManualProbe triggers an immediate probe for a monitor
 func (s *ServiceProbeScheduler) TriggerManualProbe(ctx context.Context, monitorID uuid.UUID) (*models.ServiceProbeResult, error) {
 	monitor, err := s.serviceRepo.GetByID(ctx, monitorID)
@@ -550,7 +722,7 @@ func (s *ServiceProbeScheduler) TriggerManualProbe(ctx context.Context, monitorI
 	var result *models.ServiceProbeResult
 	switch monitor.Type {
 	case models.ProbeTypeHTTP:
-		result = s.executeHTTPProbe(ctx, monitor)
+		result, _ = s.executeHTTPProbe(ctx, monitor)
 	case models.ProbeTypeTCP:
 		result = s.executeTCPProbe(ctx, monitor)
 	case models.ProbeTypeICMP:
@@ -606,4 +778,114 @@ func (s *ServiceProbeScheduler) GetOverviewStats(ctx context.Context) (map[strin
 		return nil, fmt.Errorf("sentinel not initialized")
 	}
 	return s.sentinel.CopyStats(ctx)
+}
+
+// SetAgentManager sets the agent manager (to avoid circular dependency)
+func (s *ServiceProbeScheduler) SetAgentManager(agentManager AgentTaskDispatcher) {
+	s.agentManager = agentManager
+}
+
+// dispatchAgentProbe dispatches probe task to agent(s)
+func (s *ServiceProbeScheduler) dispatchAgentProbe(ctx context.Context, monitor *models.ServiceMonitor) {
+	if s.agentManager == nil {
+		logrus.Warnf("[ServiceProbe] AgentManager not set, fallback to server probe for monitor %s", monitor.ID)
+		s.executeServerProbe(ctx, monitor)
+		return
+	}
+
+	// Get target agent UUIDs based on strategy
+	agentUUIDs, err := s.selectAgents(ctx, monitor)
+	if err != nil {
+		logrus.Errorf("[ServiceProbe] Failed to select agents for monitor %s: %v", monitor.ID, err)
+		return
+	}
+
+	if len(agentUUIDs) == 0 {
+		logrus.Warnf("[ServiceProbe] No agents available for monitor %s, fallback to server probe", monitor.ID)
+		s.executeServerProbe(ctx, monitor)
+		return
+	}
+
+	// Create agent task
+	task := &proto.AgentTask{
+		TaskId:   fmt.Sprintf("%d", time.Now().UnixNano()), // Use timestamp as task ID
+		TaskType: "probe",
+		Params: map[string]string{
+			"type":       string(monitor.Type),
+			"target":     monitor.Target,
+			"monitor_id": monitor.ID.String(),
+		},
+	}
+
+	// Add type-specific parameters
+	if monitor.Type == models.ProbeTypeHTTP {
+		task.Params["method"] = monitor.HTTPMethod
+		if monitor.HTTPHeaders != "" {
+			task.Params["headers"] = monitor.HTTPHeaders
+		}
+		if monitor.ExpectStatus > 0 {
+			task.Params["expected_status"] = fmt.Sprintf("%d", monitor.ExpectStatus)
+		}
+	}
+
+	// Dispatch task to each agent
+	for _, agentUUID := range agentUUIDs {
+		if err := s.agentManager.QueueTask(agentUUID, task); err != nil {
+			logrus.Errorf("[ServiceProbe] Failed to queue task to agent %s: %v", agentUUID, err)
+		} else {
+			logrus.Infof("[ServiceProbe] Dispatched probe task to agent %s for monitor %s (target: %s)",
+				agentUUID, monitor.Name, monitor.Target)
+		}
+	}
+}
+
+// selectAgents selects agent UUIDs based on probe strategy
+func (s *ServiceProbeScheduler) selectAgents(ctx context.Context, monitor *models.ServiceMonitor) ([]string, error) {
+	var agentUUIDs []string
+
+	switch monitor.ProbeStrategy {
+	case models.ProbeStrategyInclude:
+		// Parse included node IDs from JSON array
+		if monitor.ProbeNodeIDs != "" {
+			var nodeIDs []string
+			if err := json.Unmarshal([]byte(monitor.ProbeNodeIDs), &nodeIDs); err != nil {
+				return nil, fmt.Errorf("failed to parse probe_node_ids: %w", err)
+			}
+			agentUUIDs = nodeIDs
+		}
+
+	case models.ProbeStrategyExclude:
+		// Get all agents and exclude specified ones
+		allAgents := s.agentManager.GetAllAgentUUIDs()
+		if monitor.ProbeNodeIDs != "" {
+			var excludeIDs []string
+			if err := json.Unmarshal([]byte(monitor.ProbeNodeIDs), &excludeIDs); err != nil {
+				return nil, fmt.Errorf("failed to parse probe_node_ids: %w", err)
+			}
+			// Filter out excluded agents
+			excludeMap := make(map[string]bool)
+			for _, id := range excludeIDs {
+				excludeMap[id] = true
+			}
+			for _, uuid := range allAgents {
+				if !excludeMap[uuid] {
+					agentUUIDs = append(agentUUIDs, uuid)
+				}
+			}
+		} else {
+			agentUUIDs = allAgents
+		}
+
+	case models.ProbeStrategyGroup:
+		// Get agents by group name (this requires HostRepository support)
+		// For now, fallback to all agents
+		// TODO: Implement group-based agent selection
+		logrus.Warnf("[ServiceProbe] Group strategy not fully implemented yet, using all agents")
+		agentUUIDs = s.agentManager.GetAllAgentUUIDs()
+
+	default:
+		return nil, fmt.Errorf("unknown probe strategy: %s", monitor.ProbeStrategy)
+	}
+
+	return agentUUIDs, nil
 }

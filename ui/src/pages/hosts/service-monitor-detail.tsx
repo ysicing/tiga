@@ -55,6 +55,7 @@ import {
 import { format, subHours, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import { ServiceMonitorService } from '@/services/service-monitor';
+import { AvailabilityHeatmap } from '@/components/service-monitor/availability-heatmap';
 
 const ServiceMonitorDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -131,6 +132,25 @@ const ServiceMonitorDetailPage: React.FC = () => {
       });
     },
     enabled: !!id,
+  });
+
+  // Fetch 30-day availability data for heatmap
+  const { data: monthlyData } = useQuery({
+    queryKey: ['service-monitor-monthly', id],
+    queryFn: async () => {
+      const overview = await ServiceMonitorService.getOverview();
+      const serviceData = overview.services[id!];
+      if (!serviceData) {
+        return null;
+      }
+      return {
+        delay: serviceData.delay,
+        up: serviceData.up,
+        down: serviceData.down,
+      };
+    },
+    enabled: !!id,
+    refetchInterval: 60000, // Refresh every 60 seconds
   });
 
   // Toggle enabled mutation
@@ -469,6 +489,24 @@ const ServiceMonitorDetailPage: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="availability" className="space-y-4">
+          {monthlyData && (
+            <Card>
+              <CardHeader>
+                <CardTitle>30天可用性热力图</CardTitle>
+                <CardDescription>
+                  显示最近30天的服务可用性趋势（绿色: &gt;95%, 橙色: 80-95%, 红色: &lt;80%）
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AvailabilityHeatmap
+                  serviceId={id!}
+                  serviceName={monitor.name}
+                  data={monthlyData}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>可用性时间线</CardTitle>

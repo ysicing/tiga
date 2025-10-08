@@ -21,16 +21,19 @@
 - [x] ~~ui/src/pages/hosts/service-monitor-page.tsx:75/103/126 使用手写 fetch 且缺少 `credentials: 'include'`~~ - 已修复：所有请求添加 `credentials: 'include'`
 - [x] ~~ui/src/pages/hosts/service-monitor-page.tsx 缺少节点选择UI~~ - 已修复：添加了主机节点下拉选择器
 - [x] ~~ui/src/pages/hosts/service-monitor-page.tsx 缺少监控数据展示~~ - 已修复：添加了探测结果、可用性和最后探测时间展示
+- [x] ~~internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID~~ - 已修复：日志改用 `monitor.ID.String()` 输出，避免 `%!d(uuid.UUID=...)`
+- [x] ~~ui/src/components/hosts/webssh-terminal.tsx 与新版 WebSSH 协议不匹配~~ - 已修复：前端改为发送/接收 JSON 消息并对终端数据做 Base64 编解码
+- [x] ~~internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤仅适用于 PostgreSQL~~ - 已修复：根据数据库方言分别使用 JSON 语法或回退 `LIKE`，实现跨数据库标签过滤
+- [x] ~~ui/src/lib/api-client.ts:374~382 `devopsAPI.vms.alertRules.*` 仍指向 `/vms/alert-rules`~~ - 已修复：统一改为 `/alerts/rules` 与后端新路由对齐
 
 ## ⚠️ 需要进一步处理 (Needs Further Action)
 
 - [ ] internal/api/routes.go:112 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager - **需要实现完整的 OAuthManager 并注入**
-- [ ] internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤仅适用于 PostgreSQL - **需要添加数据库类型判断和兼容性处理**
-- [ ] internal/models/host_node.go:7 UUID 迁移无迁移脚本 - **需要创建数据迁移脚本或文档**
-- [x] ~~internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID~~ - 已修复：日志改用 `monitor.ID.String()` 输出，避免 `%!d(uuid.UUID=...)`
-- [ ] ui/src/lib/api-client.ts:374~382 `devopsAPI.vms.alertRules.*` 仍指向 `/vms/alert-rules`，与后端 `/api/v1/alerts/rules` 不一致
-- [ ] internal/api/handlers/webssh_handler.go:338 Watch 模式直接消费 `ReceiveFromAgent`，会抢占主会话输出；需实现广播/只读通道，否则旁观功能会截断交互数据
-- [ ] ui/src/components/hosts/webssh-terminal.tsx 与新版 WebSSH 协议不匹配（仍发送/接收裸文本，未处理 JSON + Base64 消息），导致无法正常交互
+- [ ] internal/api/handlers/websocket_handler.go:25 WebSocket 升级全量放行 `CheckOrigin` - **需要限制允许的来源或通过配置控制**
+- [ ] internal/api/handlers/webssh_handler.go:27 WebSSH 升级全量放行 `CheckOrigin` - **需要校验来源或携带 CSRF 保护**
+- [ ] internal/api/handlers/websocket_handler.go:149 `ServiceProbe` 端点仍返回占位 JSON，未真正升级为 WebSocket 推送实时探测数据
+- [ ] internal/api/handlers/websocket_handler.go:201 `AlertEvents` 同样返回占位 JSON，缺少面向前端的实时推送实现
+- [ ] internal/api/handlers/auth_handler.go:240 `OAuthLogin` 仅返回占位信息，未持久化用户也未签发 JWT/Session - **需要完成 OAuth 登录流程闭环**
 
 ## 📝 修复说明
 
@@ -86,11 +89,9 @@
 
 **High Priority**:
 1. 实现 OAuthManager 并注入到 AuthHandler
-2. 为 `instance_repo` 的标签过滤提供跨数据库实现
 
 **Medium Priority**:
-3. 编写 UUID 迁移脚本/文档，指导已有部署升级
-4. 前端统一改用 `devopsAPI` + Cookie 鉴权（告警规则等）
+1. 前端统一改用 `devopsAPI` + Cookie 鉴权（告警规则等）
 
 **Low Priority**:
-5. 调整日志与接口细节（如调度器 UUID 打印）并补充测试覆盖率
+1. 调整日志与接口细节（如调度器 UUID 打印）并补充测试覆盖率

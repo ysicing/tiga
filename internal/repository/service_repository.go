@@ -31,6 +31,7 @@ type ServiceRepository interface {
 	SaveProbeResult(ctx context.Context, result *models.ServiceProbeResult) error
 	GetProbeHistory(ctx context.Context, serviceID uuid.UUID, start, end time.Time, limit int) ([]*models.ServiceProbeResult, int64, error)
 	GetLatestProbeResult(ctx context.Context, serviceID uuid.UUID) (*models.ServiceProbeResult, error)
+	GetProbeResultsByHostAndService(ctx context.Context, hostID, serviceID uuid.UUID, start, end time.Time) ([]*models.ServiceProbeResult, error)
 
 	// Availability statistics
 	SaveAvailability(ctx context.Context, availability *models.ServiceAvailability) error
@@ -41,6 +42,9 @@ type ServiceRepository interface {
 	SaveServiceHistory(ctx context.Context, history *models.ServiceHistory) error
 	GetServiceHistories(ctx context.Context, start, end time.Time) ([]*models.ServiceHistory, error)
 	GetServiceHistoryByHost(ctx context.Context, hostNodeID uuid.UUID, start, end time.Time) ([]*models.ServiceHistory, error)
+
+	// Host nodes
+	GetActiveHostNodes(ctx context.Context) ([]*models.HostNode, error)
 }
 
 // serviceRepository implements ServiceRepository
@@ -286,4 +290,30 @@ func (r *serviceRepository) GetServiceHistoryByHost(ctx context.Context, hostNod
 		return nil, err
 	}
 	return histories, nil
+}
+
+// GetProbeResultsByHostAndService retrieves probe results for a specific host-service pair
+func (r *serviceRepository) GetProbeResultsByHostAndService(ctx context.Context, hostID, serviceID uuid.UUID, start, end time.Time) ([]*models.ServiceProbeResult, error) {
+	var results []*models.ServiceProbeResult
+	err := r.db.WithContext(ctx).
+		Where("host_node_id = ? AND service_monitor_id = ? AND timestamp >= ? AND timestamp <= ?", hostID, serviceID, start, end).
+		Order("timestamp").
+		Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// GetActiveHostNodes retrieves all active host nodes that participate in monitoring
+func (r *serviceRepository) GetActiveHostNodes(ctx context.Context) ([]*models.HostNode, error) {
+	var hosts []*models.HostNode
+	err := r.db.WithContext(ctx).
+		Where("deleted_at IS NULL").
+		Order("name").
+		Find(&hosts).Error
+	if err != nil {
+		return nil, err
+	}
+	return hosts, nil
 }

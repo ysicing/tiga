@@ -50,7 +50,7 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
     queryKey: ['host-activities', hostId],
     queryFn: async () => {
       const response = await devopsAPI.vms.hosts.getActivities(hostId);
-      return response.data;
+      return (response as any).data;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
