@@ -13,10 +13,10 @@ import (
 
 // SessionManager manages WebSSH sessions
 type SessionManager struct {
-	db              *gorm.DB
-	activeSessions  sync.Map // map[string]*models.WebSSHSession
-	sessionTimeout  time.Duration
-	maxSessions     int
+	db             *gorm.DB
+	activeSessions sync.Map // map[string]*models.WebSSHSession
+	sessionTimeout time.Duration
+	maxSessions    int
 }
 
 // NewSessionManager creates a new session manager
@@ -33,8 +33,9 @@ func NewSessionManager(db *gorm.DB) *SessionManager {
 	return sm
 }
 
-// CreateSession creates a new WebSSH session
-func (m *SessionManager) CreateSession(ctx context.Context, userID, hostID uuid.UUID, cols, rows int, clientIP string) (*models.WebSSHSession, error) {
+// CreateSession creates a new WebSSH session.
+// If sessionID is empty, a new UUID-based identifier will be generated.
+func (m *SessionManager) CreateSession(ctx context.Context, sessionID string, userID, hostID uuid.UUID, cols, rows int, clientIP string) (*models.WebSSHSession, error) {
 	// Check max sessions limit
 	count := 0
 	m.activeSessions.Range(func(key, value interface{}) bool {
@@ -45,8 +46,12 @@ func (m *SessionManager) CreateSession(ctx context.Context, userID, hostID uuid.
 		return nil, fmt.Errorf("maximum session limit reached")
 	}
 
+	if sessionID == "" {
+		sessionID = "sess_" + uuid.New().String()
+	}
+
 	session := &models.WebSSHSession{
-		SessionID:  "sess_" + uuid.New().String(),
+		SessionID:  sessionID,
 		UserID:     userID,
 		HostNodeID: hostID,
 		ClientIP:   clientIP,
@@ -85,7 +90,10 @@ func (m *SessionManager) UpdateActivity(sessionID string) {
 	if session, ok := m.activeSessions.Load(sessionID); ok {
 		s := session.(*models.WebSSHSession)
 		s.LastActive = time.Now()
-		m.db.Save(s)
+		// Update database asynchronously to avoid blocking hot path
+		go func(s *models.WebSSHSession) {
+			_ = m.db.Save(s).Error
+		}(s)
 	}
 }
 

@@ -373,33 +373,36 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 
 // handleTask processes tasks sent by the server
 func handleTask(client proto.HostMonitorClient, task *proto.AgentTask, config *Config) {
-	logrus.Infof("Received task: id=%s type=%s", task.TaskId, task.TaskType)
+	logrus.Infof("[Task] Received task: id=%s type=%s", task.TaskId, task.TaskType)
+	logrus.Debugf("[Task] Task params: %+v", task.Params)
 
 	switch task.TaskType {
 	case "terminal":
 		// Check if WebSSH is disabled
 		if config.DisableWebSSH {
-			logrus.Warnf("Terminal task rejected: WebSSH functionality is disabled (--disable-webssh)")
+			logrus.Warnf("[Task:Terminal] Terminal task rejected: WebSSH functionality is disabled (--disable-webssh)")
 			return
 		}
 		// Get streamID from task params
 		streamID, ok := task.Params["stream_id"]
 		if !ok {
-			logrus.Errorf("Terminal task missing stream_id parameter")
+			logrus.Errorf("[Task:Terminal] Terminal task missing stream_id parameter")
 			return
 		}
+		logrus.Infof("[Task:Terminal] Starting terminal session: stream_id=%s", streamID)
 		// Start terminal session
 		handleTerminalSession(client, streamID)
+		logrus.Infof("[Task:Terminal] Terminal session finished: stream_id=%s", streamID)
 
 	case "probe":
 		// TODO: Handle service probe tasks
-		logrus.Warnf("Probe tasks not yet implemented")
+		logrus.Warnf("[Task:Probe] Probe tasks not yet implemented")
 
 	case "command":
 		// TODO: Handle command execution tasks
-		logrus.Warnf("Command tasks not yet implemented")
+		logrus.Warnf("[Task:Command] Command tasks not yet implemented")
 
 	default:
-		logrus.Warnf("Unknown task type: %s", task.TaskType)
+		logrus.Warnf("[Task] Unknown task type: %s", task.TaskType)
 	}
 }

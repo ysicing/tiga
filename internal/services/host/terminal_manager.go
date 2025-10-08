@@ -51,27 +51,43 @@ func (m *TerminalManager) HandleIOStream(stream proto.HostMonitor_IOStreamServer
 	// First message should contain StreamID with magic header
 	firstMsg, err := stream.Recv()
 	if err != nil {
+		logrus.Errorf("[TerminalMgr] Failed to receive StreamID: %v", err)
 		return fmt.Errorf("failed to receive StreamID: %w", err)
 	}
 
 	// Parse StreamID (format: 0xff 0x05 0xff 0x05 + streamID)
 	if len(firstMsg.Data) < 5 {
+		logrus.Errorf("[TerminalMgr] Invalid StreamID message length: %d", len(firstMsg.Data))
 		return fmt.Errorf("invalid StreamID message")
 	}
 
 	magicHeader := []byte{0xff, 0x05, 0xff, 0x05}
 	if !bytesEqual(firstMsg.Data[:4], magicHeader) {
+		logrus.Errorf("[TerminalMgr] Invalid magic header: %x", firstMsg.Data[:4])
 		return fmt.Errorf("invalid magic header")
 	}
 
 	streamID := string(firstMsg.Data[4:])
 	if streamID == "" {
+		logrus.Errorf("[TerminalMgr] Empty StreamID")
 		return fmt.Errorf("empty StreamID")
 	}
+
+	logrus.Infof("[TerminalMgr] Agent connecting with StreamID: %s", streamID)
+
+	// List all sessions for debugging
+	sessionCount := 0
+	m.sessions.Range(func(key, value interface{}) bool {
+		sessionCount++
+		logrus.Debugf("[TerminalMgr] Existing session: %s", key.(string))
+		return true
+	})
+	logrus.Debugf("[TerminalMgr] Total sessions: %d", sessionCount)
 
 	// Check if session exists
 	sessionI, exists := m.sessions.Load(streamID)
 	if !exists {
+		logrus.Errorf("[TerminalMgr] Session not found: %s (have %d sessions)", streamID, sessionCount)
 		return fmt.Errorf("session not found: %s", streamID)
 	}
 
@@ -80,7 +96,7 @@ func (m *TerminalManager) HandleIOStream(stream proto.HostMonitor_IOStreamServer
 	session.AgentStream = stream
 	session.mu.Unlock()
 
-	logrus.Infof("Agent connected to terminal session: %s", streamID)
+	logrus.Infof("[TerminalMgr] Agent connected to terminal session: %s", streamID)
 
 	// Forward messages from Agent to WebSocket
 	go func() {
@@ -144,7 +160,14 @@ func (m *TerminalManager) CreateSession(streamID string, hostID uuid.UUID, uuid 
 	}
 
 	m.sessions.Store(streamID, session)
-	logrus.Infof("Created terminal session: %s for host %s", streamID, hostID)
+	logrus.Infof("[TerminalMgr] Created terminal session: %s for host %s (agent: %s)", streamID, hostID, uuid)
+
+	// Verify it was stored
+	if _, exists := m.sessions.Load(streamID); exists {
+		logrus.Debugf("[TerminalMgr] Session %s successfully stored and verified", streamID)
+	} else {
+		logrus.Errorf("[TerminalMgr] Session %s FAILED to store!", streamID)
+	}
 
 	return session
 }

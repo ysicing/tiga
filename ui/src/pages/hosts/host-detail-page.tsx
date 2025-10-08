@@ -142,12 +142,10 @@ export function HostDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {host.host_info?.ssh_enabled && (
-            <Button onClick={() => navigate(`/vms/hosts/${id}/ssh`)}>
-              <Terminal className="mr-2 h-4 w-4" />
-              SSH连接
-            </Button>
-          )}
+          <Button onClick={() => navigate(`/vms/hosts/${id}/ssh`)} disabled={!host.online}>
+            <Terminal className="mr-2 h-4 w-4" />
+            打开终端
+          </Button>
           <Button variant="outline" onClick={() => navigate(`/vms/hosts/${id}/edit`)}>
             <Settings className="mr-2 h-4 w-4" />
             设置

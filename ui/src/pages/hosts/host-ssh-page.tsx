@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -10,30 +10,190 @@ import '@xterm/xterm/css/xterm.css';
 import { toast } from 'sonner';
 import { devopsAPI } from '@/lib/api-client';
 
+type WebSSHMessage = {
+  type: string;
+  data?: any;
+  session_id?: string;
+  timestamp?: number;
+};
+
+const encodeBase64 = (value: string) => {
+  if (typeof window === 'undefined') return '';
+  return window.btoa(unescape(encodeURIComponent(value)));
+};
+
+const decodeBase64 = (value: string) => {
+  if (typeof window === 'undefined') return '';
+  return decodeURIComponent(escape(window.atob(value)));
+};
+
+type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
+
 export function HostSSHPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const terminalInstanceRef = useRef<Terminal | null>(null);
+  const terminalContainerRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
+  const inputDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const [connected, setConnected] = useState(false);
+  const sessionIdRef = useRef<string | null>(null);
+  const cleanupInProgress = useRef(false);
+  const [status, setStatus] = useState<ConnectionStatus>('idle');
 
-  // Fetch host data from API
   const { data: hostResponse, isLoading, isError } = useQuery({
     queryKey: ['host', id],
+    enabled: !!id,
     queryFn: async () => {
-      if (!id) throw new Error('No host ID provided');
+      if (!id) throw new Error('Missing host ID');
       return devopsAPI.vms.hosts.get(id);
     },
-    enabled: !!id,
+    staleTime: 10_000,
   });
 
   const host = hostResponse?.data;
 
-  useEffect(() => {
-    if (!terminalRef.current || !host || !host.host_info?.ssh_enabled) return;
+  const sendMessage = useCallback((type: string, payload?: Record<string, unknown>) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
 
-    // Create terminal instance
+    const message: WebSSHMessage = {
+      type,
+      data: payload,
+      timestamp: Date.now(),
+    };
+
+    if (sessionIdRef.current) {
+      message.session_id = sessionIdRef.current;
+    }
+
+    ws.send(JSON.stringify(message));
+  }, []);
+
+  const sendResize = useCallback(() => {
+    const term = terminalRef.current;
+    if (!term) return;
+    sendMessage('resize', { cols: term.cols, rows: term.rows });
+  }, [sendMessage]);
+
+  const closeRemoteSession = useCallback(
+    async (reason = 'client closed') => {
+      if (cleanupInProgress.current) {
+        return;
+      }
+      cleanupInProgress.current = true;
+
+      try {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          sendMessage('command', { command: 'close' });
+          wsRef.current.close();
+        }
+        wsRef.current = null;
+
+        if (sessionIdRef.current) {
+          try {
+            await devopsAPI.vms.webssh.closeSession(sessionIdRef.current);
+          } catch (err) {
+            logDebug('Failed to close WebSSH session', err);
+          }
+      }
+    } finally {
+      if (inputDisposableRef.current) {
+        inputDisposableRef.current.dispose();
+        inputDisposableRef.current = null;
+      }
+      sessionIdRef.current = null;
+      setStatus((prev) => (reason === 'client closed' ? 'disconnected' : prev));
+      cleanupInProgress.current = false;
+    }
+    },
+    [sendMessage]
+  );
+
+  const handleServerMessage = useCallback(
+    (event: MessageEvent) => {
+      let msg: WebSSHMessage;
+      try {
+        msg = JSON.parse(event.data);
+      } catch {
+        logDebug('Invalid WebSSH message', event.data);
+        return;
+      }
+
+      switch (msg.type) {
+        case 'connected': {
+          setStatus('connected');
+          sendResize();
+          if (terminalRef.current) {
+            terminalRef.current.writeln('\r\n\x1b[1;32m=== WebSSH Connected ===\x1b[0m\r\n');
+          }
+          break;
+        }
+        case 'output': {
+          const output = decodeBase64(msg.data?.output ?? '');
+          if (terminalRef.current) {
+            terminalRef.current.write(output);
+          }
+          break;
+        }
+        case 'error': {
+          const message = msg.data?.message || '终端发生错误';
+          toast.error(message);
+          setStatus('error');
+          break;
+        }
+        case 'info': {
+          if (msg.data?.message && terminalRef.current) {
+            terminalRef.current.writeln(`\r\n\x1b[1;34m${msg.data.message}\x1b[0m\r\n`);
+          }
+          break;
+        }
+        case 'ping': {
+          sendMessage('pong');
+          break;
+        }
+        case 'disconnected': {
+          setStatus('disconnected');
+          break;
+        }
+        default:
+          logDebug('Unhandled WebSSH message', msg);
+      }
+    },
+    [sendMessage, sendResize]
+  );
+
+  const openWebSocket = useCallback(
+    (url: string) => {
+      const websocket = new WebSocket(url);
+      wsRef.current = websocket;
+
+      websocket.onopen = () => {
+        setStatus('connecting');
+      };
+
+      websocket.onmessage = handleServerMessage;
+
+      websocket.onerror = (event) => {
+        console.error('[WebSSH] WebSocket error', event);
+        toast.error('WebSSH 连接出现异常');
+        setStatus('error');
+      };
+
+      websocket.onclose = () => {
+        setStatus((prev) => (prev === 'error' ? prev : 'disconnected'));
+      };
+    },
+    [handleServerMessage]
+  );
+
+  useEffect(() => {
+    if (!terminalContainerRef.current) {
+      return;
+    }
+
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 14,
@@ -59,95 +219,85 @@ export function HostSSHPage() {
         brightCyan: '#29b8db',
         brightWhite: '#e5e5e5',
       },
-      rows: 30,
-      cols: 100,
+      scrollback: 5000,
     });
 
     const fitAddon = new FitAddon();
-    const webLinksAddon = new WebLinksAddon();
-
     term.loadAddon(fitAddon);
-    term.loadAddon(webLinksAddon);
-    term.open(terminalRef.current);
+    term.loadAddon(new WebLinksAddon());
+
+    term.open(terminalContainerRef.current);
     fitAddon.fit();
 
-    terminalInstanceRef.current = term;
+    terminalRef.current = term;
+    fitAddonRef.current = fitAddon;
 
-    // Connect WebSocket
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/vms/hosts/${id}/ssh/connect`;
-    const websocket = new WebSocket(wsUrl);
-
-    websocket.onopen = () => {
-      setConnected(true);
-      term.writeln('\x1b[1;32m=== WebSSH Terminal ===\x1b[0m');
-      term.writeln(`\x1b[1;36mConnecting to ${host.name}...\x1b[0m`);
-      term.writeln('');
-
-      // Send authentication token
-      const token = localStorage.getItem('token');
-      if (token) {
-        websocket.send(JSON.stringify({ type: 'auth', token }));
-      }
-    };
-
-    websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'output') {
-          term.write(data.data);
-        } else if (data.type === 'error') {
-          term.writeln(`\x1b[1;31mError: ${data.message}\x1b[0m`);
-        }
-      } catch {
-        // Binary data, write directly
-        term.write(event.data);
-      }
-    };
-
-    websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      toast.error('SSH 连接失败');
-      term.writeln('\x1b[1;31mConnection error\x1b[0m');
-    };
-
-    websocket.onclose = () => {
-      setConnected(false);
-      term.writeln('');
-      term.writeln('\x1b[1;33mConnection closed\x1b[0m');
-    };
-
-    // Handle terminal input
-    term.onData((data) => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.send(JSON.stringify({ type: 'input', data }));
-      }
-    });
-
-    wsRef.current = websocket;
-
-    // Handle window resize
     const handleResize = () => {
       fitAddon.fit();
-      if (websocket.readyState === WebSocket.OPEN) {
-        websocket.send(
-          JSON.stringify({
-            type: 'resize',
-            rows: term.rows,
-            cols: term.cols,
-          })
-        );
-      }
+      sendResize();
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      websocket.close();
       term.dispose();
+      terminalRef.current = null;
+      fitAddonRef.current = null;
     };
-  }, [id, host]);
+  }, [sendResize]);
+
+  useEffect(() => {
+    if (!host || !host.online || !terminalRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    setStatus('connecting');
+
+    const initSession = async () => {
+      try {
+        const term = terminalRef.current!;
+        const response = await devopsAPI.vms.webssh.createSession({
+          host_id: host.id,
+          width: term.cols,
+          height: term.rows,
+        });
+
+        if (cancelled) return;
+
+        if (response.code !== 0) {
+          throw new Error(response.message || '创建 WebSSH 会话失败');
+        }
+
+        const { websocket_url: websocketUrl, session_id: sessionId } = response.data ?? {};
+        if (!websocketUrl || !sessionId) {
+          throw new Error('返回的会话信息不完整');
+        }
+
+        sessionIdRef.current = sessionId;
+        openWebSocket(websocketUrl);
+
+        // Forward terminal input
+        inputDisposableRef.current = term.onData((data) => {
+          sendMessage('input', { input: encodeBase64(data) });
+        });
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[WebSSH] Failed to initialize session', error);
+        toast.error(error instanceof Error ? error.message : '创建 WebSSH 会话失败');
+        setStatus('error');
+        closeRemoteSession('error').catch(() => undefined);
+      }
+    };
+
+    initSession();
+
+    return () => {
+      cancelled = true;
+      closeRemoteSession();
+    };
+  }, [host, closeRemoteSession, openWebSocket, sendMessage]);
 
   if (isLoading) {
     return (
@@ -160,9 +310,7 @@ export function HostSSHPage() {
   if (isError || !host) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground mb-4">
-          {isError ? '加载失败' : '主机未找到'}
-        </p>
+        <p className="text-muted-foreground mb-4">{isError ? '加载主机信息失败' : '主机未找到'}</p>
         <Button onClick={() => navigate('/vms/hosts')} className="mt-4">
           返回列表
         </Button>
@@ -170,10 +318,10 @@ export function HostSSHPage() {
     );
   }
 
-  if (!host.host_info?.ssh_enabled) {
+  if (!host.online) {
     return (
       <div className="text-center py-12">
-        <p>此主机 SSH 服务未启用或未被 Agent 检测到</p>
+        <p>主机离线，无法建立终端连接</p>
         <Button onClick={() => navigate(`/vms/hosts/${id}`)} className="mt-4">
           返回主机详情
         </Button>
@@ -182,9 +330,8 @@ export function HostSSHPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`/vms/hosts/${id}`)}>
             <ArrowLeft className="h-4 w-4" />
@@ -192,31 +339,42 @@ export function HostSSHPage() {
           <div>
             <h1 className="text-xl font-bold">WebSSH Terminal</h1>
             <p className="text-sm text-muted-foreground">
-              {host.name} - {host.host_info?.ssh_user || 'root'}@localhost:{host.host_info?.ssh_port || 22}
+              {host.name}
+              {host.host_info && ` · ${host.host_info.platform} ${host.host_info.arch}`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span
             className={`h-2 w-2 rounded-full ${
-              connected ? 'bg-green-500' : 'bg-red-500'
+              status === 'connected' ? 'bg-emerald-500' : status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
             }`}
           />
-          <span className="text-sm text-muted-foreground">
-            {connected ? '已连接' : '未连接'}
+          <span>
+            {status === 'connected'
+              ? '已连接'
+              : status === 'connecting'
+              ? '连接中...'
+              : status === 'error'
+              ? '连接异常'
+              : '未连接'}
           </span>
         </div>
       </div>
 
-      {/* Terminal */}
-      <div className="flex-1 p-4 bg-[#1e1e1e]">
-        <div ref={terminalRef} className="h-full" />
+      <div className="flex-1 bg-[#1e1e1e] p-4">
+        <div ref={terminalContainerRef} className="h-full" />
       </div>
 
-      {/* Footer */}
-      <div className="p-2 border-t text-xs text-muted-foreground text-center">
-        提示：使用 Ctrl+C 可以发送中断信号 | 支持复制粘贴
+      <div className="border-t p-2 text-center text-xs text-muted-foreground">
+        提示：支持复制 / 粘贴、窗口大小自动调整。连接关闭后请重新打开终端。
       </div>
     </div>
   );
+}
+
+function logDebug(message: string, payload?: unknown) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug(`[WebSSH] ${message}`, payload);
+  }
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 
+	"github.com/ysicing/tiga/internal/api/middleware"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/webssh"
 	"github.com/ysicing/tiga/proto"
@@ -26,17 +27,17 @@ var upgrader = websocket.Upgrader{
 
 // WebSSHHandler handles WebSSH operations
 type WebSSHHandler struct {
-	sessionMgr      *webssh.SessionManager
-	terminalMgr     *host.TerminalManager
-	agentManager    *host.AgentManager
+	sessionMgr   *webssh.SessionManager
+	terminalMgr  *host.TerminalManager
+	agentManager *host.AgentManager
 }
 
 // NewWebSSHHandler creates a new WebSSH handler
 func NewWebSSHHandler(sessionMgr *webssh.SessionManager, terminalMgr *host.TerminalManager, agentMgr *host.AgentManager) *WebSSHHandler {
 	return &WebSSHHandler{
-		sessionMgr:      sessionMgr,
-		terminalMgr:     terminalMgr,
-		agentManager:    agentMgr,
+		sessionMgr:   sessionMgr,
+		terminalMgr:  terminalMgr,
+		agentManager: agentMgr,
 	}
 }
 
@@ -50,6 +51,13 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid request"})
+		return
+	}
+
+	// Resolve authenticated user
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 40100, "message": "User not authenticated"})
 		return
 	}
 
@@ -69,25 +77,29 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 
 	// Generate session ID
 	streamID := uuid.New().String()
+	logrus.Infof("[WebSSH] Creating session: %s for host: %s", streamID, hostUUID)
 
 	// Create terminal session
-	_ = h.terminalMgr.CreateSession(streamID, hostUUID, conn.UUID)
+	h.terminalMgr.CreateSession(streamID, hostUUID, conn.UUID)
+	logrus.Debugf("[WebSSH] Terminal session created: %s", streamID)
 
 	// Create webssh session for recording
-	// TODO: Get actual user ID from auth context when auth middleware is available
-	// For now use a default system user UUID
-	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	clientIP := c.ClientIP()
-	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), userID, hostUUID, req.Width, req.Height, clientIP)
+	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), streamID, userID, hostUUID, req.Width, req.Height, clientIP)
 	if err != nil {
 		logrus.Errorf("Failed to create webssh session: %v", err)
+		// Rollback terminal session if we cannot persist metadata
+		h.terminalMgr.CloseSession(streamID)
 		// Don't fail the terminal creation if session recording fails
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to create session"})
+		return
 	}
 
 	// Notify Agent to create terminal via gRPC Task
 	// The Agent will connect to IOStream with the streamID
 	if err := h.notifyAgentCreateTerminal(conn.UUID, streamID); err != nil {
 		h.terminalMgr.CloseSession(streamID)
+		_ = h.sessionMgr.CloseSession(c.Request.Context(), wsSession.SessionID, "agent setup failed")
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to notify agent"})
 		return
 	}
@@ -138,10 +150,17 @@ func (h *WebSSHHandler) CloseSession(c *gin.Context) {
 func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 	streamID := c.Param("session_id")
 
+	// Load session metadata
+	wsSession, err := h.sessionMgr.GetSession(streamID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Session not found"})
+		return
+	}
+
 	// Get terminal session
 	session, exists := h.terminalMgr.GetSession(streamID)
 	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Session not found"})
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Terminal session not found"})
 		return
 	}
 
@@ -152,14 +171,23 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 	defer ws.Close()
+	defer func() {
+		// Close backend resources when the websocket terminates
+		if err := h.terminalMgr.CloseSession(streamID); err != nil {
+			logrus.Debugf("terminal session close error: %v", err)
+		}
+		if err := h.sessionMgr.CloseSession(c.Request.Context(), wsSession.SessionID, "client disconnected"); err != nil {
+			logrus.Debugf("session close error: %v", err)
+		}
+	}()
 
 	logrus.Infof("WebSocket connected for session: %s", streamID)
 
 	// Send connected message using new protocol
 	connMsg, _ := webssh.NewMessage(webssh.MessageTypeConnected, &webssh.ConnectedMessage{
 		SessionID: streamID,
-		HostName:  "Host", // TODO: Get actual host name
-		HostID:    session.HostID.String(),
+		HostName:  "", // TODO: hydrate with actual host name once repository is available
+		HostID:    wsSession.HostNodeID.String(),
 		Cols:      80,
 		Rows:      24,
 	})
@@ -184,6 +212,7 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		for {
 			select {
 			case <-ticker.C:
+				h.sessionMgr.UpdateActivity(wsSession.SessionID)
 				pingMsg, _ := webssh.NewMessage(webssh.MessageTypePing, nil)
 				if msgBytes, err := json.Marshal(pingMsg); err == nil {
 					if err := ws.WriteMessage(websocket.TextMessage, msgBytes); err != nil {
@@ -216,6 +245,7 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 				logrus.Errorf("WebSocket read error: %v", err)
 				return
 			}
+			h.sessionMgr.UpdateActivity(wsSession.SessionID)
 
 			if messageType == websocket.TextMessage || messageType == websocket.BinaryMessage {
 				// Parse message using our new protocol
@@ -280,6 +310,7 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		}
 
 		// Encode output as base64 for binary safety
+		h.sessionMgr.UpdateActivity(wsSession.SessionID)
 		outputMsg, _ := webssh.NewMessage(webssh.MessageTypeOutput, &webssh.OutputMessage{
 			Output: base64.StdEncoding.EncodeToString(data),
 		})

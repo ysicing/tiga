@@ -14,6 +14,8 @@
 - [x] ~~ui/src/pages/hosts/alert-events-page.tsx:61/80/100 使用 `Bearer localStorage token`~~ - 已修复：改用 `credentials: 'include'`
 - [x] ~~ui/src/pages/hosts/alert-events-page.tsx:61 请求 `/vms/alert-events`~~ - 已修复：改为 `/alerts/events`
 - [x] ~~ui/src/lib/api-client.ts:388-393 硬编码 `/vms/alert-events`~~ - 已修复：改为 `/alerts/events`
+- [x] ~~internal/api/handlers/webssh_handler.go:79 写死 `userID`~~ - 已修复：通过 `middleware.GetUserID` 注入真实用户并在 WebSocket 生命周期中同步更新/清理会话
+- [x] ~~ui/src/pages/hosts/host-ssh-page.tsx 调用旧的 `/api/v1/vms/hosts/:id/ssh/connect` 并使用 Bearer Token~~ - 已修复：改为调用 `devopsAPI.vms.webssh.createSession` + 新版 WebSocket 协议并统一使用 Cookie 鉴权
 - [x] ~~internal/api/handlers/service_monitor_handler.go:30 期待 `host_id`，前端发送 `host_node_id` 不匹配~~ - 已修复：改为 `host_node_id`
 - [x] ~~internal/api/handlers/service_monitor_handler.go:84-87 更新接口仅保存 `interval/enabled`~~ - 已修复：支持更新所有字段（name, type, target, interval, timeout, host_node_id, enabled, notify_on_failure）
 - [x] ~~ui/src/pages/hosts/service-monitor-page.tsx:75/103/126 使用手写 fetch 且缺少 `credentials: 'include'`~~ - 已修复：所有请求添加 `credentials: 'include'`
@@ -24,11 +26,9 @@
 
 - [ ] internal/api/routes.go:112 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager - **需要实现完整的 OAuthManager 并注入**
 - [ ] internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤仅适用于 PostgreSQL - **需要添加数据库类型判断和兼容性处理**
-- [ ] internal/api/handlers/webssh_handler.go:79 写死 `userID` - **改进了 TODO 注释，需要实现 auth 中间件集成**
 - [ ] internal/models/host_node.go:7 UUID 迁移无迁移脚本 - **需要创建数据迁移脚本或文档**
 - [ ] internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID，日志输出 `%!d(uuid.UUID=...)`
 - [ ] ui/src/lib/api-client.ts:374~382 `devopsAPI.vms.alertRules.*` 仍指向 `/vms/alert-rules`，与后端 `/api/v1/alerts/rules` 不一致
-- [ ] ui/src/pages/hosts/host-ssh-page.tsx:45 仍连 `/api/v1/vms/hosts/:id/ssh/connect` 并发送 Token Header，未对接新的 WebSSH 会话 API
 
 ## 📝 修复说明
 
@@ -85,12 +85,10 @@
 **High Priority**:
 1. 实现 OAuthManager 并注入到 AuthHandler
 2. 为 `instance_repo` 的标签过滤提供跨数据库实现
-3. WebSSH 会话需要从 JWT 中获取真实用户 ID
 
 **Medium Priority**:
-4. 编写 UUID 迁移脚本/文档，指导已有部署升级
-5. 前端统一改用 `devopsAPI` + Cookie 鉴权（告警规则等）
-6. 修复前端 WebSSH 页面以使用新的会话创建流程
+3. 编写 UUID 迁移脚本/文档，指导已有部署升级
+4. 前端统一改用 `devopsAPI` + Cookie 鉴权（告警规则等）
 
 **Low Priority**:
-7. 调整日志与接口细节（如调度器 UUID 打印）并补充测试覆盖率
+5. 调整日志与接口细节（如调度器 UUID 打印）并补充测试覆盖率

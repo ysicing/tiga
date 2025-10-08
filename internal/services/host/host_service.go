@@ -174,17 +174,23 @@ func (s *HostService) GetHostState(ctx context.Context, id uuid.UUID) (*models.H
 
 // GetHostStateHistory retrieves historical states for a host
 func (s *HostService) GetHostStateHistory(ctx context.Context, id uuid.UUID, start, end string, interval string) ([]*models.HostState, error) {
-	// Parse time strings
+	// Parse time strings (frontend sends UTC time)
 	startTime, err := time.Parse(time.RFC3339, start)
 	if err != nil {
 		logrus.Warnf("Failed to parse start time: %v, using default", err)
 		startTime = time.Now().Add(-24 * time.Hour) // Default to 24 hours ago
+	} else {
+		// Convert UTC to local time for database query (database stores local time)
+		startTime = startTime.Local()
 	}
 
 	endTime, err := time.Parse(time.RFC3339, end)
 	if err != nil {
 		logrus.Warnf("Failed to parse end time: %v, using default", err)
 		endTime = time.Now()
+	} else {
+		// Convert UTC to local time for database query (database stores local time)
+		endTime = endTime.Local()
 	}
 
 	// Calculate interval in seconds based on the interval parameter

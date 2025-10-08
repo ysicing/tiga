@@ -34,6 +34,7 @@ func SetupRoutes(
 	jwtSecret string,
 	hostService *hostservices.HostService,
 	stateCollector *hostservices.StateCollector,
+	terminalManager *hostservices.TerminalManager,
 ) {
 	// ==================== Install Routes (Only if not installed) ====================
 	// Check if system is installed
@@ -74,11 +75,10 @@ func SetupRoutes(
 	instanceService := services.NewInstanceService(instanceRepo)
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
-	// stateCollector and hostService are passed as parameters
+	// stateCollector, hostService, and terminalManager are passed as parameters
 	probeScheduler := monitorservices.NewServiceProbeScheduler(serviceRepo)
 	probeService := monitorservices.NewServiceProbeService(serviceRepo, probeScheduler)
 	sessionManager := websshservices.NewSessionManager(db)
-	terminalManager := hostservices.NewTerminalManager()
 
 	// Get agentManager from hostService (it's accessible via the service)
 	// We need it for WebSSH handler

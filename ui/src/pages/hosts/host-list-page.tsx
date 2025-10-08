@@ -5,7 +5,7 @@ import { useHostMonitor } from '@/hooks/use-host-monitor';
 import { HostCard } from '@/components/hosts/host-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, RefreshCw, Search, LayoutGrid, LayoutList } from 'lucide-react';
+import { Plus, RefreshCw, Search, LayoutGrid, LayoutList, Terminal } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
@@ -421,16 +421,29 @@ export function HostListPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteHost(host.id, host.name);
-                        }}
-                      >
-                        删除
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!host.online}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/vms/hosts/${host.id}/ssh`);
+                          }}
+                        >
+                          <Terminal className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteHost(host.id, host.name);
+                          }}
+                        >
+                          删除
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );

@@ -208,7 +208,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 	router := middleware.NewRouter(routerConfig)
 
 	// Register all API handlers - pass host services to avoid duplicate instances
-	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector)
+	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector, a.terminalManager)
 
 	// Serve static files from embedded filesystem
 	a.setupStaticFiles(router)
