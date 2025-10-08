@@ -32,7 +32,7 @@ const MemoryUsageChart = React.memo((prop: MemoryUsageChartProps) => {
       .map((point) => ({
         timestamp: point.timestamp,
         time: new Date(point.timestamp).getTime(),
-        memory: Math.max(0, point.value), // Memory is already in MB
+        memory: point.value < 0 ? null : point.value, // Convert -1 to null for offline periods
       }))
       .sort((a, b) => a.time - b.time)
   }, [data])
@@ -168,6 +168,7 @@ const MemoryUsageChart = React.memo((prop: MemoryUsageChartProps) => {
               type="monotone"
               fill="var(--color-memory)"
               stroke="var(--color-memory)"
+              connectNulls={false}
             />
           </AreaChart>
         </ChartContainer>

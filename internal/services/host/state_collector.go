@@ -61,6 +61,9 @@ func (sc *StateCollector) SetAgentManager(agentMgr *AgentManager) {
 
 // CollectState processes a new state report from an agent
 func (sc *StateCollector) CollectState(ctx context.Context, hostID uuid.UUID, state *models.HostState) error {
+	// Sanitize state data to filter out unrealistic values
+	sanitizeState(state)
+
 	// Save to database
 	if err := sc.hostRepo.SaveState(ctx, state); err != nil {
 		return err
@@ -83,6 +86,40 @@ func (sc *StateCollector) CollectState(ctx context.Context, hostID uuid.UUID, st
 	sc.broadcastState(state)
 
 	return nil
+}
+
+// sanitizeState filters out unrealistic monitoring values
+func sanitizeState(state *models.HostState) {
+	const (
+		// Maximum reasonable network speed: 100 GiB/s
+		maxNetworkSpeed uint64 = 107_374_182_400 // 100 GiB/s in bytes
+		// Maximum reasonable percentage
+		maxPercentage float64 = 100.0
+	)
+
+	// Validate network speeds
+	if state.NetInSpeed > maxNetworkSpeed {
+		logrus.Warnf("[StateCollector] Unrealistic NetInSpeed detected: %d bytes/s, resetting to 0", state.NetInSpeed)
+		state.NetInSpeed = 0
+	}
+	if state.NetOutSpeed > maxNetworkSpeed {
+		logrus.Warnf("[StateCollector] Unrealistic NetOutSpeed detected: %d bytes/s, resetting to 0", state.NetOutSpeed)
+		state.NetOutSpeed = 0
+	}
+
+	// Validate percentages
+	if state.CPUUsage > maxPercentage || state.CPUUsage < 0 {
+		state.CPUUsage = 0
+	}
+	if state.MemUsage > maxPercentage || state.MemUsage < 0 {
+		state.MemUsage = 0
+	}
+	if state.DiskUsage > maxPercentage || state.DiskUsage < 0 {
+		state.DiskUsage = 0
+	}
+	if state.GPUUsage > maxPercentage || state.GPUUsage < 0 {
+		state.GPUUsage = 0
+	}
 }
 
 // GetLatestState retrieves the latest cached state for a host

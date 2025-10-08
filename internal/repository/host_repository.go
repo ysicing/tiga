@@ -222,23 +222,8 @@ func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uuid.U
 			Order("timestamp ASC").
 			Find(&states).Error
 
-		// If we have data, return it
-		if err == nil && len(states) > 0 {
-			return states, nil
-		}
-
-		// If no data in the time range, get the latest state
-		if len(states) == 0 {
-			var latestState models.HostState
-			err = r.db.WithContext(ctx).
-				Where("host_node_id = ?", hostID).
-				Order("timestamp DESC").
-				First(&latestState).Error
-			if err == nil {
-				// Create a synthetic data point at the start time with the latest values
-				states = []*models.HostState{&latestState}
-			}
-		}
+		// Return whatever we got (including empty array if no data)
+		// Don't fill with synthetic data as it causes confusion in charts
 		return states, err
 	}
 
@@ -289,16 +274,9 @@ func (r *hostRepository) GetStatesByTimeRange(ctx context.Context, hostID uuid.U
 
 		// Sample the states based on interval
 		if len(allStates) == 0 {
-			// If no data in the time range, get the latest state
-			var latestState models.HostState
-			err = r.db.WithContext(ctx).
-				Where("host_node_id = ?", hostID).
-				Order("timestamp DESC").
-				First(&latestState).Error
-			if err == nil {
-				allStates = []*models.HostState{&latestState}
-			}
-			return allStates, nil
+			// No data in time range, return empty array
+			// Don't fill with old data as it causes confusion in charts
+			return []*models.HostState{}, nil
 		}
 
 		sampled := make([]*models.HostState, 0)
