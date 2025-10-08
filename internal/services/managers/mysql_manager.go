@@ -51,9 +51,26 @@ func (m *MySQLManager) Connect(ctx context.Context) error {
 	}
 
 	// Set connection pool settings
-	maxOpenConns := m.GetConfigValue("max_open_conns", 10).(int)
-	maxIdleConns := m.GetConfigValue("max_idle_conns", 5).(int)
-	connMaxLifetime := m.GetConfigValue("conn_max_lifetime", 3600).(int)
+	maxOpenConns := 10
+	if val, ok := m.GetConfigValue("max_open_conns", 10).(float64); ok {
+		maxOpenConns = int(val)
+	} else if val, ok := m.GetConfigValue("max_open_conns", 10).(int); ok {
+		maxOpenConns = val
+	}
+
+	maxIdleConns := 5
+	if val, ok := m.GetConfigValue("max_idle_conns", 5).(float64); ok {
+		maxIdleConns = int(val)
+	} else if val, ok := m.GetConfigValue("max_idle_conns", 5).(int); ok {
+		maxIdleConns = val
+	}
+
+	connMaxLifetime := 3600
+	if val, ok := m.GetConfigValue("conn_max_lifetime", 3600).(float64); ok {
+		connMaxLifetime = int(val)
+	} else if val, ok := m.GetConfigValue("conn_max_lifetime", 3600).(int); ok {
+		connMaxLifetime = val
+	}
 
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetMaxIdleConns(maxIdleConns)

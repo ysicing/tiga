@@ -13,8 +13,8 @@ import (
 type ServiceFilter struct {
 	Page     int
 	PageSize int
-	HostID   uint
-	Type     string // HTTP/TCP/ICMP
+	HostID   *uuid.UUID // Changed from uint to *uuid.UUID
+	Type     string     // HTTP/TCP/ICMP
 	Enabled  *bool
 	Search   string
 }
@@ -68,8 +68,8 @@ func (r *serviceRepository) List(ctx context.Context, filter ServiceFilter) ([]*
 	query := r.db.WithContext(ctx).Model(&models.ServiceMonitor{})
 
 	// Apply filters
-	if filter.HostID > 0 {
-		query = query.Where("host_node_id = ?", filter.HostID)
+	if filter.HostID != nil {
+		query = query.Where("host_node_id = ?", *filter.HostID)
 	}
 
 	if filter.Type != "" {

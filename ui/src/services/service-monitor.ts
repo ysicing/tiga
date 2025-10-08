@@ -8,17 +8,29 @@ export interface ServiceMonitor {
   interval: number;
   timeout: number;
   enabled: boolean;
-  host_node_id?: string;
+
+  // Probe strategy
+  probe_strategy?: 'server' | 'include' | 'exclude' | 'group';
+  probe_node_ids?: string;  // JSON string array
+  probe_group_name?: string; // Node group name for group strategy
+
+  // HTTP-specific
   http_method?: string;
   http_headers?: string;
   http_body?: string;
   expect_status?: number;
   expect_body?: string;
+
+  // TCP-specific
   tcp_send?: string;
   tcp_expect?: string;
+
+  // Alert configuration
   notify_on_failure: boolean;
   failure_threshold: number;
   recovery_threshold: number;
+
+  // Runtime status
   status?: 'up' | 'down' | 'degraded' | 'unknown';
   last_check_time?: string;
   uptime_24h?: number;
@@ -54,14 +66,24 @@ export interface ServiceMonitorFormData {
   interval: number;
   timeout: number;
   enabled: boolean;
-  host_node_id?: string;
+
+  // Probe strategy
+  probe_strategy?: 'server' | 'include' | 'exclude' | 'group';
+  probe_node_ids?: string;  // JSON string array
+  probe_group_name?: string; // Node group name for group strategy
+
+  // HTTP-specific
   http_method?: string;
   http_headers?: string;
   http_body?: string;
   expect_status?: number;
   expect_body?: string;
+
+  // TCP-specific
   tcp_send?: string;
   tcp_expect?: string;
+
+  // Alert configuration
   notify_on_failure: boolean;
   failure_threshold: number;
   recovery_threshold: number;

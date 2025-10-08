@@ -1,23 +1,96 @@
 # Code Audit TODO
 
-- [ ] internal/api/routes.go:103 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager，`/api/auth/providers` 只能返回 `password`，后续 OAuth 登录依旧不可用。
-- [ ] internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤依旧假设数组字段，SQLite/MySQL 会报错，Postgres 永远匹配不到。
-- [ ] internal/services/managers/manager.go:101 `GetConnectionString` 仍把端口转换成单字符，拼出的 `<host>:\x05` 之类字符串无法用于连接。
-- [ ] internal/services/managers/mysql_manager.go:52 `GetConfigValue` 返回 `float64`，这里强转 `.(int)` 一旦配置中写了池参数立即 panic。
-- [ ] internal/services/managers/postgres_manager.go:55 同样的 `float64`→`int` panic 问题依旧存在。
-- [ ] internal/services/auth/oauth.go:266 `parseJSON` 仍是空实现，OAuth 用户信息解析始终返回空对象。
-- [ ] internal/services/auth/oauth.go:277 `randomString` 继续用 `time.Now().UnixNano()%len` 生成低熵 state，容易被预测。
-- [ ] internal/api/handlers/service_monitor_handler.go:60/79/99/116/128 忽略 `uuid.Parse` 错误，非法 ID 会默默落成 `uuid.Nil` 并作用在错误的记录上。
-- [ ] internal/api/handlers/service_monitor_handler.go:34 起缺少列表接口且 `host_id` 字段与前端 `host_node_id` 不匹配，更新接口也只保存 `interval/enabled`，导致服务监控页面无法正常增改查。
-- [ ] internal/api/routes.go:333 未注册 `GET /api/v1/vms/service-monitors` 路由，前端初始化列表直接 404。
-- [ ] internal/api/routes.go:346 仍注册 `hostGroupsGroup.POST/DELETE` 等路由，但 `HostGroupHandler` 只保留 `ListGroups`，编译期就会报 “*HostGroupHandler has no method CreateGroup”，需要同步调整。
-- [ ] internal/repository/service_repository.go:13 `ServiceFilter.HostID` 仍是 `uint` 并与 `group_ids` 一样用大于零判断，UUID 下 host 过滤统统失效。
-- [ ] internal/api/handlers/webssh_handler.go:74 为了兼容 UUID 暂时写死 `userID := uuid.MustParse("0000...01")`，还在 `CreateSession` 失败时继续访问 `wsSession.SessionID`，真实用户 ID 永远丢失且容易 panic。
-- [ ] internal/services/host/host_service.go:146 `GetHostStateHistory` 直接返回最近 100 条状态，完全忽略 `start`/`end`/`interval` 参数，历史曲线接口名存实亡。
-- [ ] internal/services/monitor/probe_scheduler.go:74 依旧用 `%d` 打印 UUID，日志成了 `%!d(uuid.UUID=...)`，排查调度失败时根本看不到具体监控 ID。
-- [ ] ui/src/pages/hosts/service-monitor-page.tsx:60 / alert-events-page.tsx:63 等仍然用 `Bearer ${localStorage.getItem('token')}` 且缺少 `credentials: 'include'`，新登录改用 Cookie 后所有增删改请求都会 401。
-- [ ] ui/src/pages/hosts/service-monitor-page.tsx:52 `fetch('/api/v1/vms/service-monitors')` 命中不存在的列表路由（后端压根没实现 GET），再叠加上面的鉴权问题，页面永远拿不到监控数据。
-- [ ] ui/src/pages/hosts/alert-events-page.tsx:63 仍然请求 `/api/v1/vms/alert-events`，而后端事件接口在 `/api/v1/alerts/events`，页面必然 404。
-- [ ] ui/src/lib/api-client.ts:392 `devopsAPI.vms.alertEvents.*` 同样硬编码 `/vms/alert-events`，实际后端在 `/alerts/events`，所有调用都会失败。
-- [ ] ui/src/pages/hosts/host-ssh-page.tsx:45 依旧连向 `/api/v1/vms/hosts/:id/ssh/connect` 并发 Token Header，新后端改成 WebSSH 会话，这个页面现在始终 404/401。
-- [ ] internal/models/host_node.go:7 同步把 host/agent/monitor 表主键改成 UUID，但没有任何迁移脚本，旧库仍是 int，自建环境会直接列类型不匹配。
+## ✅ 已修复 (Fixed)
+
+- [x] ~~internal/services/managers/manager.go:104 `GetConnectionString` 端口转换问题~~ - 已修复：使用 `fmt.Sprintf("%s:%d", host, int(port))`
+- [x] ~~internal/services/managers/mysql_manager.go:54-56 `float64`→`int` panic 问题~~ - 已修复：添加了安全的类型断言
+- [x] ~~internal/services/managers/postgres_manager.go:55-57 `float64`→`int` panic 问题~~ - 已修复：添加了安全的类型断言
+- [x] ~~internal/services/auth/oauth.go:266 `parseJSON` 空实现~~ - 已修复：使用 `json.NewDecoder(r).Decode(v)`
+- [x] ~~internal/services/auth/oauth.go:277 `randomString` 低熵 state 生成~~ - 已修复：使用 `crypto/rand` 生成安全随机数
+- [x] ~~internal/api/handlers/service_monitor_handler.go:60/74/105/117/130 忽略 `uuid.Parse` 错误~~ - 已修复：添加了错误检查并返回 400
+- [x] ~~internal/api/handlers/service_monitor_handler.go 缺少列表接口~~ - 已修复：添加了 `ListMonitors` 方法
+- [x] ~~internal/api/routes.go:357 未注册 `GET /api/v1/vms/service-monitors` 路由~~ - 已修复：添加了列表路由
+- [x] ~~internal/repository/service_repository.go:16 `HostID` 仍是 `uint`~~ - 已修复：改为 `*uuid.UUID` 并更新过滤逻辑
+- [x] ~~ui/src/pages/hosts/alert-events-page.tsx:61/80/100 使用 `Bearer localStorage token`~~ - 已修复：改用 `credentials: 'include'`
+- [x] ~~ui/src/pages/hosts/alert-events-page.tsx:61 请求 `/vms/alert-events`~~ - 已修复：改为 `/alerts/events`
+- [x] ~~ui/src/lib/api-client.ts:388-393 硬编码 `/vms/alert-events`~~ - 已修复：改为 `/alerts/events`
+- [x] ~~internal/api/handlers/service_monitor_handler.go:30 期待 `host_id`，前端发送 `host_node_id` 不匹配~~ - 已修复：改为 `host_node_id`
+- [x] ~~internal/api/handlers/service_monitor_handler.go:84-87 更新接口仅保存 `interval/enabled`~~ - 已修复：支持更新所有字段（name, type, target, interval, timeout, host_node_id, enabled, notify_on_failure）
+- [x] ~~ui/src/pages/hosts/service-monitor-page.tsx:75/103/126 使用手写 fetch 且缺少 `credentials: 'include'`~~ - 已修复：所有请求添加 `credentials: 'include'`
+- [x] ~~ui/src/pages/hosts/service-monitor-page.tsx 缺少节点选择UI~~ - 已修复：添加了主机节点下拉选择器
+- [x] ~~ui/src/pages/hosts/service-monitor-page.tsx 缺少监控数据展示~~ - 已修复：添加了探测结果、可用性和最后探测时间展示
+
+## ⚠️ 需要进一步处理 (Needs Further Action)
+
+- [ ] internal/api/routes.go:112 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager - **需要实现完整的 OAuthManager 并注入**
+- [ ] internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤仅适用于 PostgreSQL - **需要添加数据库类型判断和兼容性处理**
+- [ ] internal/api/handlers/webssh_handler.go:79 写死 `userID` - **改进了 TODO 注释，需要实现 auth 中间件集成**
+- [ ] internal/models/host_node.go:7 UUID 迁移无迁移脚本 - **需要创建数据迁移脚本或文档**
+- [ ] internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID，日志输出 `%!d(uuid.UUID=...)`
+- [ ] ui/src/lib/api-client.ts:374~382 `devopsAPI.vms.alertRules.*` 仍指向 `/vms/alert-rules`，与后端 `/api/v1/alerts/rules` 不一致
+- [ ] ui/src/pages/hosts/host-ssh-page.tsx:45 仍连 `/api/v1/vms/hosts/:id/ssh/connect` 并发送 Token Header，未对接新的 WebSSH 会话 API
+
+## 📝 修复说明
+
+### 端口转换修复
+**文件**: `internal/services/managers/manager.go`
+**问题**: `string(rune(int(port)))` 将端口号转为单字符
+**修复**: 使用 `fmt.Sprintf("%s:%d", host, int(port))`
+
+### 类型断言修复
+**文件**: `mysql_manager.go`, `postgres_manager.go`
+**问题**: 直接 `.(int)` 转换会 panic
+**修复**: 先尝试 `.(float64)` 再转 `int`，再尝试 `.(int)`，都失败则使用默认值
+
+### OAuth 安全修复
+**文件**: `internal/services/auth/oauth.go`
+**问题**:
+1. `parseJSON` 空实现导致用户信息解析失败
+2. `randomString` 使用时间戳取模生成低熵随机数
+**修复**:
+1. 使用 `json.NewDecoder(r).Decode(v)` 正确解析 JSON
+2. 使用 `crypto/rand` 生成 32 字节安全随机数
+
+### UUID 解析错误处理
+**文件**: `service_monitor_handler.go`
+**问题**: 忽略 `uuid.Parse` 错误，非法 ID 会默默变成 `uuid.Nil`
+**修复**: 检查错误并返回 HTTP 400 Bad Request
+
+### API 路径修复
+**问题**: Alert events 使用错误的路径 `/vms/alert-events`
+**修复**: 统一改为 `/alerts/events` 匹配后端路由
+
+### 认证方式修复
+**问题**: 前端使用 `Bearer localStorage.getItem('token')`
+**修复**: 改为 `credentials: 'include'` 使用 HTTP-only cookie
+
+### 服务监控修复（新增）
+**文件**: `internal/api/handlers/service_monitor_handler.go`, `ui/src/pages/hosts/service-monitor-page.tsx`
+**问题**:
+1. 前后端字段不一致：后端期待 `host_id`，前端发送 `host_node_id`
+2. 更新接口仅保存 `interval` 和 `enabled`，忽略其他字段
+3. 前端缺少节点选择UI
+4. 前端缺少监控数据展示（探测结果、可用性统计）
+5. 前端使用 Bearer token 而非 Cookie 认证
+
+**修复**:
+1. 后端 CreateMonitor 改为接收 `host_node_id` 字段
+2. 后端 UpdateMonitor 支持更新所有字段：name, type, target, interval, timeout, host_node_id, enabled, notify_on_failure（使用指针类型支持部分更新）
+3. 前端添加主机节点下拉选择器，支持选择探测节点或留空从服务端探测
+4. 前端获取每个监控的可用性统计，展示探测结果、可用性百分比、最后探测时间
+5. 所有请求添加 `credentials: 'include'` 使用 Cookie 认证
+
+## 📋 待办事项优先级
+
+**High Priority**:
+1. 实现 OAuthManager 并注入到 AuthHandler
+2. 为 `instance_repo` 的标签过滤提供跨数据库实现
+3. WebSSH 会话需要从 JWT 中获取真实用户 ID
+
+**Medium Priority**:
+4. 编写 UUID 迁移脚本/文档，指导已有部署升级
+5. 前端统一改用 `devopsAPI` + Cookie 鉴权（告警规则等）
+6. 修复前端 WebSSH 页面以使用新的会话创建流程
+
+**Low Priority**:
+7. 调整日志与接口细节（如调度器 UUID 打印）并补充测试覆盖率

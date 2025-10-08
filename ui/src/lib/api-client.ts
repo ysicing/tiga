@@ -385,12 +385,12 @@ export const devopsAPI = {
 
     // Alert events
     alertEvents: {
-      list: (params?: Record<string, any>) => apiClient.get('/vms/alert-events', params),
-      get: (id: string) => apiClient.get(`/vms/alert-events/${id}`),
+      list: (params?: Record<string, any>) => apiClient.get('/alerts/events', params),
+      get: (id: string) => apiClient.get(`/alerts/events/${id}`),
       acknowledge: (id: string, note?: string) =>
-        apiClient.post(`/vms/alert-events/${id}/acknowledge`, { note }),
+        apiClient.post(`/alerts/events/${id}/acknowledge`, { note }),
       resolve: (id: string, note?: string) =>
-        apiClient.post(`/vms/alert-events/${id}/resolve`, { note }),
+        apiClient.post(`/alerts/events/${id}/resolve`, { note }),
     },
 
     // WebSSH

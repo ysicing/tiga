@@ -80,8 +80,12 @@ export interface ServiceMonitor {
   target: string;
   interval: number;
   timeout: number;
-  host_node_id?: string;
   enabled: boolean;
+
+  // Probe node selection strategy
+  probe_strategy?: 'server' | 'include' | 'exclude' | 'group';
+  probe_node_ids?: string;  // JSON string array of node UUIDs
+  probe_group_name?: string; // Node group name for group strategy
 
   // HTTP-specific
   http_method?: string;

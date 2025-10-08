@@ -22,14 +22,16 @@ func NewServiceMonitorHandler(probeService *monitor.ServiceProbeService) *Servic
 // CreateMonitor creates a new service monitor
 func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 	var req struct {
-		Name             string      `json:"name" binding:"required"`
-		Type             string      `json:"type" binding:"required"`
-		Target           string      `json:"target" binding:"required"`
-		Interval         int         `json:"interval"`
-		Timeout          int         `json:"timeout"`
-		HostID           *uuid.UUID  `json:"host_id"`
-		Enabled          bool        `json:"enabled"`
-		NotifyOnFailure  bool        `json:"notify_on_failure"`
+		Name             string `json:"name" binding:"required"`
+		Type             string `json:"type" binding:"required"`
+		Target           string `json:"target" binding:"required"`
+		Interval         int    `json:"interval"`
+		Timeout          int    `json:"timeout"`
+		ProbeStrategy    string `json:"probe_strategy"`     // server/include/exclude/group
+		ProbeNodeIDs     string `json:"probe_node_ids"`     // JSON array of UUIDs
+		ProbeGroupName   string `json:"probe_group_name"`   // Node group name
+		Enabled          bool   `json:"enabled"`
+		NotifyOnFailure  bool   `json:"notify_on_failure"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -43,9 +45,16 @@ func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 		Target:          req.Target,
 		Interval:        req.Interval,
 		Timeout:         req.Timeout,
-		HostNodeID:      req.HostID,
+		ProbeStrategy:   models.ProbeStrategy(req.ProbeStrategy),
+		ProbeNodeIDs:    req.ProbeNodeIDs,
+		ProbeGroupName:  req.ProbeGroupName,
 		Enabled:         req.Enabled,
 		NotifyOnFailure: req.NotifyOnFailure,
+	}
+
+	// Default to server strategy if not specified
+	if mon.ProbeStrategy == "" {
+		mon.ProbeStrategy = models.ProbeStrategyServer
 	}
 
 	if err := h.probeService.CreateMonitor(c.Request.Context(), mon); err != nil {
@@ -58,7 +67,11 @@ func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 
 // GetMonitor gets a service monitor
 func (h *ServiceMonitorHandler) GetMonitor(c *gin.Context) {
-	id, _ := uuid.Parse(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
 
 	mon, err := h.probeService.GetMonitor(c.Request.Context(), id)
 	if err != nil {
@@ -71,11 +84,23 @@ func (h *ServiceMonitorHandler) GetMonitor(c *gin.Context) {
 
 // UpdateMonitor updates a service monitor
 func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
-	id, _ := uuid.Parse(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
 
 	var req struct {
-		Interval int  `json:"interval"`
-		Enabled  bool `json:"enabled"`
+		Name             *string `json:"name"`
+		Type             *string `json:"type"`
+		Target           *string `json:"target"`
+		Interval         *int    `json:"interval"`
+		Timeout          *int    `json:"timeout"`
+		ProbeStrategy    *string `json:"probe_strategy"`
+		ProbeNodeIDs     *string `json:"probe_node_ids"`
+		ProbeGroupName   *string `json:"probe_group_name"`
+		Enabled          *bool   `json:"enabled"`
+		NotifyOnFailure  *bool   `json:"notify_on_failure"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -89,8 +114,37 @@ func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
 		return
 	}
 
-	mon.Interval = req.Interval
-	mon.Enabled = req.Enabled
+	// Update only provided fields
+	if req.Name != nil {
+		mon.Name = *req.Name
+	}
+	if req.Type != nil {
+		mon.Type = models.ProbeType(*req.Type)
+	}
+	if req.Target != nil {
+		mon.Target = *req.Target
+	}
+	if req.Interval != nil {
+		mon.Interval = *req.Interval
+	}
+	if req.Timeout != nil {
+		mon.Timeout = *req.Timeout
+	}
+	if req.ProbeStrategy != nil {
+		mon.ProbeStrategy = models.ProbeStrategy(*req.ProbeStrategy)
+	}
+	if req.ProbeNodeIDs != nil {
+		mon.ProbeNodeIDs = *req.ProbeNodeIDs
+	}
+	if req.ProbeGroupName != nil {
+		mon.ProbeGroupName = *req.ProbeGroupName
+	}
+	if req.Enabled != nil {
+		mon.Enabled = *req.Enabled
+	}
+	if req.NotifyOnFailure != nil {
+		mon.NotifyOnFailure = *req.NotifyOnFailure
+	}
 
 	if err := h.probeService.UpdateMonitor(c.Request.Context(), mon); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to update"})
@@ -102,7 +156,11 @@ func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
 
 // DeleteMonitor deletes a service monitor
 func (h *ServiceMonitorHandler) DeleteMonitor(c *gin.Context) {
-	id, _ := uuid.Parse(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
 
 	if err := h.probeService.DeleteMonitor(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to delete"})
@@ -114,7 +172,11 @@ func (h *ServiceMonitorHandler) DeleteMonitor(c *gin.Context) {
 
 // TriggerProbe triggers manual probe
 func (h *ServiceMonitorHandler) TriggerProbe(c *gin.Context) {
-	id, _ := uuid.Parse(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
 
 	result, err := h.probeService.TriggerManualProbe(c.Request.Context(), id)
 	if err != nil {
@@ -127,7 +189,12 @@ func (h *ServiceMonitorHandler) TriggerProbe(c *gin.Context) {
 
 // GetAvailability gets availability statistics
 func (h *ServiceMonitorHandler) GetAvailability(c *gin.Context) {
-	id, _ := uuid.Parse(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
 	period := c.DefaultQuery("period", "24h")
 
 	stats, err := h.probeService.GetAvailabilityStats(c.Request.Context(), id, period)
@@ -137,4 +204,23 @@ func (h *ServiceMonitorHandler) GetAvailability(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": stats})
+}
+
+// ListMonitors lists service monitors
+func (h *ServiceMonitorHandler) ListMonitors(c *gin.Context) {
+	// TODO: Add filter query parameters
+	monitors, total, err := h.probeService.ListMonitors(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to list monitors"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"items": monitors,
+			"total": total,
+		},
+	})
 }

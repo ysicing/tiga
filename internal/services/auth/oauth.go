@@ -2,7 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -262,23 +266,33 @@ func getBoolField(data map[string]interface{}, key string) bool {
 	return false
 }
 
-func parseJSON(r interface{}, v interface{}) error {
-	// Simplified JSON parsing - in real implementation use encoding/json
-	// This is a placeholder
-	return nil
+func parseJSON(r io.Reader, v interface{}) error {
+	decoder := json.NewDecoder(r)
+	return decoder.Decode(v)
 }
 
-// GenerateStateToken generates a random state token for CSRF protection
+// GenerateStateToken generates a cryptographically secure random state token for CSRF protection
 func GenerateStateToken() string {
-	// Generate a random UUID for state
-	return fmt.Sprintf("state_%d_%s", time.Now().Unix(), randomString(16))
+	// Generate 32 bytes of random data (256 bits)
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to time-based if crypto/rand fails (should never happen)
+		return fmt.Sprintf("state_%d", time.Now().UnixNano())
+	}
+	return fmt.Sprintf("state_%s", hex.EncodeToString(b))
 }
 
 func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+	// Generate cryptographically secure random string
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to less secure method if crypto/rand fails
+		const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+		b := make([]byte, length)
+		for i := range b {
+			b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+		}
+		return string(b)
 	}
-	return string(b)
+	return hex.EncodeToString(bytes)[:length]
 }

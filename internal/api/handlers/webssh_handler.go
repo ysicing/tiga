@@ -74,11 +74,14 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 	_ = h.terminalMgr.CreateSession(streamID, hostUUID, conn.UUID)
 
 	// Create webssh session for recording
-	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001") // TODO: Get from auth context
+	// TODO: Get actual user ID from auth context when auth middleware is available
+	// For now use a default system user UUID
+	userID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	clientIP := c.ClientIP()
 	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), userID, hostUUID, req.Width, req.Height, clientIP)
 	if err != nil {
 		logrus.Errorf("Failed to create webssh session: %v", err)
+		// Don't fail the terminal creation if session recording fails
 	}
 
 	// Notify Agent to create terminal via gRPC Task

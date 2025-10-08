@@ -354,6 +354,7 @@ func SetupRoutes(
 				// Service monitoring
 				serviceMonitorsGroup := vmsGroup.Group("/service-monitors")
 				{
+					serviceMonitorsGroup.GET("", serviceMonitorHandler.ListMonitors)
 					serviceMonitorsGroup.POST("", serviceMonitorHandler.CreateMonitor)
 					serviceMonitorsGroup.GET("/:id", serviceMonitorHandler.GetMonitor)
 					serviceMonitorsGroup.PUT("/:id", serviceMonitorHandler.UpdateMonitor)

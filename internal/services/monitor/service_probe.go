@@ -110,3 +110,13 @@ func (s *ServiceProbeService) GetAvailabilityStats(ctx context.Context, monitorI
 func (s *ServiceProbeService) TriggerManualProbe(ctx context.Context, monitorID uuid.UUID) (*models.ServiceProbeResult, error) {
 	return s.scheduler.TriggerManualProbe(ctx, monitorID)
 }
+
+// ListMonitors retrieves a list of service monitors with optional filters
+func (s *ServiceProbeService) ListMonitors(ctx context.Context) ([]*models.ServiceMonitor, int64, error) {
+	// TODO: Add filter support from query parameters
+	filter := repository.ServiceFilter{
+		Page:     1,
+		PageSize: 100,
+	}
+	return s.serviceRepo.List(ctx, filter)
+}

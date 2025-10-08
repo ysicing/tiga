@@ -58,10 +58,8 @@ export function AlertEventsPage() {
         }
       }
 
-      const response = await fetch(`/api/v1/vms/alert-events?${params}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+      const response = await fetch(`/api/v1/alerts/events?${params}`, {
+        credentials: 'include',
       });
       const data = await response.json();
       if (data.code === 0) {
@@ -77,12 +75,10 @@ export function AlertEventsPage() {
   const handleAcknowledge = async (eventId: number) => {
     try {
       const response = await fetch(
-        `/api/v1/vms/alert-events/${eventId}/acknowledge`,
+        `/api/v1/alerts/events/${eventId}/acknowledge`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
+          credentials: 'include',
         }
       );
       const data = await response.json();
@@ -97,12 +93,10 @@ export function AlertEventsPage() {
   const handleResolve = async (eventId: number) => {
     try {
       const response = await fetch(
-        `/api/v1/vms/alert-events/${eventId}/resolve`,
+        `/api/v1/alerts/events/${eventId}/resolve`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
+          credentials: 'include',
         }
       );
       const data = await response.json();
