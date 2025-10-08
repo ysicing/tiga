@@ -27,9 +27,7 @@ type HostInfo struct {
 	BootTime     uint64 `json:"boot_time"`     // System boot time (Unix timestamp)
 
 	// SSH configuration (reported by Agent)
-	SSHEnabled bool   `json:"ssh_enabled"` // Whether SSH service is running
-	SSHPort    int    `json:"ssh_port"`    // SSH listening port
-	SSHUser    string `json:"ssh_user"`    // Default SSH user
+	SSHEnabled bool `json:"ssh_enabled"` // Whether SSH service is running
 
 	// GPU information (optional)
 	GPUModel string `json:"gpu_model,omitempty"` // GPU model name

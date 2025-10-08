@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/ysicing/tiga/internal/models"
@@ -94,16 +95,28 @@ func (m *AgentManager) RegisterAgent(ctx context.Context, req *proto.RegisterAge
 		AgentVersion:    req.HostInfo.AgentVersion,
 		BootTime:        uint64(req.HostInfo.BootTime),
 		SSHEnabled:      req.HostInfo.SshEnabled,
-		SSHPort:         int(req.HostInfo.SshPort),
-		SSHUser:         req.HostInfo.SshUser,
+	}
+	spew.Dump("RegisterAgent HostInfo:", req.HostInfo)
+
+	// Upsert HostInfo - query existing record to preserve ID and timestamps
+	var existingInfo models.HostInfo
+	err = m.db.WithContext(ctx).Where("host_node_id = ?", host.ID).First(&existingInfo).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, status.Errorf(codes.Internal, "failed to query host info: %v", err)
 	}
 
-	// Upsert HostInfo
-	if err := m.db.WithContext(ctx).
-		Where("host_node_id = ?", host.ID).
-		Assign(hostInfo).
-		FirstOrCreate(&hostInfo).Error; err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to save host info: %v", err)
+	if err == gorm.ErrRecordNotFound {
+		// Create new record
+		if err = m.db.WithContext(ctx).Create(hostInfo).Error; err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to create host info: %v", err)
+		}
+	} else {
+		// Update existing record - preserve ID and CreatedAt
+		hostInfo.ID = existingInfo.ID
+		hostInfo.CreatedAt = existingInfo.CreatedAt
+		if err = m.db.WithContext(ctx).Save(hostInfo).Error; err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to update host info: %v", err)
+		}
 	}
 
 	// Update or create AgentConnection record
@@ -267,6 +280,15 @@ func (m *AgentManager) accumulateTraffic(hostNodeID uuid.UUID, delta int64) erro
 func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uuid.UUID, stream proto.HostMonitor_ReportStateServer) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// Check if this is a reconnection
+	var agentConn models.AgentConnection
+	isReconnection := false
+	if err := m.db.Where("host_node_id = ?", hostNodeID).First(&agentConn).Error; err == nil {
+		if agentConn.LastDisconnectAt != nil {
+			isReconnection = true
+		}
+	}
+
 	conn := &AgentConnection{
 		UUID:       uuid,
 		HostNodeID: hostNodeID,
@@ -289,6 +311,43 @@ func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uuid.UUID, str
 	logrus.Infof("[AgentManager] Registered connection: uuid=%s, hostID=%s, connections=%d",
 		uuid, hostNodeID.String(), m.GetActiveConnectionCount())
 
+	// Record activity log
+	action := models.ActivityAgentConnected
+	description := "Agent connected"
+	metadata := fmt.Sprintf(`{"uuid":"%s","connection_count":%d}`, uuid, m.GetActiveConnectionCount())
+
+	if isReconnection && agentConn.LastDisconnectAt != nil {
+		action = models.ActivityAgentReconnected
+		offlineDuration := time.Since(*agentConn.LastDisconnectAt)
+
+		// Format offline duration in human-readable format
+		var durationStr string
+		if offlineDuration < time.Minute {
+			durationStr = fmt.Sprintf("%.0f秒", offlineDuration.Seconds())
+		} else if offlineDuration < time.Hour {
+			durationStr = fmt.Sprintf("%.0f分钟", offlineDuration.Minutes())
+		} else if offlineDuration < 24*time.Hour {
+			durationStr = fmt.Sprintf("%.1f小时", offlineDuration.Hours())
+		} else {
+			durationStr = fmt.Sprintf("%.1f天", offlineDuration.Hours()/24)
+		}
+
+		description = fmt.Sprintf("Agent reconnected (离线 %s)", durationStr)
+		metadata = fmt.Sprintf(`{"uuid":"%s","connection_count":%d,"offline_duration":"%s","offline_seconds":%.0f}`,
+			uuid, m.GetActiveConnectionCount(), durationStr, offlineDuration.Seconds())
+	}
+
+	activityLog := &models.HostActivityLog{
+		HostNodeID:  hostNodeID,
+		Action:      action,
+		ActionType:  models.ActivityTypeAgent,
+		Description: description,
+		Metadata:    metadata,
+	}
+	if err := m.db.Create(activityLog).Error; err != nil {
+		logrus.Warnf("Failed to record agent connection activity: %v", err)
+	}
+
 	// Start heartbeat monitoring for this connection
 	go m.monitorConnection(ctx, uuid)
 }
@@ -307,6 +366,21 @@ func (m *AgentManager) DisconnectAgent(uuid string) {
 		// Update last active time (online status is runtime only)
 		now := time.Now()
 		m.db.Model(&models.HostNode{}).Where("id = ?", agentConn.HostNodeID).Update("last_active", now)
+
+		// Record activity log
+		activityLog := &models.HostActivityLog{
+			HostNodeID:  agentConn.HostNodeID,
+			Action:      models.ActivityAgentDisconnected,
+			ActionType:  models.ActivityTypeAgent,
+			Description: "Agent disconnected",
+			Metadata:    fmt.Sprintf(`{"uuid":"%s","connected_duration":"%s"}`, uuid, time.Since(agentConn.Connected).String()),
+		}
+		if err := m.db.Create(activityLog).Error; err != nil {
+			logrus.Warnf("Failed to record agent disconnection activity: %v", err)
+		}
+
+		logrus.Infof("[AgentManager] Agent disconnected: uuid=%s, hostID=%s, duration=%s",
+			uuid, agentConn.HostNodeID.String(), time.Since(agentConn.Connected))
 	}
 }
 

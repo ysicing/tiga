@@ -233,6 +233,7 @@ func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *
 		SwapTotal:       hostInfo.SwapTotal,
 		AgentVersion:    hostInfo.AgentVersion,
 		BootTime:        int64(hostInfo.BootTime),
+		SshEnabled:      !config.DisableWebSSH, // WebSSH is enabled unless explicitly disabled
 	}
 
 	// Register with server

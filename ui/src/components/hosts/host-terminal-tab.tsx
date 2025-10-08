@@ -98,15 +98,30 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
 
   // Initialize asciinema player when selectedSession changes
   useEffect(() => {
-    if (selectedSession && playerRef.current) {
+    if (!selectedSession) return;
+
+    // Wait for DOM to be ready
+    const loadRecording = async () => {
+      // Check if ref is available, if not wait a bit
+      if (!playerRef.current) {
+        console.log('playerRef not ready, waiting...');
+        setTimeout(loadRecording, 100);
+        return;
+      }
+
+      console.log('Loading recording for session:', selectedSession);
       // Clear any existing player
       playerRef.current.innerHTML = '';
 
-      // Create new player with asciinema-player v3 API
       try {
+        // Fetch with authentication headers (returns asciicast text string directly)
+        const recording = await devopsAPI.vms.webssh.getRecording(selectedSession);
+        console.log('Recording fetched, length:', recording.length);
+
+        // Create player with fetched asciicast data (pass as data object, not URL)
         create(
-          `/api/v1/vms/webssh/sessions/${selectedSession}/playback`,
-          playerRef.current,
+          { data: recording, parser: 'asciicast' },
+          playerRef.current!,
           {
             fit: 'width',
             terminalFontSize: '14px',
@@ -115,13 +130,16 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
             autoPlay: false,
           }
         );
+        console.log('Player created successfully');
       } catch (error) {
-        console.error('Failed to create asciinema player:', error);
+        console.error('Failed to load recording:', error);
         if (playerRef.current) {
-          playerRef.current.innerHTML = '<p class="text-red-500 p-4">播放器加载失败，请刷新重试</p>';
+          playerRef.current.innerHTML = '<p class="text-red-500 p-4">录制文件加载失败，请刷新重试</p>';
         }
       }
-    }
+    };
+
+    loadRecording();
   }, [selectedSession]);
 
   if (isLoading) {
@@ -140,10 +158,6 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground mb-4">暂无终端会话记录</p>
-        <Button onClick={() => window.open(`/vms/hosts/${hostId}/ssh`, '_blank')}>
-          <Monitor className="mr-2 h-4 w-4" />
-          打开新终端
-        </Button>
       </div>
     );
   }
@@ -153,10 +167,6 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
       {/* Header with "Open New Terminal" button */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">终端会话</h3>
-        <Button onClick={() => window.open(`/vms/hosts/${hostId}/ssh`, '_blank')}>
-          <Monitor className="mr-2 h-4 w-4" />
-          打开新终端
-        </Button>
       </div>
 
       {/* Active Sessions Table */}
@@ -274,11 +284,25 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => {
-                                window.open(
-                                  `/api/v1/vms/webssh/sessions/${session.session_id}/playback`,
-                                  '_blank'
-                                );
+                              onClick={async () => {
+                                try {
+                                  // Fetch with authentication (returns asciicast text string directly)
+                                  const recording = await devopsAPI.vms.webssh.getRecording(session.session_id);
+
+                                  // Create blob and download
+                                  const blob = new Blob([recording as string], { type: 'text/plain' });
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = `${session.session_id}.cast`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Failed to download recording:', error);
+                                  alert('下载失败，请重试');
+                                }
                               }}
                             >
                               <Download className="h-4 w-4" />
@@ -330,11 +354,12 @@ export function HostTerminalTab({ hostId }: HostTerminalTabProps) {
         <DialogContent className="max-w-5xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>终端会话回放</DialogTitle>
+            <DialogDescription>
+              播放已录制的终端会话，您可以暂停、快进或重播操作记录
+            </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
-            {selectedSession && (
-              <div ref={playerRef} className="w-full" />
-            )}
+            <div ref={playerRef} className="w-full" />
           </div>
         </DialogContent>
       </Dialog>

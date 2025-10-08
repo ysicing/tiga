@@ -29,6 +29,8 @@
 - [ ] internal/models/host_node.go:7 UUID 迁移无迁移脚本 - **需要创建数据迁移脚本或文档**
 - [x] ~~internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID~~ - 已修复：日志改用 `monitor.ID.String()` 输出，避免 `%!d(uuid.UUID=...)`
 - [ ] ui/src/lib/api-client.ts:374~382 `devopsAPI.vms.alertRules.*` 仍指向 `/vms/alert-rules`，与后端 `/api/v1/alerts/rules` 不一致
+- [ ] internal/api/handlers/webssh_handler.go:338 Watch 模式直接消费 `ReceiveFromAgent`，会抢占主会话输出；需实现广播/只读通道，否则旁观功能会截断交互数据
+- [ ] ui/src/components/hosts/webssh-terminal.tsx 与新版 WebSSH 协议不匹配（仍发送/接收裸文本，未处理 JSON + Base64 消息），导致无法正常交互
 
 ## 📝 修复说明
 

@@ -1,8 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Clock, Terminal, User, Server, AlertCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Clock, Terminal, User, Server, AlertCircle, Loader2 } from 'lucide-react';
 import { devopsAPI } from '@/lib/api-client';
 
 interface HostActivity {
@@ -77,57 +74,57 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        {activities.map((activity: HostActivity) => {
-          const Icon = ACTION_ICONS[activity.action_type] || AlertCircle;
-          const iconColor = ACTION_TYPE_COLORS[activity.action_type] || 'bg-gray-500';
-          const actionLabel = ACTION_LABELS[activity.action] || activity.action;
+    <div className="space-y-2">
+      {activities.map((activity: HostActivity) => {
+        const Icon = ACTION_ICONS[activity.action_type] || AlertCircle;
+        const iconColor = ACTION_TYPE_COLORS[activity.action_type] || 'bg-gray-500';
+        const actionLabel = ACTION_LABELS[activity.action] || activity.action;
 
-          return (
-            <Card key={activity.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  {/* Icon */}
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-full ${iconColor} flex items-center justify-center`}>
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
+        return (
+          <div
+            key={activity.id}
+            className="flex items-center gap-3 px-4 py-2 rounded-lg border hover:bg-accent/50 transition-colors"
+          >
+            {/* Icon */}
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full ${iconColor} flex items-center justify-center`}>
+              <Icon className="h-4 w-4 text-white" />
+            </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium">{actionLabel}</p>
-                      <Badge variant="outline" className="text-xs">
-                        {activity.action_type}
-                      </Badge>
-                    </div>
+            {/* Action Label */}
+            <div className="flex-shrink-0 min-w-[100px]">
+              <span className="text-sm font-medium">{actionLabel}</span>
+            </div>
 
-                    {activity.description && (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {activity.description}
-                      </p>
-                    )}
+            {/* Description (optional, truncated) */}
+            {activity.description && (
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-muted-foreground truncate block">
+                  {activity.description}
+                </span>
+              </div>
+            )}
 
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(activity.created_at).toLocaleString('zh-CN')}
-                      </div>
+            {/* Time */}
+            <div className="flex-shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{new Date(activity.created_at).toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}</span>
+            </div>
 
-                      {activity.client_ip && (
-                        <div className="flex items-center gap-1">
-                          <Server className="h-3 w-3" />
-                          {activity.client_ip}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+            {/* Client IP (if available) */}
+            {activity.client_ip && (
+              <div className="flex-shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
+                <Server className="h-3 w-3" />
+                <span>{activity.client_ip}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

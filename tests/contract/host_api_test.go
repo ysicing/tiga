@@ -17,15 +17,12 @@ func TestHostAPI_CreateHost(t *testing.T) {
 	t.Skip("Waiting for implementation: internal/api/handlers/host_handler.go")
 
 	reqBody := map[string]interface{}{
-		"name":            "prod-server-01",
-		"note":            "生产环境Web服务器",
-		"public_note":     "公开备注信息",
-		"display_index":   100,
-		"hide_for_guest":  false,
-		"enable_webssh":   true,
-		"ssh_port":        22,
-		"ssh_user":        "root",
-		"group_ids":       []int{1, 2, 3},
+		"name":           "prod-server-01",
+		"note":           "生产环境Web服务器",
+		"public_note":    "公开备注信息",
+		"display_index":  100,
+		"hide_for_guest": false,
+		"group_ids":      []int{1, 2, 3},
 	}
 
 	body, _ := json.Marshal(reqBody)
@@ -60,7 +57,6 @@ func TestHostAPI_CreateHost(t *testing.T) {
 	// Echo back request fields
 	assert.Equal(t, "prod-server-01", data["name"])
 	assert.Equal(t, float64(100), data["display_index"])
-	assert.Equal(t, float64(22), data["ssh_port"])
 }
 
 // TestHostAPI_ListHosts tests GET /api/v1/hosts contract
@@ -133,9 +129,8 @@ func TestHostAPI_UpdateHost(t *testing.T) {
 	t.Skip("Waiting for implementation: internal/api/handlers/host_handler.go")
 
 	reqBody := map[string]interface{}{
-		"name":         "prod-server-01-updated",
-		"ssh_port":     2222,
-		"group_ids":    []int{1, 3},
+		"name":      "prod-server-01-updated",
+		"group_ids": []int{1, 3},
 	}
 
 	body, _ := json.Marshal(reqBody)
@@ -154,7 +149,6 @@ func TestHostAPI_UpdateHost(t *testing.T) {
 
 	data := resp["data"].(map[string]interface{})
 	assert.Equal(t, "prod-server-01-updated", data["name"])
-	assert.Equal(t, float64(2222), data["ssh_port"])
 }
 
 // TestHostAPI_DeleteHost tests DELETE /api/v1/hosts/{id} contract

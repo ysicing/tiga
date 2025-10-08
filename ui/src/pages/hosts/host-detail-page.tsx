@@ -74,10 +74,12 @@ export function HostDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => navigate(`/vms/hosts/${id}/ssh`)} disabled={!host.online}>
-            <Terminal className="mr-2 h-4 w-4" />
-            打开终端
-          </Button>
+          {host.host_info?.ssh_enabled && (
+            <Button onClick={() => navigate(`/vms/hosts/${id}/ssh`)} disabled={!host.online}>
+              <Terminal className="mr-2 h-4 w-4" />
+              终端
+            </Button>
+          )}
           <Button variant="outline" onClick={() => navigate(`/vms/hosts/${id}/edit`)}>
             <Settings className="mr-2 h-4 w-4" />
             设置
@@ -144,10 +146,10 @@ export function HostDetailPage() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${host.host_info?.ssh_enabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="activities">动态</TabsTrigger>
           <TabsTrigger value="monitor">监控</TabsTrigger>
-          <TabsTrigger value="terminal">终端</TabsTrigger>
+          {host.host_info?.ssh_enabled && <TabsTrigger value="terminal">终端</TabsTrigger>}
         </TabsList>
 
         {/* Activities Tab */}
@@ -160,10 +162,12 @@ export function HostDetailPage() {
           {id && <HostMonitorTab hostId={id} />}
         </TabsContent>
 
-        {/* Terminal Tab */}
-        <TabsContent value="terminal" className="space-y-4">
-          {id && <HostTerminalTab hostId={id} />}
-        </TabsContent>
+        {/* Terminal Tab - only render if WebSSH is enabled */}
+        {host.host_info?.ssh_enabled && (
+          <TabsContent value="terminal" className="space-y-4">
+            {id && <HostTerminalTab hostId={id} />}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

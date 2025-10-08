@@ -403,6 +403,7 @@ export const devopsAPI = {
       listAllSessions: (params?: Record<string, any>) =>
         apiClient.get('/vms/webssh/sessions/all', params),
       getSession: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}`),
+      getRecording: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}/playback`),
       closeSession: (id: string) => apiClient.delete(`/vms/webssh/sessions/${id}`),
     },
   },

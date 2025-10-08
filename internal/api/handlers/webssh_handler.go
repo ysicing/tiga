@@ -116,6 +116,22 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
+	// Record activity log
+	activityLog := &models.HostActivityLog{
+		HostNodeID:  hostUUID,
+		UserID:      &userID,
+		Action:      models.ActivityTerminalCreated,
+		ActionType:  models.ActivityTypeTerminal,
+		Description: fmt.Sprintf("WebSSH terminal session created (Session ID: %s)", streamID),
+		Metadata:    fmt.Sprintf(`{"session_id":"%s","ws_session_id":"%s"}`, streamID, wsSession.SessionID),
+		ClientIP:    clientIP,
+		UserAgent:   c.Request.UserAgent(),
+	}
+	if err := h.db.Create(activityLog).Error; err != nil {
+		logrus.Warnf("Failed to record terminal creation activity: %v", err)
+		// Don't fail the request if activity logging fails
+	}
+
 	// Build WebSocket URL
 	scheme := "wss"
 	if c.Request.TLS == nil {
@@ -190,6 +206,20 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		}
 		if err := h.sessionMgr.CloseSession(c.Request.Context(), wsSession.SessionID, "client disconnected"); err != nil {
 			logrus.Debugf("session close error: %v", err)
+		}
+
+		// Record terminal closed activity
+		activityLog := &models.HostActivityLog{
+			HostNodeID:  wsSession.HostNodeID,
+			UserID:      &wsSession.UserID,
+			Action:      models.ActivityTerminalClosed,
+			ActionType:  models.ActivityTypeTerminal,
+			Description: fmt.Sprintf("WebSSH terminal session closed (Session ID: %s)", streamID),
+			Metadata:    fmt.Sprintf(`{"session_id":"%s","ws_session_id":"%s","status":"%s"}`, streamID, wsSession.SessionID, wsSession.Status),
+			ClientIP:    wsSession.ClientIP,
+		}
+		if err := h.db.Create(activityLog).Error; err != nil {
+			logrus.Warnf("Failed to record terminal closure activity: %v", err)
 		}
 	}()
 
@@ -446,8 +476,8 @@ func (h *WebSSHHandler) GetRecording(c *gin.Context) {
 		return
 	}
 
-	// Serve the recording file
-	c.Header("Content-Type", "application/json")
+	// Serve the recording file (asciicast format is NDJSON, not JSON)
+	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s.cast", sessionID))
 	c.File(session.RecordingPath)
 }
