@@ -13,15 +13,17 @@ import (
 
 // AlertEngine processes alert rules and triggers events
 type AlertEngine struct {
-	alertRepo repository.MonitorAlertRepository
-	hostRepo  repository.HostRepository
+	alertRepo   repository.MonitorAlertRepository
+	hostRepo    repository.HostRepository
+	serviceRepo repository.ServiceRepository
 }
 
 // NewAlertEngine creates a new alert engine
-func NewAlertEngine(alertRepo repository.MonitorAlertRepository, hostRepo repository.HostRepository) *AlertEngine {
+func NewAlertEngine(alertRepo repository.MonitorAlertRepository, hostRepo repository.HostRepository, serviceRepo repository.ServiceRepository) *AlertEngine {
 	return &AlertEngine{
-		alertRepo: alertRepo,
-		hostRepo:  hostRepo,
+		alertRepo:   alertRepo,
+		hostRepo:    hostRepo,
+		serviceRepo: serviceRepo,
 	}
 }
 
@@ -37,6 +39,24 @@ func (e *AlertEngine) EvaluateHostRules(ctx context.Context, hostID uuid.UUID, s
 	for _, rule := range rules {
 		if rule.TargetID == hostID {
 			e.evaluateRule(ctx, rule, state)
+		}
+	}
+
+	return nil
+}
+
+// EvaluateServiceRules evaluates all service-related alert rules
+func (e *AlertEngine) EvaluateServiceRules(ctx context.Context, serviceMonitorID uuid.UUID, availability *models.ServiceAvailability) error {
+	// Get all active service rules
+	rules, err := e.alertRepo.GetActiveRules(ctx, string(models.AlertTypeService))
+	if err != nil {
+		return err
+	}
+
+	// Evaluate each rule
+	for _, rule := range rules {
+		if rule.TargetID == serviceMonitorID {
+			e.evaluateRule(ctx, rule, availability)
 		}
 	}
 
@@ -103,6 +123,24 @@ func (e *AlertEngine) prepareEnv(data interface{}) map[string]interface{} {
 		env["load_1"] = v.Load1
 		env["load_5"] = v.Load5
 		env["load_15"] = v.Load15
+
+	case *models.ServiceAvailability:
+		// Service monitoring metrics
+		env["uptime_percentage"] = v.UptimePercentage
+		env["avg_latency"] = v.AvgLatency
+		env["total_checks"] = v.TotalChecks
+		env["successful_checks"] = v.SuccessfulChecks
+		env["failed_checks"] = v.FailedChecks
+		env["status_code"] = string(models.ServiceStatusUnknown) // Will be calculated based on uptime
+
+		// Calculate status code based on uptime percentage
+		if v.UptimePercentage >= 95.0 {
+			env["status_code"] = string(models.ServiceStatusGood)
+		} else if v.UptimePercentage >= 80.0 {
+			env["status_code"] = string(models.ServiceStatusLowAvailability)
+		} else {
+			env["status_code"] = string(models.ServiceStatusDown)
+		}
 	}
 
 	return env

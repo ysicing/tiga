@@ -163,6 +163,7 @@ func (d *Database) AutoMigrate() error {
 		&models.ServiceMonitor{},
 		&models.ServiceProbeResult{},
 		&models.ServiceAvailability{},
+		&models.ServiceHistory{}, // 30-day aggregated service history
 		&models.WebSSHSession{},
 		&models.HostActivityLog{},
 		&models.MonitorAlertRule{},

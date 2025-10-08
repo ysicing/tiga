@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package proto;
 
+import "proto/service_probe.proto";
+
 option go_package = "github.com/ysicing/tiga/proto;proto";
 
 // HostMonitor 主机监控服务
@@ -11,6 +13,9 @@ service HostMonitor {
 
   // RegisterAgent Agent注册
   rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
+
+  // ReportProbeResultBatch Agent批量上报探测结果
+  rpc ReportProbeResultBatch(ReportProbeResultBatchRequest) returns (ReportProbeResultBatchResponse);
 
   // Heartbeat 心跳保持
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
@@ -125,4 +130,24 @@ message IOStreamData {
                                      // - 0x00 + data: 终端输入数据
                                      // - 0x01 + json: 窗口大小调整 {"cols":80,"rows":24}
                                      // - 其他: 终端输出数据
+}
+
+// 探测结果项(用于批量上报)
+message ProbeResultItem {
+  string service_monitor_id = 1;    // 服务监控ID
+  ProbeResult result = 2;           // 探测结果
+}
+
+// Agent批量上报探测结果请求
+message ReportProbeResultBatchRequest {
+  string uuid = 1;                  // Agent UUID
+  repeated ProbeResultItem results = 2; // 探测结果列表
+}
+
+// Agent批量上报探测结果响应
+message ReportProbeResultBatchResponse {
+  bool success = 1;                 // 是否成功
+  string message = 2;               // 消息
+  int32 processed = 3;              // 成功处理的结果数量
+  int32 failed = 4;                 // 失败的结果数量
 }

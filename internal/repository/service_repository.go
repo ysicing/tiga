@@ -36,6 +36,11 @@ type ServiceRepository interface {
 	SaveAvailability(ctx context.Context, availability *models.ServiceAvailability) error
 	GetAvailability(ctx context.Context, serviceID uuid.UUID, period string, start time.Time) (*models.ServiceAvailability, error)
 	CalculateAvailability(ctx context.Context, serviceID uuid.UUID, start, end time.Time) (*models.ServiceAvailability, error)
+
+	// Service history (aggregated data)
+	SaveServiceHistory(ctx context.Context, history *models.ServiceHistory) error
+	GetServiceHistories(ctx context.Context, start, end time.Time) ([]*models.ServiceHistory, error)
+	GetServiceHistoryByHost(ctx context.Context, hostNodeID uuid.UUID, start, end time.Time) ([]*models.ServiceHistory, error)
 }
 
 // serviceRepository implements ServiceRepository
@@ -250,4 +255,35 @@ func (r *serviceRepository) CalculateAvailability(ctx context.Context, serviceID
 	availability.CalculateUptime()
 
 	return availability, nil
+}
+
+// SaveServiceHistory saves a service history record
+func (r *serviceRepository) SaveServiceHistory(ctx context.Context, history *models.ServiceHistory) error {
+	return r.db.WithContext(ctx).Create(history).Error
+}
+
+// GetServiceHistories retrieves service histories within a time range
+func (r *serviceRepository) GetServiceHistories(ctx context.Context, start, end time.Time) ([]*models.ServiceHistory, error) {
+	var histories []*models.ServiceHistory
+	err := r.db.WithContext(ctx).
+		Where("created_at >= ? AND created_at <= ?", start, end).
+		Order("service_monitor_id, host_node_id, created_at").
+		Find(&histories).Error
+	if err != nil {
+		return nil, err
+	}
+	return histories, nil
+}
+
+// GetServiceHistoryByHost retrieves service histories for a specific host node
+func (r *serviceRepository) GetServiceHistoryByHost(ctx context.Context, hostNodeID uuid.UUID, start, end time.Time) ([]*models.ServiceHistory, error) {
+	var histories []*models.ServiceHistory
+	err := r.db.WithContext(ctx).
+		Where("host_node_id = ? AND created_at >= ? AND created_at <= ?", hostNodeID, start, end).
+		Order("service_monitor_id, created_at").
+		Find(&histories).Error
+	if err != nil {
+		return nil, err
+	}
+	return histories, nil
 }

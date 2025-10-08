@@ -264,4 +264,65 @@ export const ServiceMonitorService = {
     const data = await response.json();
     return data.data;
   },
+
+  // Get overview with 30-day statistics for all service monitors
+  async getOverview(): Promise<ServiceOverviewResponse> {
+    const response = await fetch('/api/v1/vms/service-monitors/overview');
+    if (!response.ok) {
+      throw new Error('Failed to fetch service overview');
+    }
+    const data = await response.json();
+    return data.data;
+  },
+
+  // Get probe history for a specific host (multi-line chart data)
+  async getHostProbeHistory(
+    hostId: string,
+    hours: number = 24
+  ): Promise<ServiceHistoryInfo[]> {
+    const response = await fetch(`/api/v1/vms/hosts/${hostId}/probe-history?hours=${hours}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch host probe history');
+    }
+    const data = await response.json();
+    return data.data || [];
+  },
 };
+
+// 30-day service statistics response
+export interface ServiceResponseItem {
+  service_monitor_id: string;
+  service_name: string;
+
+  // 30-day arrays (index 0 = today, 29 = 30 days ago)
+  delay: number[];       // Average delay per day (ms)
+  up: number[];          // Successful checks per day
+  down: number[];        // Failed checks per day
+
+  // Aggregated statistics
+  total_up: number;
+  total_down: number;
+  uptime_percentage: number;
+
+  // Current status (from today)
+  current_up: number;
+  current_down: number;
+
+  // Status code: Good(>95%) / LowAvailability(80-95%) / Down(<80%)
+  status_code: 'Good' | 'LowAvailability' | 'Down' | 'Unknown';
+}
+
+export interface ServiceOverviewResponse {
+  services: Record<string, ServiceResponseItem>; // Key: service_monitor_id
+}
+
+// Host probe history for multi-line chart
+export interface ServiceHistoryInfo {
+  service_monitor_id: string;
+  service_monitor_name: string; // Target name
+  host_node_id: string;
+  host_node_name?: string;      // Executor name
+  timestamps: number[];         // Unix timestamps in milliseconds
+  avg_delays: number[];         // Average delays in milliseconds
+  uptimes: number[];            // Uptime percentages
+}

@@ -900,11 +900,186 @@ func (x *IOStreamData) GetData() []byte {
 	return nil
 }
 
+// 探测结果项(用于批量上报)
+type ProbeResultItem struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ServiceMonitorId string                 `protobuf:"bytes,1,opt,name=service_monitor_id,json=serviceMonitorId,proto3" json:"service_monitor_id,omitempty"` // 服务监控ID
+	Result           *ProbeResult           `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`                                               // 探测结果
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ProbeResultItem) Reset() {
+	*x = ProbeResultItem{}
+	mi := &file_proto_host_monitor_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProbeResultItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProbeResultItem) ProtoMessage() {}
+
+func (x *ProbeResultItem) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_host_monitor_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProbeResultItem.ProtoReflect.Descriptor instead.
+func (*ProbeResultItem) Descriptor() ([]byte, []int) {
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ProbeResultItem) GetServiceMonitorId() string {
+	if x != nil {
+		return x.ServiceMonitorId
+	}
+	return ""
+}
+
+func (x *ProbeResultItem) GetResult() *ProbeResult {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+// Agent批量上报探测结果请求
+type ReportProbeResultBatchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Uuid          string                 `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`       // Agent UUID
+	Results       []*ProbeResultItem     `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"` // 探测结果列表
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportProbeResultBatchRequest) Reset() {
+	*x = ReportProbeResultBatchRequest{}
+	mi := &file_proto_host_monitor_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportProbeResultBatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportProbeResultBatchRequest) ProtoMessage() {}
+
+func (x *ReportProbeResultBatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_host_monitor_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportProbeResultBatchRequest.ProtoReflect.Descriptor instead.
+func (*ReportProbeResultBatchRequest) Descriptor() ([]byte, []int) {
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ReportProbeResultBatchRequest) GetUuid() string {
+	if x != nil {
+		return x.Uuid
+	}
+	return ""
+}
+
+func (x *ReportProbeResultBatchRequest) GetResults() []*ProbeResultItem {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+// Agent批量上报探测结果响应
+type ReportProbeResultBatchResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`     // 是否成功
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`      // 消息
+	Processed     int32                  `protobuf:"varint,3,opt,name=processed,proto3" json:"processed,omitempty"` // 成功处理的结果数量
+	Failed        int32                  `protobuf:"varint,4,opt,name=failed,proto3" json:"failed,omitempty"`       // 失败的结果数量
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportProbeResultBatchResponse) Reset() {
+	*x = ReportProbeResultBatchResponse{}
+	mi := &file_proto_host_monitor_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportProbeResultBatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportProbeResultBatchResponse) ProtoMessage() {}
+
+func (x *ReportProbeResultBatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_host_monitor_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportProbeResultBatchResponse.ProtoReflect.Descriptor instead.
+func (*ReportProbeResultBatchResponse) Descriptor() ([]byte, []int) {
+	return file_proto_host_monitor_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ReportProbeResultBatchResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ReportProbeResultBatchResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ReportProbeResultBatchResponse) GetProcessed() int32 {
+	if x != nil {
+		return x.Processed
+	}
+	return 0
+}
+
+func (x *ReportProbeResultBatchResponse) GetFailed() int32 {
+	if x != nil {
+		return x.Failed
+	}
+	return 0
+}
+
 var File_proto_host_monitor_proto protoreflect.FileDescriptor
 
 const file_proto_host_monitor_proto_rawDesc = "" +
 	"\n" +
-	"\x18proto/host_monitor.proto\x12\x05proto\"\xbb\x03\n" +
+	"\x18proto/host_monitor.proto\x12\x05proto\x1a\x19proto/service_probe.proto\"\xbb\x03\n" +
 	"\bHostInfo\x12\x1a\n" +
 	"\bplatform\x18\x01 \x01(\tR\bplatform\x12)\n" +
 	"\x10platform_version\x18\x02 \x01(\tR\x0fplatformVersion\x12\x12\n" +
@@ -987,10 +1162,22 @@ const file_proto_host_monitor_proto_rawDesc = "" +
 	"\vserver_time\x18\x02 \x01(\x03R\n" +
 	"serverTime\"\"\n" +
 	"\fIOStreamData\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data2\x9d\x02\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"k\n" +
+	"\x0fProbeResultItem\x12,\n" +
+	"\x12service_monitor_id\x18\x01 \x01(\tR\x10serviceMonitorId\x12*\n" +
+	"\x06result\x18\x02 \x01(\v2\x12.proto.ProbeResultR\x06result\"e\n" +
+	"\x1dReportProbeResultBatchRequest\x12\x12\n" +
+	"\x04uuid\x18\x01 \x01(\tR\x04uuid\x120\n" +
+	"\aresults\x18\x02 \x03(\v2\x16.proto.ProbeResultItemR\aresults\"\x8a\x01\n" +
+	"\x1eReportProbeResultBatchResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
+	"\tprocessed\x18\x03 \x01(\x05R\tprocessed\x12\x16\n" +
+	"\x06failed\x18\x04 \x01(\x05R\x06failed2\x84\x03\n" +
 	"\vHostMonitor\x12H\n" +
 	"\vReportState\x12\x19.proto.ReportStateRequest\x1a\x1a.proto.ReportStateResponse(\x010\x01\x12J\n" +
-	"\rRegisterAgent\x12\x1b.proto.RegisterAgentRequest\x1a\x1c.proto.RegisterAgentResponse\x12>\n" +
+	"\rRegisterAgent\x12\x1b.proto.RegisterAgentRequest\x1a\x1c.proto.RegisterAgentResponse\x12e\n" +
+	"\x16ReportProbeResultBatch\x12$.proto.ReportProbeResultBatchRequest\x1a%.proto.ReportProbeResultBatchResponse\x12>\n" +
 	"\tHeartbeat\x12\x17.proto.HeartbeatRequest\x1a\x18.proto.HeartbeatResponse\x128\n" +
 	"\bIOStream\x12\x13.proto.IOStreamData\x1a\x13.proto.IOStreamData(\x010\x01B%Z#github.com/ysicing/tiga/proto;protob\x06proto3"
 
@@ -1006,40 +1193,48 @@ func file_proto_host_monitor_proto_rawDescGZIP() []byte {
 	return file_proto_host_monitor_proto_rawDescData
 }
 
-var file_proto_host_monitor_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_proto_host_monitor_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_proto_host_monitor_proto_goTypes = []any{
-	(*HostInfo)(nil),              // 0: proto.HostInfo
-	(*HostState)(nil),             // 1: proto.HostState
-	(*Temperature)(nil),           // 2: proto.Temperature
-	(*RegisterAgentRequest)(nil),  // 3: proto.RegisterAgentRequest
-	(*RegisterAgentResponse)(nil), // 4: proto.RegisterAgentResponse
-	(*ReportStateRequest)(nil),    // 5: proto.ReportStateRequest
-	(*ReportStateResponse)(nil),   // 6: proto.ReportStateResponse
-	(*AgentTask)(nil),             // 7: proto.AgentTask
-	(*HeartbeatRequest)(nil),      // 8: proto.HeartbeatRequest
-	(*HeartbeatResponse)(nil),     // 9: proto.HeartbeatResponse
-	(*IOStreamData)(nil),          // 10: proto.IOStreamData
-	nil,                           // 11: proto.AgentTask.ParamsEntry
+	(*HostInfo)(nil),                       // 0: proto.HostInfo
+	(*HostState)(nil),                      // 1: proto.HostState
+	(*Temperature)(nil),                    // 2: proto.Temperature
+	(*RegisterAgentRequest)(nil),           // 3: proto.RegisterAgentRequest
+	(*RegisterAgentResponse)(nil),          // 4: proto.RegisterAgentResponse
+	(*ReportStateRequest)(nil),             // 5: proto.ReportStateRequest
+	(*ReportStateResponse)(nil),            // 6: proto.ReportStateResponse
+	(*AgentTask)(nil),                      // 7: proto.AgentTask
+	(*HeartbeatRequest)(nil),               // 8: proto.HeartbeatRequest
+	(*HeartbeatResponse)(nil),              // 9: proto.HeartbeatResponse
+	(*IOStreamData)(nil),                   // 10: proto.IOStreamData
+	(*ProbeResultItem)(nil),                // 11: proto.ProbeResultItem
+	(*ReportProbeResultBatchRequest)(nil),  // 12: proto.ReportProbeResultBatchRequest
+	(*ReportProbeResultBatchResponse)(nil), // 13: proto.ReportProbeResultBatchResponse
+	nil,                                    // 14: proto.AgentTask.ParamsEntry
+	(*ProbeResult)(nil),                    // 15: proto.ProbeResult
 }
 var file_proto_host_monitor_proto_depIdxs = []int32{
 	2,  // 0: proto.HostState.temperatures:type_name -> proto.Temperature
 	0,  // 1: proto.RegisterAgentRequest.host_info:type_name -> proto.HostInfo
 	1,  // 2: proto.ReportStateRequest.state:type_name -> proto.HostState
 	7,  // 3: proto.ReportStateResponse.tasks:type_name -> proto.AgentTask
-	11, // 4: proto.AgentTask.params:type_name -> proto.AgentTask.ParamsEntry
-	5,  // 5: proto.HostMonitor.ReportState:input_type -> proto.ReportStateRequest
-	3,  // 6: proto.HostMonitor.RegisterAgent:input_type -> proto.RegisterAgentRequest
-	8,  // 7: proto.HostMonitor.Heartbeat:input_type -> proto.HeartbeatRequest
-	10, // 8: proto.HostMonitor.IOStream:input_type -> proto.IOStreamData
-	6,  // 9: proto.HostMonitor.ReportState:output_type -> proto.ReportStateResponse
-	4,  // 10: proto.HostMonitor.RegisterAgent:output_type -> proto.RegisterAgentResponse
-	9,  // 11: proto.HostMonitor.Heartbeat:output_type -> proto.HeartbeatResponse
-	10, // 12: proto.HostMonitor.IOStream:output_type -> proto.IOStreamData
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	14, // 4: proto.AgentTask.params:type_name -> proto.AgentTask.ParamsEntry
+	15, // 5: proto.ProbeResultItem.result:type_name -> proto.ProbeResult
+	11, // 6: proto.ReportProbeResultBatchRequest.results:type_name -> proto.ProbeResultItem
+	5,  // 7: proto.HostMonitor.ReportState:input_type -> proto.ReportStateRequest
+	3,  // 8: proto.HostMonitor.RegisterAgent:input_type -> proto.RegisterAgentRequest
+	12, // 9: proto.HostMonitor.ReportProbeResultBatch:input_type -> proto.ReportProbeResultBatchRequest
+	8,  // 10: proto.HostMonitor.Heartbeat:input_type -> proto.HeartbeatRequest
+	10, // 11: proto.HostMonitor.IOStream:input_type -> proto.IOStreamData
+	6,  // 12: proto.HostMonitor.ReportState:output_type -> proto.ReportStateResponse
+	4,  // 13: proto.HostMonitor.RegisterAgent:output_type -> proto.RegisterAgentResponse
+	13, // 14: proto.HostMonitor.ReportProbeResultBatch:output_type -> proto.ReportProbeResultBatchResponse
+	9,  // 15: proto.HostMonitor.Heartbeat:output_type -> proto.HeartbeatResponse
+	10, // 16: proto.HostMonitor.IOStream:output_type -> proto.IOStreamData
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_proto_host_monitor_proto_init() }
@@ -1047,13 +1242,14 @@ func file_proto_host_monitor_proto_init() {
 	if File_proto_host_monitor_proto != nil {
 		return
 	}
+	file_proto_service_probe_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_host_monitor_proto_rawDesc), len(file_proto_host_monitor_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

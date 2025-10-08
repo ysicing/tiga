@@ -27,6 +27,7 @@ import (
 	"github.com/ysicing/tiga/internal/services/auth"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/managers"
+	"github.com/ysicing/tiga/internal/services/monitor"
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/common"
@@ -55,6 +56,9 @@ type Application struct {
 	agentManager    *host.AgentManager
 	terminalManager *host.TerminalManager
 	hostService     *host.HostService
+
+	// Service monitoring
+	probeScheduler *monitor.ServiceProbeScheduler
 }
 
 // NewApplication creates a new application instance
@@ -161,6 +165,16 @@ func (a *Application) Initialize(ctx context.Context) error {
 		a.coordinator,
 	)
 
+	// Initialize service monitoring
+	serviceRepo := repository.NewServiceRepository(a.db.DB)
+
+	// Initialize AlertEngine for service monitoring alerts
+	alertEngine := alert.NewAlertEngine(
+		repository.NewMonitorAlertRepository(a.db.DB),
+		a.hostRepo,
+		serviceRepo,
+	)
+
 	// Setup scheduled tasks
 	alertTask := scheduler.NewAlertTask(alertProcessor)
 	a.scheduler.AddTask("alert_processing", alertTask, 30*time.Second)
@@ -199,6 +213,12 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	logrus.Info("Host monitoring services initialized")
 
+	// Initialize service monitoring (ServiceProbeScheduler + ServiceSentinel)
+	// Use serviceRepo and alertEngine initialized earlier
+	a.probeScheduler = monitor.NewServiceProbeScheduler(serviceRepo, alertEngine)
+
+	logrus.Info("Service monitoring initialized")
+
 	// Setup HTTP router
 	routerConfig := &middleware.RouterConfig{
 		Mode:          a.config.Server.Mode,
@@ -207,8 +227,8 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	router := middleware.NewRouter(routerConfig)
 
-	// Register all API handlers - pass host services to avoid duplicate instances
-	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector, a.terminalManager)
+	// Register all API handlers - pass host services and probe scheduler to avoid duplicate instances
+	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector, a.terminalManager, a.probeScheduler)
 
 	// Serve static files from embedded filesystem
 	a.setupStaticFiles(router)
@@ -222,7 +242,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 	}
 
 	// Initialize gRPC server for Agent communication - use shared services
-	grpcService := host.NewGRPCServer(a.agentManager, a.terminalManager)
+	grpcService := host.NewGRPCServer(a.agentManager, a.terminalManager, a.probeScheduler)
 
 	a.grpcServer = grpc.NewServer()
 	proto.RegisterHostMonitorServer(a.grpcServer, grpcService)
@@ -335,6 +355,12 @@ func (a *Application) Run(ctx context.Context) error {
 	// Normal mode: start services
 	go a.scheduler.Start(ctx)
 
+	// Start service probe scheduler (includes ServiceSentinel)
+	if a.probeScheduler != nil {
+		go a.probeScheduler.Start()
+		logrus.Info("Service probe scheduler started")
+	}
+
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -358,6 +384,12 @@ func (a *Application) Run(ctx context.Context) error {
 
 	// Stop scheduler
 	a.scheduler.Stop()
+
+	// Stop service probe scheduler (includes ServiceSentinel)
+	if a.probeScheduler != nil {
+		a.probeScheduler.Stop()
+		logrus.Info("Service probe scheduler stopped")
+	}
 
 	// Stop monitoring
 	a.coordinator.StopMonitoring()

@@ -257,6 +257,11 @@ func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *
 
 // runReportingLoop continuously collects and reports host state
 func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *collector.Collector, config *Config) {
+	// Create and start probe handler for batch reporting
+	probeHandler := NewProbeTaskHandler(config.UUID, client)
+	probeHandler.Start()
+	defer probeHandler.Stop() // Ensure buffer is flushed on exit
+
 	// Create the bidirectional stream
 	stream, err := client.ReportState(ctx)
 	if err != nil {
@@ -287,7 +292,7 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 
 			// Handle tasks from server
 			for _, task := range resp.Tasks {
-				go handleTask(client, task, config)
+				go handleTask(client, probeHandler, task, config)
 			}
 		}
 	}()
@@ -373,7 +378,7 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 }
 
 // handleTask processes tasks sent by the server
-func handleTask(client proto.HostMonitorClient, task *proto.AgentTask, config *Config) {
+func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, task *proto.AgentTask, config *Config) {
 	logrus.Infof("[Task] Received task: id=%s type=%s", task.TaskId, task.TaskType)
 	logrus.Debugf("[Task] Task params: %+v", task.Params)
 
@@ -396,8 +401,8 @@ func handleTask(client proto.HostMonitorClient, task *proto.AgentTask, config *C
 		logrus.Infof("[Task:Terminal] Terminal session finished: stream_id=%s", streamID)
 
 	case "probe":
-		// TODO: Handle service probe tasks
-		logrus.Warnf("[Task:Probe] Probe tasks not yet implemented")
+		// Handle service probe tasks (using shared probe handler for batch reporting)
+		probeHandler.HandleProbeTask(task, config)
 
 	case "command":
 		// TODO: Handle command execution tasks

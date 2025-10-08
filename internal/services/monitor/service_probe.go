@@ -120,3 +120,75 @@ func (s *ServiceProbeService) ListMonitors(ctx context.Context) ([]*models.Servi
 	}
 	return s.serviceRepo.List(ctx, filter)
 }
+
+// ServiceHistoryInfo represents probe history info for a single service monitor
+// This structure is returned to the frontend for multi-line chart rendering
+type ServiceHistoryInfo struct {
+	ServiceMonitorID   uuid.UUID `json:"service_monitor_id"`
+	ServiceMonitorName string    `json:"service_monitor_name"` // Target name
+	HostNodeID         uuid.UUID `json:"host_node_id"`
+	HostNodeName       string    `json:"host_node_name"` // Executor name
+	Timestamps         []int64   `json:"timestamps"`     // Unix timestamps in milliseconds
+	AvgDelays          []float32 `json:"avg_delays"`     // Average delays in milliseconds
+	Uptimes            []float64 `json:"uptimes"`        // Uptime percentages
+}
+
+// GetHostProbeHistory gets probe history for a specific host, grouped by service monitor
+// This is used for the multi-line chart showing one executor host's probes to multiple targets
+func (s *ServiceProbeService) GetHostProbeHistory(ctx context.Context, hostNodeID uuid.UUID, start, end time.Time) ([]*ServiceHistoryInfo, error) {
+	// Get all service histories for this host within the time range
+	histories, err := s.serviceRepo.GetServiceHistoryByHost(ctx, hostNodeID, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	// Group by service monitor
+	historyMap := make(map[uuid.UUID][]*models.ServiceHistory)
+	for _, history := range histories {
+		historyMap[history.ServiceMonitorID] = append(historyMap[history.ServiceMonitorID], history)
+	}
+
+	// Build result
+	var result []*ServiceHistoryInfo
+	for serviceMonitorID, serviceHistories := range historyMap {
+		// Get service monitor details
+		monitor, err := s.serviceRepo.GetByID(ctx, serviceMonitorID)
+		if err != nil {
+			continue // Skip if monitor not found
+		}
+
+		info := &ServiceHistoryInfo{
+			ServiceMonitorID:   serviceMonitorID,
+			ServiceMonitorName: monitor.Name + " (" + monitor.Target + ")",
+			HostNodeID:         hostNodeID,
+			Timestamps:         make([]int64, 0, len(serviceHistories)),
+			AvgDelays:          make([]float32, 0, len(serviceHistories)),
+			Uptimes:            make([]float64, 0, len(serviceHistories)),
+		}
+
+		// Sort by timestamp and populate arrays
+		for _, history := range serviceHistories {
+			info.Timestamps = append(info.Timestamps, history.CreatedAt.UnixMilli())
+			info.AvgDelays = append(info.AvgDelays, history.AvgDelay)
+			info.Uptimes = append(info.Uptimes, history.UptimePercent())
+		}
+
+		result = append(result, info)
+	}
+
+	return result, nil
+}
+
+// GetOverview gets 30-day aggregated statistics for all service monitors
+// This is used for the service overview page with 30-day availability heatmap
+func (s *ServiceProbeService) GetOverview(ctx context.Context) (*ServiceOverviewResponse, error) {
+	// Get statistics from ServiceSentinel
+	stats, err := s.scheduler.GetOverviewStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ServiceOverviewResponse{
+		Services: stats,
+	}, nil
+}

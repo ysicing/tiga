@@ -1,10 +1,12 @@
 package handlers
 
 import (
-	"github.com/google/uuid"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/monitor"
 )
@@ -223,4 +225,45 @@ func (h *ServiceMonitorHandler) ListMonitors(c *gin.Context) {
 			"total": total,
 		},
 	})
+}
+
+// GetHostProbeHistory gets probe history for a specific host (multi-line chart data)
+// This endpoint returns probe histories grouped by service monitor, showing all probes
+// executed by a specific host node to various targets
+func (h *ServiceMonitorHandler) GetHostProbeHistory(c *gin.Context) {
+	hostID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid host ID"})
+		return
+	}
+
+	// Get time range (default to last 24 hours)
+	hoursStr := c.DefaultQuery("hours", "24")
+	hours, err := strconv.Atoi(hoursStr)
+	if err != nil || hours <= 0 || hours > 720 {
+		hours = 24
+	}
+
+	start := time.Now().Add(-time.Duration(hours) * time.Hour)
+	end := time.Now()
+
+	histories, err := h.probeService.GetHostProbeHistory(c.Request.Context(), hostID, start, end)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get probe history"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": histories})
+}
+
+// GetOverview gets 30-day aggregated statistics for all service monitors
+// This endpoint is used for the service overview page with availability heatmap
+func (h *ServiceMonitorHandler) GetOverview(c *gin.Context) {
+	overview, err := h.probeService.GetOverview(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get overview"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": overview})
 }

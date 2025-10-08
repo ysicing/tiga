@@ -35,6 +35,7 @@ func SetupRoutes(
 	hostService *hostservices.HostService,
 	stateCollector *hostservices.StateCollector,
 	terminalManager *hostservices.TerminalManager,
+	probeScheduler *monitorservices.ServiceProbeScheduler,
 ) {
 	// ==================== Install Routes (Only if not installed) ====================
 	// Check if system is installed
@@ -75,8 +76,7 @@ func SetupRoutes(
 	instanceService := services.NewInstanceService(instanceRepo)
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
-	// stateCollector, hostService, and terminalManager are passed as parameters
-	probeScheduler := monitorservices.NewServiceProbeScheduler(serviceRepo)
+	// stateCollector, hostService, terminalManager, and probeScheduler are passed as parameters
 	probeService := monitorservices.NewServiceProbeService(serviceRepo, probeScheduler)
 	sessionManager := websshservices.NewSessionManager(db, "./data/recordings")
 
@@ -85,7 +85,7 @@ func SetupRoutes(
 	agentManager := hostService.GetAgentManager()
 
 	// Start background services
-	_ = alertservices.NewAlertEngine(monitorAlertRepo, hostRepo) // Runs in background
+	_ = alertservices.NewAlertEngine(monitorAlertRepo, hostRepo, serviceRepo) // Runs in background
 	expiryScheduler := hostservices.NewExpiryScheduler(hostRepo, monitorAlertRepo, db)
 	expiryScheduler.Start()
 
@@ -348,6 +348,9 @@ func SetupRoutes(
 					// Host activity logs
 					hostsGroup.GET("/:id/activities", hostActivityHandler.ListActivities)
 					hostsGroup.POST("/:id/activities", hostActivityHandler.CreateActivity)
+
+					// Service probe history (for multi-line chart)
+					hostsGroup.GET("/:id/probe-history", serviceMonitorHandler.GetHostProbeHistory)
 				}
 
 				// Host groups (simplified - just list unique group names)
@@ -360,6 +363,7 @@ func SetupRoutes(
 				serviceMonitorsGroup := vmsGroup.Group("/service-monitors")
 				{
 					serviceMonitorsGroup.GET("", serviceMonitorHandler.ListMonitors)
+					serviceMonitorsGroup.GET("/overview", serviceMonitorHandler.GetOverview)
 					serviceMonitorsGroup.POST("", serviceMonitorHandler.CreateMonitor)
 					serviceMonitorsGroup.GET("/:id", serviceMonitorHandler.GetMonitor)
 					serviceMonitorsGroup.PUT("/:id", serviceMonitorHandler.UpdateMonitor)

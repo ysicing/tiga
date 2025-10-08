@@ -77,6 +77,35 @@ func (ServiceMonitor) TableName() string {
 	return "service_monitors"
 }
 
+// ServiceStatus represents the health status of a service
+type ServiceStatus string
+
+const (
+	ServiceStatusGood            ServiceStatus = "Good"
+	ServiceStatusLowAvailability ServiceStatus = "LowAvailability"
+	ServiceStatusDown            ServiceStatus = "Down"
+	ServiceStatusUnknown         ServiceStatus = "Unknown"
+)
+
+// GetStatusCode calculates the service status based on uptime percentage
+// Uses the same thresholds as Nezha:
+// - >= 95%: Good
+// - >= 80%: LowAvailability
+// - < 80%: Down
+func (s *ServiceMonitor) GetStatusCode(uptimePercent float64) ServiceStatus {
+	if uptimePercent >= 95.0 {
+		return ServiceStatusGood
+	} else if uptimePercent >= 80.0 {
+		return ServiceStatusLowAvailability
+	}
+	return ServiceStatusDown
+}
+
+// IsHealthy checks if service is healthy (>= 95% uptime)
+func (s *ServiceMonitor) IsHealthy(uptimePercent float64) bool {
+	return uptimePercent >= 95.0
+}
+
 // BeforeCreate validates the model before creation
 func (s *ServiceMonitor) BeforeCreate(tx *gorm.DB) error {
 	// Call BaseModel's BeforeCreate to generate UUID

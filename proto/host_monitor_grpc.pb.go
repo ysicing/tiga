@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	HostMonitor_ReportState_FullMethodName   = "/proto.HostMonitor/ReportState"
-	HostMonitor_RegisterAgent_FullMethodName = "/proto.HostMonitor/RegisterAgent"
-	HostMonitor_Heartbeat_FullMethodName     = "/proto.HostMonitor/Heartbeat"
-	HostMonitor_IOStream_FullMethodName      = "/proto.HostMonitor/IOStream"
+	HostMonitor_ReportState_FullMethodName            = "/proto.HostMonitor/ReportState"
+	HostMonitor_RegisterAgent_FullMethodName          = "/proto.HostMonitor/RegisterAgent"
+	HostMonitor_ReportProbeResultBatch_FullMethodName = "/proto.HostMonitor/ReportProbeResultBatch"
+	HostMonitor_Heartbeat_FullMethodName              = "/proto.HostMonitor/Heartbeat"
+	HostMonitor_IOStream_FullMethodName               = "/proto.HostMonitor/IOStream"
 )
 
 // HostMonitorClient is the client API for HostMonitor service.
@@ -35,6 +36,8 @@ type HostMonitorClient interface {
 	ReportState(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ReportStateRequest, ReportStateResponse], error)
 	// RegisterAgent Agent注册
 	RegisterAgent(ctx context.Context, in *RegisterAgentRequest, opts ...grpc.CallOption) (*RegisterAgentResponse, error)
+	// ReportProbeResultBatch Agent批量上报探测结果
+	ReportProbeResultBatch(ctx context.Context, in *ReportProbeResultBatchRequest, opts ...grpc.CallOption) (*ReportProbeResultBatchResponse, error)
 	// Heartbeat 心跳保持
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	// IOStream PTY终端I/O流(双向流)
@@ -66,6 +69,16 @@ func (c *hostMonitorClient) RegisterAgent(ctx context.Context, in *RegisterAgent
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RegisterAgentResponse)
 	err := c.cc.Invoke(ctx, HostMonitor_RegisterAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *hostMonitorClient) ReportProbeResultBatch(ctx context.Context, in *ReportProbeResultBatchRequest, opts ...grpc.CallOption) (*ReportProbeResultBatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportProbeResultBatchResponse)
+	err := c.cc.Invoke(ctx, HostMonitor_ReportProbeResultBatch_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +118,8 @@ type HostMonitorServer interface {
 	ReportState(grpc.BidiStreamingServer[ReportStateRequest, ReportStateResponse]) error
 	// RegisterAgent Agent注册
 	RegisterAgent(context.Context, *RegisterAgentRequest) (*RegisterAgentResponse, error)
+	// ReportProbeResultBatch Agent批量上报探测结果
+	ReportProbeResultBatch(context.Context, *ReportProbeResultBatchRequest) (*ReportProbeResultBatchResponse, error)
 	// Heartbeat 心跳保持
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	// IOStream PTY终端I/O流(双向流)
@@ -124,6 +139,9 @@ func (UnimplementedHostMonitorServer) ReportState(grpc.BidiStreamingServer[Repor
 }
 func (UnimplementedHostMonitorServer) RegisterAgent(context.Context, *RegisterAgentRequest) (*RegisterAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterAgent not implemented")
+}
+func (UnimplementedHostMonitorServer) ReportProbeResultBatch(context.Context, *ReportProbeResultBatchRequest) (*ReportProbeResultBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReportProbeResultBatch not implemented")
 }
 func (UnimplementedHostMonitorServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
@@ -177,6 +195,24 @@ func _HostMonitor_RegisterAgent_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HostMonitor_ReportProbeResultBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportProbeResultBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HostMonitorServer).ReportProbeResultBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: HostMonitor_ReportProbeResultBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HostMonitorServer).ReportProbeResultBatch(ctx, req.(*ReportProbeResultBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _HostMonitor_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartbeatRequest)
 	if err := dec(in); err != nil {
@@ -212,6 +248,10 @@ var HostMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterAgent",
 			Handler:    _HostMonitor_RegisterAgent_Handler,
+		},
+		{
+			MethodName: "ReportProbeResultBatch",
+			Handler:    _HostMonitor_ReportProbeResultBatch_Handler,
 		},
 		{
 			MethodName: "Heartbeat",
