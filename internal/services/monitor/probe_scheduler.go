@@ -90,7 +90,7 @@ func (s *ServiceProbeScheduler) loadAndScheduleMonitors() {
 	// Schedule each monitor
 	for _, monitor := range monitors {
 		if err := s.ScheduleMonitor(monitor); err != nil {
-			fmt.Printf("Error scheduling monitor %d: %v\n", monitor.ID, err)
+			fmt.Printf("Error scheduling monitor %s: %v\n", monitor.ID.String(), err)
 		}
 	}
 }

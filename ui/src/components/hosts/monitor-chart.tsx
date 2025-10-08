@@ -31,28 +31,31 @@ export function MonitorChart({
   color = '#3b82f6',
   height = 300,
 }: MonitorChartProps) {
-  // Convert UTC time to Beijing time (UTC+8)
-  const toBeijingTime = (date: Date): Date => {
-    return new Date(date.getTime() + (8 * 60 * 60 * 1000));
-  };
-
   const formatTime = (value: string, format: 'short' | 'full' = 'short'): string => {
     const date = new Date(value);
-    const beijingDate = toBeijingTime(date);
 
     if (format === 'short') {
-      const hours = beijingDate.getHours().toString().padStart(2, '0');
-      const minutes = beijingDate.getMinutes().toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
-    } else {
-      const year = beijingDate.getFullYear();
-      const month = (beijingDate.getMonth() + 1).toString().padStart(2, '0');
-      const day = beijingDate.getDate().toString().padStart(2, '0');
-      const hours = beijingDate.getHours().toString().padStart(2, '0');
-      const minutes = beijingDate.getMinutes().toString().padStart(2, '0');
-      const seconds = beijingDate.getSeconds().toString().padStart(2, '0');
-      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      return new Intl.DateTimeFormat('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Shanghai',
+      }).format(date);
     }
+
+    return new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Shanghai',
+    })
+      .format(date)
+      .replace(/\//g, '-')
+      .replace(',', '');
   };
 
   return (

@@ -12,6 +12,16 @@ interface WebSSHTerminalProps {
   onClose?: () => void;
 }
 
+const encodeBase64 = (value: string) => {
+  if (typeof window === 'undefined') return '';
+  return window.btoa(unescape(encodeURIComponent(value)));
+};
+
+const decodeBase64 = (value: string) => {
+  if (typeof window === 'undefined') return '';
+  return decodeURIComponent(escape(window.atob(value)));
+};
+
 export function WebSSHTerminal({
   sessionId,
   hostName = 'SSH Session',
@@ -38,6 +48,7 @@ export function WebSSHTerminal({
       },
       rows: 24,
       cols: 80,
+      scrollback: 10000,
     });
 
     const fitAddon = new FitAddon();
@@ -57,12 +68,36 @@ export function WebSSHTerminal({
     ws.onopen = () => {
       console.log('[WebSSH] Connected');
       setIsConnected(true);
-      terminal.writeln('Connected to SSH server...\r\n');
     };
 
     ws.onmessage = (event) => {
-      // Receive output from server
-      terminal.write(event.data);
+      try {
+        const msg = JSON.parse(event.data);
+
+        switch (msg.type) {
+          case 'connected':
+            terminal.writeln('\r\n\x1b[1;32m=== WebSSH Connected ===\x1b[0m\r\n');
+            break;
+          case 'output':
+            const output = decodeBase64(msg.data?.output ?? '');
+            terminal.write(output);
+            break;
+          case 'error':
+            const errorMsg = msg.data?.message || 'Terminal error';
+            terminal.writeln(`\r\n\x1b[1;31m[Error] ${errorMsg}\x1b[0m\r\n`);
+            break;
+          case 'ping':
+            // Respond to ping with pong
+            ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+            break;
+          case 'disconnected':
+            setIsConnected(false);
+            terminal.writeln('\r\n\x1b[33mConnection closed\x1b[0m\r\n');
+            break;
+        }
+      } catch (err) {
+        console.error('[WebSSH] Failed to parse message:', err);
+      }
     };
 
     ws.onerror = (error) => {
@@ -84,7 +119,10 @@ export function WebSSHTerminal({
         ws.send(
           JSON.stringify({
             type: 'input',
-            data: data,
+            data: {
+              input: encodeBase64(data),
+            },
+            timestamp: Date.now(),
           })
         );
       }
@@ -97,8 +135,11 @@ export function WebSSHTerminal({
         ws.send(
           JSON.stringify({
             type: 'resize',
-            cols: terminal.cols,
-            rows: terminal.rows,
+            data: {
+              cols: terminal.cols,
+              rows: terminal.rows,
+            },
+            timestamp: Date.now(),
           })
         );
       }
@@ -131,8 +172,8 @@ export function WebSSHTerminal({
   return (
     <Card
       className={`${
-        isFullscreen ? 'fixed inset-4 z-50' : ''
-      } flex flex-col`}
+        isFullscreen ? 'fixed inset-0 z-50 rounded-none' : ''
+      } flex flex-col h-full`}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -144,6 +185,7 @@ export function WebSSHTerminal({
             variant="ghost"
             size="sm"
             onClick={toggleFullscreen}
+            title={isFullscreen ? '退出全屏' : '全屏'}
           >
             {isFullscreen ? (
               <Minimize2 className="h-4 w-4" />
@@ -155,17 +197,16 @@ export function WebSSHTerminal({
             variant="ghost"
             size="sm"
             onClick={handleClose}
+            title="关闭终端"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 p-0">
+      <CardContent className="flex-1 p-0 overflow-hidden">
         <div
           ref={terminalRef}
-          className={`w-full ${
-            isFullscreen ? 'h-full' : 'h-[400px]'
-          } bg-[#1e1e1e]`}
+          className="w-full h-full bg-[#1e1e1e]"
         />
       </CardContent>
     </Card>

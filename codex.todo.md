@@ -27,7 +27,7 @@
 - [ ] internal/api/routes.go:112 `NewAuthHandler(..., nil)` 仍然不给 OAuth manager - **需要实现完整的 OAuthManager 并注入**
 - [ ] internal/repository/instance_repo.go:151 `? = ANY(tags)` 过滤仅适用于 PostgreSQL - **需要添加数据库类型判断和兼容性处理**
 - [ ] internal/models/host_node.go:7 UUID 迁移无迁移脚本 - **需要创建数据迁移脚本或文档**
-- [ ] internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID，日志输出 `%!d(uuid.UUID=...)`
+- [x] ~~internal/services/monitor/probe_scheduler.go:74 仍以 `%d` 打印 UUID~~ - 已修复：日志改用 `monitor.ID.String()` 输出，避免 `%!d(uuid.UUID=...)`
 - [ ] ui/src/lib/api-client.ts:374~382 `devopsAPI.vms.alertRules.*` 仍指向 `/vms/alert-rules`，与后端 `/api/v1/alerts/rules` 不一致
 
 ## 📝 修复说明

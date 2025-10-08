@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,8 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api/middleware"
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/webssh"
 	"github.com/ysicing/tiga/proto"
@@ -30,28 +33,37 @@ type WebSSHHandler struct {
 	sessionMgr   *webssh.SessionManager
 	terminalMgr  *host.TerminalManager
 	agentManager *host.AgentManager
+	db           *gorm.DB
 }
 
 // NewWebSSHHandler creates a new WebSSH handler
-func NewWebSSHHandler(sessionMgr *webssh.SessionManager, terminalMgr *host.TerminalManager, agentMgr *host.AgentManager) *WebSSHHandler {
+func NewWebSSHHandler(sessionMgr *webssh.SessionManager, terminalMgr *host.TerminalManager, agentMgr *host.AgentManager, db *gorm.DB) *WebSSHHandler {
 	return &WebSSHHandler{
 		sessionMgr:   sessionMgr,
 		terminalMgr:  terminalMgr,
 		agentManager: agentMgr,
+		db:           db,
 	}
 }
 
 // CreateSession creates a WebSSH session
 func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 	var req struct {
-		HostID string `json:"host_id" binding:"required"` // UUID string
-		Width  int    `json:"width"`
-		Height int    `json:"height"`
+		HostID           string `json:"host_id" binding:"required"` // UUID string
+		Width            int    `json:"width"`
+		Height           int    `json:"height"`
+		RecordingEnabled *bool  `json:"recording_enabled"` // Optional, defaults to true
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid request"})
 		return
+	}
+
+	// Default recording enabled to true if not specified
+	recordingEnabled := true
+	if req.RecordingEnabled != nil {
+		recordingEnabled = *req.RecordingEnabled
 	}
 
 	// Resolve authenticated user
@@ -85,7 +97,7 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 
 	// Create webssh session for recording
 	clientIP := c.ClientIP()
-	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), streamID, userID, hostUUID, req.Width, req.Height, clientIP)
+	wsSession, err := h.sessionMgr.CreateSession(c.Request.Context(), streamID, userID, hostUUID, req.Width, req.Height, clientIP, recordingEnabled)
 	if err != nil {
 		logrus.Errorf("Failed to create webssh session: %v", err)
 		// Rollback terminal session if we cannot persist metadata
@@ -188,8 +200,8 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 		SessionID: streamID,
 		HostName:  "", // TODO: hydrate with actual host name once repository is available
 		HostID:    wsSession.HostNodeID.String(),
-		Cols:      80,
-		Rows:      24,
+		Cols:      wsSession.Cols,
+		Rows:      wsSession.Rows,
 	})
 	if msgBytes, err := json.Marshal(connMsg); err == nil {
 		ws.WriteMessage(websocket.TextMessage, msgBytes)
@@ -268,6 +280,8 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 						sendError(webssh.ErrCodeInvalidInput, "Invalid base64 input")
 						continue
 					}
+					// Record input
+					h.sessionMgr.RecordInput(wsSession.SessionID, inputBytes)
 					session.SendToAgent(append([]byte{0x00}, inputBytes...))
 
 				case webssh.MessageTypeResize:
@@ -276,6 +290,8 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 						sendError(webssh.ErrCodeInvalidInput, "Invalid resize message")
 						continue
 					}
+					// Update recorder size
+					h.sessionMgr.ResizeRecorder(wsSession.SessionID, resizeMsg.Cols, resizeMsg.Rows)
 					resizeData, _ := json.Marshal(map[string]int{"cols": resizeMsg.Cols, "rows": resizeMsg.Rows})
 					session.SendToAgent(append([]byte{0x01}, resizeData...))
 
@@ -309,6 +325,9 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 			break
 		}
 
+		// Record output
+		h.sessionMgr.RecordOutput(wsSession.SessionID, data)
+
 		// Encode output as base64 for binary safety
 		h.sessionMgr.UpdateActivity(wsSession.SessionID)
 		outputMsg, _ := webssh.NewMessage(webssh.MessageTypeOutput, &webssh.OutputMessage{
@@ -329,6 +348,108 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 	}
 
 	logrus.Infof("WebSocket closed for session: %s", streamID)
+}
+
+// ListAllSessions lists all WebSSH sessions (historical and active)
+func (h *WebSSHHandler) ListAllSessions(c *gin.Context) {
+	var sessions []models.WebSSHSession
+
+	// Parse query parameters for pagination and filtering
+	page := 1
+	pageSize := 20
+	status := c.Query("status")       // active or closed
+	hostID := c.Query("host_id")      // filter by host
+	userID := c.Query("user_id")      // filter by user
+	startDate := c.Query("start_date") // filter by start date
+
+	if p := c.Query("page"); p != "" {
+		fmt.Sscanf(p, "%d", &page)
+	}
+	if ps := c.Query("page_size"); ps != "" {
+		fmt.Sscanf(ps, "%d", &pageSize)
+	}
+
+	// Build query
+	query := h.db.Model(&models.WebSSHSession{}).
+		Preload("HostNode").
+		Preload("User")
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if hostID != "" {
+		query = query.Where("host_node_id = ?", hostID)
+	}
+	if userID != "" {
+		query = query.Where("user_id = ?", userID)
+	}
+	if startDate != "" {
+		query = query.Where("start_time >= ?", startDate)
+	}
+
+	// Get total count
+	var total int64
+	query.Count(&total)
+
+	// Get paginated results
+	offset := (page - 1) * pageSize
+	if err := query.Order("start_time DESC").Limit(pageSize).Offset(offset).Find(&sessions).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to fetch sessions"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"sessions":   sessions,
+			"total":      total,
+			"page":       page,
+			"page_size":  pageSize,
+			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
+		},
+	})
+}
+
+// GetSessionDetail gets details of a specific session
+func (h *WebSSHHandler) GetSessionDetail(c *gin.Context) {
+	sessionID := c.Param("session_id")
+
+	var session models.WebSSHSession
+	if err := h.db.Preload("HostNode").Preload("User").
+		Where("session_id = ?", sessionID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Session not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data":    session,
+	})
+}
+
+// GetRecording returns the recording file for playback
+func (h *WebSSHHandler) GetRecording(c *gin.Context) {
+	sessionID := c.Param("session_id")
+
+	// Get session from database
+	var session models.WebSSHSession
+	if err := h.db.Where("session_id = ?", sessionID).First(&session).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Session not found"})
+		return
+	}
+
+	// Check if recording exists
+	if !session.RecordingEnabled || session.RecordingPath == "" {
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Recording not available for this session"})
+		return
+	}
+
+	// Serve the recording file
+	c.Header("Content-Type", "application/json")
+	c.Header("Content-Disposition", fmt.Sprintf("inline; filename=%s.cast", sessionID))
+	c.File(session.RecordingPath)
 }
 
 // notifyAgentCreateTerminal sends a task to Agent to create terminal

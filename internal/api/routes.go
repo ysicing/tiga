@@ -78,7 +78,7 @@ func SetupRoutes(
 	// stateCollector, hostService, and terminalManager are passed as parameters
 	probeScheduler := monitorservices.NewServiceProbeScheduler(serviceRepo)
 	probeService := monitorservices.NewServiceProbeService(serviceRepo, probeScheduler)
-	sessionManager := websshservices.NewSessionManager(db)
+	sessionManager := websshservices.NewSessionManager(db, "./data/recordings")
 
 	// Get agentManager from hostService (it's accessible via the service)
 	// We need it for WebSSH handler
@@ -100,8 +100,9 @@ func SetupRoutes(
 	hostHandler := handlers.NewHostHandler(hostService)
 	hostGroupHandler := handlers.NewHostGroupHandler(db)
 	serviceMonitorHandler := handlers.NewServiceMonitorHandler(probeService)
+	hostActivityHandler := handlers.NewHostActivityHandler(db)
 	// TODO: Create monitor_alert_handler.go for MonitorAlertRule/MonitorAlertEvent
-	websshHandler := handlers.NewWebSSHHandler(sessionManager, terminalManager, agentManager)
+	websshHandler := handlers.NewWebSSHHandler(sessionManager, terminalManager, agentManager, db)
 	websocketHandler := handlers.NewWebSocketHandler(stateCollector)
 
 	// MinIO handlers
@@ -343,6 +344,10 @@ func SetupRoutes(
 					// Host state queries
 					hostsGroup.GET("/:id/state/current", hostHandler.GetCurrentState)
 					hostsGroup.GET("/:id/state/history", hostHandler.GetHistoryState)
+
+					// Host activity logs
+					hostsGroup.GET("/:id/activities", hostActivityHandler.ListActivities)
+					hostsGroup.POST("/:id/activities", hostActivityHandler.CreateActivity)
 				}
 
 				// Host groups (simplified - just list unique group names)
@@ -368,6 +373,9 @@ func SetupRoutes(
 				{
 					websshGroup.POST("/sessions", websshHandler.CreateSession)
 					websshGroup.GET("/sessions", websshHandler.ListSessions)
+					websshGroup.GET("/sessions/all", websshHandler.ListAllSessions) // All sessions with pagination
+					websshGroup.GET("/sessions/:session_id", websshHandler.GetSessionDetail)
+					websshGroup.GET("/sessions/:session_id/playback", websshHandler.GetRecording)
 					websshGroup.DELETE("/sessions/:session_id", websshHandler.CloseSession)
 					websshGroup.GET("/:session_id", websshHandler.HandleWebSocket)
 				}

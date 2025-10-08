@@ -45,3 +45,4 @@ docs/.vitepress/cache
 *.db
 app.yaml
 docs/*.md
+data/recordings

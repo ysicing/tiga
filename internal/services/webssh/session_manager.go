@@ -15,16 +15,23 @@ import (
 type SessionManager struct {
 	db             *gorm.DB
 	activeSessions sync.Map // map[string]*models.WebSSHSession
+	recorders      sync.Map // map[string]*SessionRecorder
 	sessionTimeout time.Duration
 	maxSessions    int
+	recordingDir   string
 }
 
 // NewSessionManager creates a new session manager
-func NewSessionManager(db *gorm.DB) *SessionManager {
+func NewSessionManager(db *gorm.DB, recordingDir string) *SessionManager {
+	if recordingDir == "" {
+		recordingDir = "./data/recordings"
+	}
+
 	sm := &SessionManager{
 		db:             db,
 		sessionTimeout: 30 * time.Minute,
 		maxSessions:    100,
+		recordingDir:   recordingDir,
 	}
 
 	// Start cleanup goroutine
@@ -35,7 +42,7 @@ func NewSessionManager(db *gorm.DB) *SessionManager {
 
 // CreateSession creates a new WebSSH session.
 // If sessionID is empty, a new UUID-based identifier will be generated.
-func (m *SessionManager) CreateSession(ctx context.Context, sessionID string, userID, hostID uuid.UUID, cols, rows int, clientIP string) (*models.WebSSHSession, error) {
+func (m *SessionManager) CreateSession(ctx context.Context, sessionID string, userID, hostID uuid.UUID, cols, rows int, clientIP string, recordingEnabled bool) (*models.WebSSHSession, error) {
 	// Check max sessions limit
 	count := 0
 	m.activeSessions.Range(func(key, value interface{}) bool {
@@ -51,17 +58,36 @@ func (m *SessionManager) CreateSession(ctx context.Context, sessionID string, us
 	}
 
 	session := &models.WebSSHSession{
-		SessionID:  sessionID,
-		UserID:     userID,
-		HostNodeID: hostID,
-		ClientIP:   clientIP,
-		Cols:       cols,
-		Rows:       rows,
-		Status:     "active",
+		SessionID:        sessionID,
+		UserID:           userID,
+		HostNodeID:       hostID,
+		ClientIP:         clientIP,
+		Cols:             cols,
+		Rows:             rows,
+		Status:           "active",
+		RecordingEnabled: recordingEnabled,
+		RecordingFormat:  "asciicast",
+	}
+
+	// Create recorder if recording is enabled
+	if recordingEnabled {
+		recorder, err := NewSessionRecorder(sessionID, cols, rows, m.recordingDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create recorder: %w", err)
+		}
+		session.RecordingPath = recorder.GetFilePath()
+		m.recorders.Store(sessionID, recorder)
 	}
 
 	// Save to database
 	if err := m.db.WithContext(ctx).Create(session).Error; err != nil {
+		// Cleanup recorder if database save fails
+		if recordingEnabled {
+			if rec, ok := m.recorders.Load(sessionID); ok {
+				rec.(*SessionRecorder).Close()
+				m.recorders.Delete(sessionID)
+			}
+		}
 		return nil, err
 	}
 
@@ -106,6 +132,17 @@ func (m *SessionManager) CloseSession(ctx context.Context, sessionID, reason str
 
 	session.Close(reason)
 
+	// Close recorder if exists
+	if rec, ok := m.recorders.Load(sessionID); ok {
+		recorder := rec.(*SessionRecorder)
+		if err := recorder.Close(); err != nil {
+			fmt.Printf("Failed to close recorder: %v\n", err)
+		}
+		// Update recording size
+		session.RecordingSize = recorder.GetBytesWritten()
+		m.recorders.Delete(sessionID)
+	}
+
 	// Update database
 	if err := m.db.WithContext(ctx).Save(session).Error; err != nil {
 		return err
@@ -125,6 +162,29 @@ func (m *SessionManager) ListActiveSessions() []*models.WebSSHSession {
 		return true
 	})
 	return sessions
+}
+
+// RecordOutput records terminal output
+func (m *SessionManager) RecordOutput(sessionID string, data []byte) error {
+	if rec, ok := m.recorders.Load(sessionID); ok {
+		return rec.(*SessionRecorder).RecordOutput(data)
+	}
+	return nil // Recording not enabled
+}
+
+// RecordInput records terminal input
+func (m *SessionManager) RecordInput(sessionID string, data []byte) error {
+	if rec, ok := m.recorders.Load(sessionID); ok {
+		return rec.(*SessionRecorder).RecordInput(data)
+	}
+	return nil // Recording not enabled
+}
+
+// ResizeRecorder updates terminal size in recorder
+func (m *SessionManager) ResizeRecorder(sessionID string, cols, rows int) {
+	if rec, ok := m.recorders.Load(sessionID); ok {
+		rec.(*SessionRecorder).Resize(cols, rows)
+	}
 }
 
 // cleanupStaleSessions removes stale sessions periodically

@@ -356,6 +356,8 @@ export const devopsAPI = {
       getCurrentState: (id: string) => apiClient.get(`/vms/hosts/${id}/state/current`),
       getHistoryState: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/hosts/${id}/state/history`, params),
+      getActivities: (id: string, params?: Record<string, any>) =>
+        apiClient.get(`/vms/hosts/${id}/activities`, params),
     },
 
     // Service monitors
@@ -398,7 +400,10 @@ export const devopsAPI = {
       createSession: (data: { host_id: string; username?: string; password?: string }) =>
         apiClient.post('/vms/webssh/sessions', data),
       listSessions: () => apiClient.get('/vms/webssh/sessions'),
-      closeSession: (sessionId: string) => apiClient.delete(`/vms/webssh/sessions/${sessionId}`),
+      listAllSessions: (params?: Record<string, any>) =>
+        apiClient.get('/vms/webssh/sessions/all', params),
+      getSession: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}`),
+      closeSession: (id: string) => apiClient.delete(`/vms/webssh/sessions/${id}`),
     },
   },
 };

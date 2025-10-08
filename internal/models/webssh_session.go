@@ -32,6 +32,14 @@ type WebSSHSession struct {
 	SSHUser      string `json:"ssh_user"`
 	SSHPort      int    `json:"ssh_port"`
 	CommandCount int    `gorm:"default:0" json:"command_count"` // Number of commands executed
+
+	// Recording fields
+	RecordingEnabled bool   `gorm:"default:true" json:"recording_enabled"`       // Whether recording is enabled
+	RecordingPath    string `json:"recording_path,omitempty"`                     // Path to recording file
+	RecordingSize    int64  `gorm:"default:0" json:"recording_size"`             // Size of recording in bytes
+	RecordingFormat  string `gorm:"default:'asciicast'" json:"recording_format"` // Format: asciicast, ttyrec
+
+	// Legacy audit log (will be deprecated)
 	AuditLog     string `gorm:"type:text" json:"-"`             // Full terminal log (encrypted)
 	CloseReason  string `json:"close_reason,omitempty"`
 
