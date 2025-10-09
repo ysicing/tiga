@@ -260,6 +260,9 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 		return
 	}
 
+	// Get agent install command
+	installCmd, _ := h.hostService.GetAgentInstallCommand(c.Request.Context(), id)
+
 	data := gin.H{
 		"id":             host.ID,
 		"uuid":           host.ID.String(),
@@ -280,6 +283,10 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 		"online":     host.Online,
 		"created_at": host.CreatedAt,
 		"updated_at": host.UpdatedAt,
+
+		// Agent information
+		"secret_key":        host.SecretKey,
+		"agent_install_cmd": installCmd,
 	}
 
 	if host.LastActive != nil {
@@ -508,6 +515,84 @@ func (h *HostHandler) GetHistoryState(c *gin.Context) {
 			"end":      endTime,
 			"interval": interval,
 			"points":   states,
+		},
+	})
+}
+
+// RegenerateSecretKey godoc
+// @Summary Regenerate host secret key
+// @Description Regenerates the secret key for a host and disconnects current agent
+// @Tags hosts
+// @Produce json
+// @Param id path string true "Host ID (UUID)"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/vms/hosts/{id}/regenerate-secret-key [post]
+func (h *HostHandler) RegenerateSecretKey(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    40001,
+			"message": "Invalid host ID",
+		})
+		return
+	}
+
+	newKey, err := h.hostService.RegenerateSecretKey(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    50001,
+			"message": "Failed to regenerate secret key",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Generate new install command
+	installCmd, _ := h.hostService.GetAgentInstallCommand(c.Request.Context(), id)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "密钥已重新生成，旧 Agent 连接已断开",
+		"data": gin.H{
+			"secret_key":        newKey,
+			"agent_install_cmd": installCmd,
+		},
+	})
+}
+
+// GetAgentInstallCommand godoc
+// @Summary Get agent installation command
+// @Description Returns the command to install agent on the host
+// @Tags hosts
+// @Produce json
+// @Param id path string true "Host ID (UUID)"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/vms/hosts/{id}/agent-install-command [get]
+func (h *HostHandler) GetAgentInstallCommand(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    40001,
+			"message": "Invalid host ID",
+		})
+		return
+	}
+
+	installCmd, err := h.hostService.GetAgentInstallCommand(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    50001,
+			"message": "Failed to get install command",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"agent_install_cmd": installCmd,
 		},
 	})
 }

@@ -341,6 +341,10 @@ func SetupRoutes(
 					hostsGroup.PUT("/:id", hostHandler.UpdateHost)
 					hostsGroup.DELETE("/:id", hostHandler.DeleteHost)
 
+					// Agent management
+					hostsGroup.POST("/:id/regenerate-secret-key", hostHandler.RegenerateSecretKey)
+					hostsGroup.GET("/:id/agent-install-command", hostHandler.GetAgentInstallCommand)
+
 					// Host state queries
 					hostsGroup.GET("/:id/state/current", hostHandler.GetCurrentState)
 					hostsGroup.GET("/:id/state/history", hostHandler.GetHistoryState)

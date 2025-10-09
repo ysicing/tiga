@@ -77,6 +77,9 @@ func (s *ValidationService) ValidateSettings(settings models.SystemSettings) map
 	if settings.HTTPPort < 1 || settings.HTTPPort > 65535 {
 		errors["http_port"] = "Port must be between 1 and 65535"
 	}
+	if settings.GRPCPort != 0 && (settings.GRPCPort < 1 || settings.GRPCPort > 65535) {
+		errors["grpc_port"] = "Port must be between 1 and 65535"
+	}
 
 	// 验证语言
 	if settings.Language != "zh-CN" && settings.Language != "en-US" {

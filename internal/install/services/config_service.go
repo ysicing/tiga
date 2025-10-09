@@ -33,6 +33,7 @@ type AppConfig struct {
 		AppSubtitle string `yaml:"app_subtitle,omitempty"`
 		Domain      string `yaml:"domain"`
 		HTTPPort    int    `yaml:"http_port"`
+		GRPCPort    int    `yaml:"grpc_port,omitempty"`
 		Language    string `yaml:"language"`
 	} `yaml:"server"`
 	Database struct {
@@ -90,6 +91,11 @@ func (s *ConfigService) GenerateConfigFile(installConfig models.InstallConfig) e
 	config.Server.AppSubtitle = installConfig.Settings.AppSubtitle
 	config.Server.Domain = installConfig.Settings.Domain
 	config.Server.HTTPPort = installConfig.Settings.HTTPPort
+	if installConfig.Settings.GRPCPort > 0 {
+		config.Server.GRPCPort = installConfig.Settings.GRPCPort
+	} else {
+		config.Server.GRPCPort = 12307
+	}
 	config.Server.Language = installConfig.Settings.Language
 
 	config.Database.Type = installConfig.Database.Type

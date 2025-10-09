@@ -61,7 +61,7 @@ func (h *ProbeTaskHandler) HandleProbeTask(task *proto.AgentTask, config *Config
 	}
 
 	// Log detailed task information
-	logrus.Debugf("[ProbeTask] 收到服务监控任务 - 类型: %s, 目标: %s, 监控ID: %s, TaskID: %d",
+	logrus.Debugf("[ProbeTask] 收到服务监控任务 - 类型: %s, 目标: %s, 监控ID: %s, TaskID: %s",
 		probeType, target, monitorIDStr, task.TaskId)
 
 	// Execute probe based on type

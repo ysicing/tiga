@@ -350,8 +350,21 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 	for {
 		data, err := session.ReceiveFromAgent()
 		if err != nil {
+			// Get error details for better diagnostics
+			errorMessage := "Connection to agent lost"
+
+			if lastErr := session.GetLastError(); lastErr != nil {
+				logrus.Errorf("Agent connection error (detailed): %v", lastErr)
+
+				// Check if error is potentially recoverable
+				if host.IsRecoverableError(lastErr) {
+					errorMessage = "Connection interrupted, please try reconnecting"
+					logrus.Warnf("Recoverable error detected for session %s", wsSession.SessionID)
+				}
+			}
+
 			logrus.Errorf("Failed to receive from agent: %v", err)
-			sendError(webssh.ErrCodeConnectionClosed, "Connection to agent lost")
+			sendError(webssh.ErrCodeConnectionClosed, errorMessage)
 			break
 		}
 

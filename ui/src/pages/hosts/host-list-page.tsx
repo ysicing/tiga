@@ -5,7 +5,7 @@ import { useHostMonitor } from '@/hooks/use-host-monitor';
 import { HostCard } from '@/components/hosts/host-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, RefreshCw, Search, LayoutGrid, LayoutList, Terminal } from 'lucide-react';
+import { Plus, RefreshCw, Search, LayoutGrid, LayoutList, Terminal, Settings } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
@@ -59,7 +59,7 @@ function getDaysUntilExpiry(expiryDate?: string): number | null {
 
 // Get expiry status with color
 function getExpiryStatus(days: number | null): { text: string; color: string } {
-  if (days === null) return { text: '未设置', color: 'text-muted-foreground' };
+  if (days === null) return { text: '永久有效', color: 'text-muted-foreground' };
   if (days < 0) return { text: `已过期 ${Math.abs(days)} 天`, color: 'text-red-600 font-semibold' };
   if (days === 0) return { text: '今天到期', color: 'text-red-600 font-semibold' };
   if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' };
@@ -78,6 +78,8 @@ export function HostListPage() {
     return (saved as 'card' | 'table') || 'card';
   });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingHost, setEditingHost] = useState<any>(null);
   const [installCmdDialog, setInstallCmdDialog] = useState<{
     open: boolean;
     id?: string;
@@ -123,11 +125,24 @@ export function HostListPage() {
     }
   };
 
+  const getCurrentLocalDate = () => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const local = new Date(now.getTime() - offset * 60000);
+    return local.toISOString().split('T')[0];
+  };
+
   const handleCreateHost = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const data: any = await devopsAPI.vms.hosts.create(formData);
+      const payload = {
+        ...formData,
+        purchase_date: formData.purchase_date || getCurrentLocalDate(),
+        expiry_date: formData.expiry_date || undefined,
+      };
+
+      const data: any = await devopsAPI.vms.hosts.create(payload);
       if (data.code === 0) {
         toast.success('主机创建成功');
         setIsCreateDialogOpen(false);
@@ -181,6 +196,91 @@ export function HostListPage() {
     } catch (error) {
       console.error('Failed to delete host:', error);
       toast.error('删除主机失败');
+    }
+  };
+
+  const normalizeDate = (value?: string | null) => {
+    if (!value) return '';
+    const date = value.split('T')[0];
+    return date;
+  };
+
+  const normalizeNumber = (value: unknown, defaultValue = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : defaultValue;
+  };
+
+  const handleEditHost = async (host: any) => {
+    try {
+      // Fetch full host details including secret_key and agent_install_cmd
+      const response: any = await devopsAPI.vms.hosts.get(host.id);
+      if (response.code === 0) {
+        const fullHost = response.data;
+        setEditingHost(fullHost);
+        setFormData({
+          name: fullHost?.name ?? '',
+          note: fullHost?.note ?? '',
+          public_note: fullHost?.public_note ?? '',
+          display_index: normalizeNumber(fullHost?.display_index),
+          hide_for_guest: Boolean(fullHost?.hide_for_guest),
+          cost: normalizeNumber(fullHost?.cost),
+          renewal_type: fullHost?.renewal_type === 'yearly' ? 'yearly' : 'monthly',
+          purchase_date: normalizeDate(fullHost?.purchase_date),
+          expiry_date: normalizeDate(fullHost?.expiry_date),
+          auto_renew: Boolean(fullHost?.auto_renew),
+          traffic_limit: normalizeNumber(fullHost?.traffic_limit),
+          group_name: fullHost?.group_name ?? '',
+        });
+        setIsEditDialogOpen(true);
+      } else {
+        toast.error(response.message || '获取主机详情失败');
+      }
+    } catch (error) {
+      console.error('Failed to fetch host details:', error);
+      toast.error('获取主机详情失败');
+    }
+  };
+
+  const handleUpdateHost = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingHost) return;
+
+    try {
+      const payload = {
+        ...formData,
+        purchase_date: formData.purchase_date || undefined,
+        expiry_date: formData.expiry_date || undefined,
+      };
+      const data: any = await devopsAPI.vms.hosts.update(editingHost.id, payload);
+      if (data.code === 0) {
+        toast.success('主机更新成功');
+        setIsEditDialogOpen(false);
+        setEditingHost(null);
+
+        // Reset form
+        setFormData({
+          name: '',
+          note: '',
+          public_note: '',
+          display_index: 0,
+          hide_for_guest: false,
+          cost: 0,
+          renewal_type: 'monthly',
+          purchase_date: '',
+          expiry_date: '',
+          auto_renew: false,
+          traffic_limit: 0,
+        });
+
+        // Refresh list
+        fetchHosts();
+      } else {
+        toast.error(data.message || '更新失败');
+      }
+    } catch (error) {
+      console.error('Failed to update host:', error);
+      toast.error('更新主机失败');
     }
   };
 
@@ -320,7 +420,17 @@ export function HostListPage() {
                       host={host}
                       onClick={() => navigate(`/vms/hosts/${host.id}`)}
                     />
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditHost(host);
+                        }}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="destructive"
                         size="sm"
@@ -425,11 +535,23 @@ export function HostListPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditHost(host);
+                          }}
+                          title="设置"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           disabled={!host.online}
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/vms/hosts/${host.id}/ssh`);
                           }}
+                          title="终端"
                         >
                           <Terminal className="h-4 w-4" />
                         </Button>
@@ -440,6 +562,7 @@ export function HostListPage() {
                             e.stopPropagation();
                             handleDeleteHost(host.id, host.name);
                           }}
+                          title="删除"
                         >
                           删除
                         </Button>
@@ -607,6 +730,172 @@ export function HostListPage() {
                 取消
               </Button>
               <Button type="submit">创建</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Host Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handleUpdateHost}>
+            <DialogHeader>
+              <DialogTitle>编辑主机 - {editingHost?.name}</DialogTitle>
+              <DialogDescription>修改主机的基础配置信息</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-1">
+                <Label className="text-base font-semibold">基本信息</Label>
+                <p className="text-xs text-muted-foreground">修改主机的基本配置</p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">主机名称 *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  placeholder="web-server-01"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-note">内部备注</Label>
+                <Textarea
+                  id="edit-note"
+                  value={formData.note}
+                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  placeholder="管理员可见的备注信息"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit-public_note">公开备注</Label>
+                <Textarea
+                  id="edit-public_note"
+                  value={formData.public_note}
+                  onChange={(e) => setFormData({ ...formData, public_note: e.target.value })}
+                  placeholder="访客可见的备注信息"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-cost">费用 (¥)</Label>
+                  <Input
+                    id="edit-cost"
+                    type="number"
+                    step="0.01"
+                    value={formData.cost}
+                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    根据续费周期，此费用为{formData.renewal_type === 'monthly' ? '月' : '年'}费用
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-renewal_type">续费周期</Label>
+                  <Select
+                    value={formData.renewal_type}
+                    onValueChange={(value: 'monthly' | 'yearly') => setFormData({ ...formData, renewal_type: value })}
+                  >
+                    <SelectTrigger id="edit-renewal_type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">按月</SelectItem>
+                      <SelectItem value="yearly">按年</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-purchase_date">购买日期</Label>
+                  <Input
+                    id="edit-purchase_date"
+                    type="date"
+                    value={formData.purchase_date}
+                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-expiry_date">到期时间</Label>
+                  <Input
+                    id="edit-expiry_date"
+                    type="date"
+                    value={formData.expiry_date}
+                    onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-traffic_limit">流量限制 (GB)</Label>
+                  <Input
+                    id="edit-traffic_limit"
+                    type="number"
+                    value={formData.traffic_limit}
+                    onChange={(e) => setFormData({ ...formData, traffic_limit: parseInt(e.target.value) || 0 })}
+                    placeholder="0 表示无限"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-group_name">主机分组</Label>
+                  <Input
+                    id="edit-group_name"
+                    value={formData.group_name || ''}
+                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    placeholder="例如：生产环境、测试环境"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit-auto_renew">自动续费</Label>
+                  <p className="text-xs text-muted-foreground">
+                    到期时自动续费，避免服务中断
+                  </p>
+                </div>
+                <Switch
+                  id="edit-auto_renew"
+                  checked={formData.auto_renew}
+                  onCheckedChange={(checked) => setFormData({ ...formData, auto_renew: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="edit-hide_for_guest">对访客隐藏</Label>
+                  <p className="text-xs text-muted-foreground">
+                    未登录用户无法查看此主机
+                  </p>
+                </div>
+                <Switch
+                  id="edit-hide_for_guest"
+                  checked={formData.hide_for_guest}
+                  onCheckedChange={(checked) => setFormData({ ...formData, hide_for_guest: checked })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingHost(null);
+                }}
+              >
+                取消
+              </Button>
+              <Button type="submit">保存修改</Button>
             </DialogFooter>
           </form>
         </DialogContent>

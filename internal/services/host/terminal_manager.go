@@ -2,13 +2,17 @@ package host
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/ysicing/tiga/proto"
 )
@@ -26,6 +30,10 @@ type TerminalSession struct {
 	// Buffered channels for bidirectional communication
 	ToAgent   chan []byte
 	FromAgent chan []byte
+
+	// Error tracking
+	LastError error
+	ErrorChan chan error // Non-blocking error notifications
 
 	// Session control
 	ctx    context.Context
@@ -110,9 +118,21 @@ func (m *TerminalManager) HandleIOStream(stream proto.HostMonitor_IOStreamServer
 		for {
 			msg, err := stream.Recv()
 			if err != nil {
-				if err != io.EOF {
-					logrus.Errorf("IOStream recv error: %v", err)
+				// Classify error type
+				errorType := classifyStreamError(err)
+				logrus.Errorf("[TerminalMgr] IOStream recv error (%s): %v", errorType, err)
+
+				// Store error for diagnostics
+				session.mu.Lock()
+				session.LastError = err
+				session.mu.Unlock()
+
+				// Send error notification (non-blocking)
+				select {
+				case session.ErrorChan <- err:
+				default:
 				}
+
 				return
 			}
 
@@ -155,6 +175,7 @@ func (m *TerminalManager) CreateSession(streamID string, hostID uuid.UUID, uuid 
 		StartedAt: time.Now(),
 		ToAgent:   make(chan []byte, 100),
 		FromAgent: make(chan []byte, 100),
+		ErrorChan: make(chan error, 10), // Buffered for non-blocking sends
 		ctx:       ctx,
 		cancel:    cancel,
 	}
@@ -245,4 +266,90 @@ func bytesEqual(a, b []byte) bool {
 		}
 	}
 	return true
+}
+
+// GetLastError returns the last error that occurred
+func (s *TerminalSession) GetLastError() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.LastError
+}
+
+// classifyStreamError classifies stream errors for better diagnostics
+func classifyStreamError(err error) string {
+	if err == nil {
+		return "no-error"
+	}
+
+	// Check for io.EOF
+	if errors.Is(err, io.EOF) {
+		return "eof"
+	}
+
+	// Check for context errors
+	if errors.Is(err, context.Canceled) {
+		return "canceled"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "deadline-exceeded"
+	}
+
+	// Check for gRPC status errors
+	if st, ok := status.FromError(err); ok {
+		code := st.Code()
+		switch code {
+		case codes.Canceled:
+			return "grpc-canceled"
+		case codes.DeadlineExceeded:
+			return "grpc-deadline-exceeded"
+		case codes.Unavailable:
+			return "grpc-unavailable"
+		case codes.ResourceExhausted:
+			return "grpc-resource-exhausted"
+		case codes.Aborted:
+			return "grpc-aborted"
+		case codes.Internal:
+			return "grpc-internal"
+		case codes.Unknown:
+			return "grpc-unknown"
+		default:
+			return fmt.Sprintf("grpc-%s", code.String())
+		}
+	}
+
+	// Check for network errors
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		if netErr.Timeout() {
+			return "network-timeout"
+		}
+		if netErr.Temporary() {
+			return "network-temporary"
+		}
+		return "network-error"
+	}
+
+	// Generic error
+	return "unknown-error"
+}
+
+// IsRecoverableError checks if an error is potentially recoverable
+func IsRecoverableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errorType := classifyStreamError(err)
+
+	// These error types might be recoverable with retry
+	recoverableTypes := map[string]bool{
+		"network-timeout":         true,
+		"network-temporary":       true,
+		"grpc-unavailable":        true,
+		"grpc-deadline-exceeded":  true,
+		"grpc-resource-exhausted": true,
+		"grpc-aborted":            true,
+	}
+
+	return recoverableTypes[errorType]
 }

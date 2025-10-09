@@ -21,6 +21,7 @@ type AppConfig struct {
 		AppName     string `yaml:"app_name"`
 		Domain      string `yaml:"domain"`
 		HTTPPort    int    `yaml:"http_port"`
+		GRPCPort    int    `yaml:"grpc_port"`
 		Language    string `yaml:"language"`
 	} `yaml:"server"`
 	Database struct {
@@ -86,6 +87,7 @@ func TestGenerateConfigFile_Success(t *testing.T) {
 	assert.Equal(t, "Tiga Dashboard", config.Server.AppName)
 	assert.Equal(t, "localhost", config.Server.Domain)
 	assert.Equal(t, 12306, config.Server.HTTPPort)
+	assert.Equal(t, 12307, config.Server.GRPCPort)
 	assert.Equal(t, "zh-CN", config.Server.Language)
 
 	assert.Equal(t, "postgresql", config.Database.Type)

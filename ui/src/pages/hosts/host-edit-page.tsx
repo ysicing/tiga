@@ -310,42 +310,6 @@ export function HostEditPage() {
         </CardContent>
       </Card>
 
-      {/* Danger Zone */}
-      <Card className="border-red-200 dark:border-red-900">
-        <CardHeader>
-          <CardTitle className="text-red-600 dark:text-red-400">危险操作</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-medium mb-2">主机 ID</h3>
-            <div className="flex gap-2">
-              <Input value={host.id} readOnly className="font-mono text-sm" />
-              <Button
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(host.id);
-                  toast.success('已复制到剪贴板');
-                }}
-              >
-                复制
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              ID用于Agent连接认证，请勿泄露
-            </p>
-          </div>
-
-          <div>
-            <h3 className="font-medium mb-2">重置密钥</h3>
-            <p className="text-sm text-muted-foreground mb-2">
-              重置后需要重新安装Agent，旧的Agent将无法连接
-            </p>
-            <Button variant="destructive" disabled>
-              重置密钥（开发中）
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

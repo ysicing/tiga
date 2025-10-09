@@ -222,7 +222,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	// Setup HTTP router
 	routerConfig := &middleware.RouterConfig{
-		Mode:          a.config.Server.Mode,
+		DebugMode:       a.config.Server.Debug, // Set debug mode based on config
 		EnableSwagger: true, // Enable Swagger UI
 	}
 
@@ -265,7 +265,7 @@ func (a *Application) initializeInstallMode(_ context.Context) error {
 
 	// Setup HTTP router in installation mode
 	routerConfig := &middleware.RouterConfig{
-		Mode:          a.config.Server.Mode,
+		DebugMode:       a.config.Server.Debug,
 		EnableSwagger: false, // Disable Swagger in installation mode
 	}
 
@@ -295,7 +295,10 @@ func (a *Application) initializeInstallMode(_ context.Context) error {
 func (a *Application) Run(ctx context.Context) error {
 	// Start gRPC server for Agents (if not in install mode)
 	if !a.installMode && a.grpcServer != nil {
-		grpcPort := 12307 // TODO: Make this configurable
+		grpcPort := a.config.Server.GRPCPort
+		if grpcPort == 0 {
+			grpcPort = 12307
+		}
 		go func() {
 			listener, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 			if err != nil {

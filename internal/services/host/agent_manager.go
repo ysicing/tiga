@@ -397,6 +397,14 @@ func (m *AgentManager) updateConnectionStatus(hostNodeID uuid.UUID, status model
 		now := time.Now()
 		agentConn.LastDisconnectAt = &now
 		agentConn.DisconnectReason = "Connection lost"
+	} else {
+		agentConn.LastDisconnectAt = nil
+		agentConn.DisconnectReason = ""
+		if status == models.AgentStatusOnline {
+			now := time.Now()
+			agentConn.ConnectedAt = &now
+			agentConn.LastHeartbeat = now
+		}
 	}
 
 	m.db.Save(&agentConn)
@@ -516,7 +524,7 @@ func (m *AgentManager) getPendingTasks(uuid string) []*proto.AgentTask {
 					if tgt, ok := task.Params["target"]; ok {
 						target = tgt
 					}
-					logrus.Debugf("[TaskDispatch] -> 任务ID: %d, 类型: %s, 目标: %s", task.TaskId, taskType, target)
+					logrus.Debugf("[TaskDispatch] -> 任务ID: %s, 类型: %s, 目标: %s", task.TaskId, taskType, target)
 				}
 			}
 			return tasks
@@ -542,16 +550,16 @@ func (m *AgentManager) QueueTask(uuid string, task *proto.AgentTask) error {
 	if tgt, ok := task.Params["target"]; ok {
 		target = tgt
 	}
-	logrus.Debugf("[TaskQueue] 服务端将任务加入队列 - Agent: %s, 任务ID: %d, 类型: %s, 目标: %s",
+	logrus.Debugf("[TaskQueue] 服务端将任务加入队列 - Agent: %s, 任务ID: %s, 类型: %s, 目标: %s",
 		uuid, task.TaskId, taskType, target)
 
 	// Non-blocking send to avoid deadlock
 	select {
 	case agentConn.taskQueue <- task:
-		logrus.Debugf("[TaskQueue] 任务入队成功 - Agent: %s, 任务ID: %d", uuid, task.TaskId)
+		logrus.Debugf("[TaskQueue] 任务入队成功 - Agent: %s, 任务ID: %s", uuid, task.TaskId)
 		return nil
 	default:
-		logrus.Errorf("[TaskQueue] 任务队列已满 - Agent: %s, 任务ID: %d", uuid, task.TaskId)
+		logrus.Errorf("[TaskQueue] 任务队列已满 - Agent: %s, 任务ID: %s", uuid, task.TaskId)
 		return fmt.Errorf("task queue full for agent: %s", uuid)
 	}
 }

@@ -14,7 +14,7 @@ import (
 
 // RouterConfig represents router configuration
 type RouterConfig struct {
-	Mode            string // debug, release, test
+	DebugMode       bool
 	EnableGzip      bool
 	EnableCORS      bool
 	EnableRateLimit bool
@@ -25,8 +25,10 @@ type RouterConfig struct {
 // NewRouter creates and configures a new Gin router
 func NewRouter(config *RouterConfig) *gin.Engine {
 	// Set Gin mode
-	if config.Mode != "" {
-		gin.SetMode(config.Mode)
+	if config.DebugMode {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.New()
