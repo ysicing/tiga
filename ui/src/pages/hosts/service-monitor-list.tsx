@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
@@ -49,7 +49,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { ServiceMonitorService } from '@/services/service-monitor';
+import { ServiceMonitorService, ServiceMonitorListResponse } from '@/services/service-monitor';
 
 // Type for service monitor
 interface ServiceMonitor {
@@ -75,7 +75,7 @@ const ServiceMonitorListPage: React.FC = () => {
   const [selectedMonitor, setSelectedMonitor] = useState<ServiceMonitor | null>(null);
 
   // Fetch monitors
-  const { data: monitors = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery<ServiceMonitorListResponse>({
     queryKey: ['service-monitors', searchQuery, typeFilter, statusFilter],
     queryFn: () => ServiceMonitorService.list({
       search: searchQuery,
@@ -83,6 +83,22 @@ const ServiceMonitorListPage: React.FC = () => {
       status: statusFilter === 'all' ? undefined : statusFilter,
     }),
   });
+  const monitors = data?.items ?? [];
+  const totalMonitors = data?.total ?? monitors.length;
+
+  const filteredMonitors = useMemo(() => {
+    return monitors.filter((monitor) => {
+      const matchSearch =
+        !searchQuery ||
+        monitor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        monitor.target.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchType = typeFilter === 'all' || monitor.type === typeFilter;
+      const matchStatus = statusFilter === 'all' || monitor.status === statusFilter;
+
+      return matchSearch && matchType && matchStatus;
+    });
+  }, [monitors, searchQuery, typeFilter, statusFilter]);
 
   // Delete monitor mutation
   const deleteMutation = useMutation({
@@ -194,7 +210,7 @@ const ServiceMonitorListPage: React.FC = () => {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{monitors.length}</div>
+            <div className="text-2xl font-bold">{totalMonitors}</div>
           </CardContent>
         </Card>
         <Card>
@@ -204,7 +220,7 @@ const ServiceMonitorListPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {monitors.filter(m => m.status === 'up').length}
+              {filteredMonitors.filter(m => m.status === 'up').length}
             </div>
           </CardContent>
         </Card>
@@ -215,7 +231,7 @@ const ServiceMonitorListPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {monitors.filter(m => m.status === 'down').length}
+              {filteredMonitors.filter(m => m.status === 'down').length}
             </div>
           </CardContent>
         </Card>
@@ -226,8 +242,11 @@ const ServiceMonitorListPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {monitors.length > 0
-                ? (monitors.reduce((acc, m) => acc + (m.uptime_24h || 0), 0) / monitors.length).toFixed(2)
+              {filteredMonitors.length > 0
+                ? (
+                  filteredMonitors.reduce((acc, m) => acc + (m.uptime_24h || 0), 0) /
+                  filteredMonitors.length
+                ).toFixed(2)
                 : '0.00'}%
             </div>
           </CardContent>
@@ -299,14 +318,14 @@ const ServiceMonitorListPage: React.FC = () => {
                     加载中...
                   </TableCell>
                 </TableRow>
-              ) : monitors.length === 0 ? (
+              ) : filteredMonitors.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8">
                     暂无监控服务
                   </TableCell>
                 </TableRow>
               ) : (
-                monitors.map((monitor) => (
+                filteredMonitors.map((monitor) => (
                   <TableRow key={monitor.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">

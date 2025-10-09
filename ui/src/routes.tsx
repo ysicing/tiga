@@ -27,7 +27,6 @@ import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-p
 import { HostEditPage } from './pages/hosts/host-edit-page'
 import { HostSSHPage } from './pages/hosts/host-ssh-page'
 import { ServiceMonitorPage } from './pages/hosts/service-monitor-page'
-import ServiceOverviewPage from './pages/hosts/service-overview-page'
 import ServiceMonitorListPage from './pages/hosts/service-monitor-list'
 import ServiceMonitorDetailPage from './pages/hosts/service-monitor-detail'
 import { AlertEventsPage } from './pages/hosts/alert-events-page'
@@ -120,11 +119,11 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="overview" replace />,
+            element: <ServiceMonitorListPage />,
           },
           {
             path: 'overview',
-            element: <ServiceOverviewPage />,
+            element: <Navigate to="list" replace />,
           },
           {
             path: 'list',

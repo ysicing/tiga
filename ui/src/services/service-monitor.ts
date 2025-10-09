@@ -1,3 +1,5 @@
+import { apiClient } from '@/lib/api-client';
+
 // Service Monitor API Service
 
 export interface ServiceMonitor {
@@ -90,9 +92,14 @@ export interface ServiceMonitorFormData {
   recovery_threshold: number;
 }
 
+export interface ServiceMonitorListResponse {
+  items: ServiceMonitor[];
+  total: number;
+}
+
 export const ServiceMonitorService = {
   // List service monitors
-  async list(params?: ServiceMonitorListParams): Promise<ServiceMonitor[]> {
+  async list(params?: ServiceMonitorListParams): Promise<ServiceMonitorListResponse> {
     const queryParams = new URLSearchParams();
     if (params?.search) queryParams.append('search', params.search);
     if (params?.type) queryParams.append('type', params.type);
@@ -101,76 +108,50 @@ export const ServiceMonitorService = {
     if (params?.page) queryParams.append('page', String(params.page));
     if (params?.page_size) queryParams.append('page_size', String(params.page_size));
 
-    const response = await fetch(`/api/v1/vms/service-monitors?${queryParams.toString()}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch service monitors');
-    }
-    const data = await response.json();
-    return data.data?.items || [];
+    const queryString = queryParams.toString();
+    const response = await apiClient.get<{
+      data?: {
+        items?: ServiceMonitor[];
+        total?: number;
+      };
+    }>(
+      `/vms/service-monitors${queryString ? `?${queryString}` : ''}`
+    );
+    return {
+      items: response.data?.items || [],
+      total: response.data?.total || 0,
+    };
   },
 
   // Get single service monitor
   async get(id: string): Promise<ServiceMonitor> {
-    const response = await fetch(`/api/v1/vms/service-monitors/${id}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch service monitor');
-    }
-    const data = await response.json();
-    return data.data;
+    const response = await apiClient.get<{ data: ServiceMonitor }>(`/vms/service-monitors/${id}`);
+    return response.data;
   },
 
   // Create service monitor
   async create(data: ServiceMonitorFormData): Promise<ServiceMonitor> {
-    const response = await fetch('/api/v1/vms/service-monitors', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to create service monitor');
-    }
-    const result = await response.json();
-    return result.data;
+    const response = await apiClient.post<{ data: ServiceMonitor }>('/vms/service-monitors', data);
+    return response.data;
   },
 
   // Update service monitor
   async update(id: string, data: Partial<ServiceMonitorFormData>): Promise<ServiceMonitor> {
-    const response = await fetch(`/api/v1/vms/service-monitors/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to update service monitor');
-    }
-    const result = await response.json();
-    return result.data;
+    const response = await apiClient.put<{ data: ServiceMonitor }>(`/vms/service-monitors/${id}`, data);
+    return response.data;
   },
 
   // Delete service monitor
   async delete(id: string): Promise<void> {
-    const response = await fetch(`/api/v1/vms/service-monitors/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to delete service monitor');
-    }
+    await apiClient.delete(`/vms/service-monitors/${id}`);
   },
 
   // Trigger manual probe
   async triggerProbe(id: string): Promise<ServiceProbeResult> {
-    const response = await fetch(`/api/v1/vms/service-monitors/${id}/trigger`, {
-      method: 'POST',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to trigger probe');
-    }
-    const data = await response.json();
-    return data.data;
+    const response = await apiClient.post<{ data: ServiceProbeResult }>(
+      `/vms/service-monitors/${id}/trigger`
+    );
+    return response.data;
   },
 
   // Get probe history
@@ -187,12 +168,11 @@ export const ServiceMonitorService = {
     if (params?.end_time) queryParams.append('end_time', params.end_time);
     if (params?.limit) queryParams.append('limit', String(params.limit));
 
-    const response = await fetch(`/api/v1/vms/service-monitors/${id}/history?${queryParams.toString()}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch probe history');
-    }
-    const data = await response.json();
-    return data.data || [];
+    const queryString = queryParams.toString();
+    const response = await apiClient.get<{ data?: ServiceProbeResult[] }>(
+      `/vms/service-monitors/${id}/history${queryString ? `?${queryString}` : ''}`
+    );
+    return response.data || [];
   },
 
   // Get availability stats
@@ -213,12 +193,19 @@ export const ServiceMonitorService = {
     const queryParams = new URLSearchParams();
     if (params?.period) queryParams.append('period', params.period);
 
-    const response = await fetch(`/api/v1/vms/service-monitors/${id}/availability?${queryParams.toString()}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch availability stats');
-    }
-    const data = await response.json();
-    return data.data;
+    const queryString = queryParams.toString();
+    const response = await apiClient.get<{
+      data: {
+        uptime_percentage: number;
+        total_checks: number;
+        successful_checks: number;
+        failed_checks: number;
+        avg_latency: number;
+        min_latency: number;
+        max_latency: number;
+      };
+    }>(`/vms/service-monitors/${id}/availability${queryString ? `?${queryString}` : ''}`);
+    return response.data;
   },
 
   // Batch enable/disable monitors
@@ -226,54 +213,35 @@ export const ServiceMonitorService = {
     ids: string[],
     action: 'enable' | 'disable'
   ): Promise<void> {
-    const response = await fetch('/api/v1/vms/service-monitors/batch', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ids,
-        action,
-        enabled: action === 'enable',
-      }),
+    await apiClient.post('/vms/service-monitors/batch', {
+      ids,
+      action,
+      enabled: action === 'enable',
     });
-    if (!response.ok) {
-      throw new Error('Failed to batch update monitors');
-    }
   },
 
   // Export monitors configuration
   async export(format: 'json' | 'yaml' = 'json'): Promise<Blob> {
-    const response = await fetch(`/api/v1/vms/service-monitors/export?format=${format}`);
-    if (!response.ok) {
-      throw new Error('Failed to export monitors');
-    }
-    return response.blob();
+    return apiClient.getBlob('/vms/service-monitors/export', { format });
   },
 
   // Import monitors configuration
   async import(file: File): Promise<{ imported: number; failed: number }> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch('/api/v1/vms/service-monitors/import', {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) {
-      throw new Error('Failed to import monitors');
-    }
-    const data = await response.json();
-    return data.data;
+    const response = await apiClient.postForm<{ data: { imported: number; failed: number } }>(
+      '/vms/service-monitors/import',
+      formData
+    );
+    return response.data;
   },
 
   // Get overview with 30-day statistics for all service monitors
   async getOverview(): Promise<ServiceOverviewResponse> {
-    const response = await fetch('/api/v1/vms/service-monitors/overview');
-    if (!response.ok) {
-      throw new Error('Failed to fetch service overview');
-    }
-    const data = await response.json();
-    return data.data;
+    const response = await apiClient.get<{ data: ServiceOverviewResponse }>(
+      '/vms/service-monitors/overview'
+    );
+    return response.data;
   },
 
   // Get probe history for a specific host (multi-line chart data)
@@ -281,22 +249,20 @@ export const ServiceMonitorService = {
     hostId: string,
     hours: number = 24
   ): Promise<ServiceHistoryInfo[]> {
-    const response = await fetch(`/api/v1/vms/hosts/${hostId}/probe-history?hours=${hours}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch host probe history');
-    }
-    const data = await response.json();
-    return data.data || [];
+    const response = await apiClient.get<{ data?: ServiceHistoryInfo[] }>(
+      `/vms/hosts/${hostId}/probe-history`,
+      { hours }
+    );
+    return response.data || [];
   },
 
   // Get network topology matrix data
   async getNetworkTopology(hours: number = 1): Promise<NetworkTopologyResponse> {
-    const response = await fetch(`/api/v1/vms/service-monitors/topology?hours=${hours}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch network topology');
-    }
-    const data = await response.json();
-    return data.data;
+    const response = await apiClient.get<{ data: NetworkTopologyResponse }>(
+      '/vms/service-monitors/topology',
+      { hours }
+    );
+    return response.data;
   },
 };
 
