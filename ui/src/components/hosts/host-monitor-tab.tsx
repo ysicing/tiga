@@ -3,12 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { MonitorChart } from '@/components/hosts/monitor-chart';
 import { MultiLineChart } from '@/components/hosts/multi-line-chart';
 import { NodeProbeChart } from '@/components/service-monitor/node-probe-chart';
+import { HttpProbeHeatmap } from '@/components/service-monitor/http-probe-heatmap';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { formatBytes } from '@/lib/utils';
 import { devopsAPI } from '@/lib/api-client';
-import { ServiceMonitorService } from '@/services/service-monitor';
+import { ServiceMonitorService, ServiceHistoryInfo } from '@/services/service-monitor';
 
 type TimeRange = '15m' | '1h' | '6h' | '12h' | '1d' | '7d' | '30d';
 
@@ -43,6 +44,13 @@ export function HostMonitorTab({ hostId }: HostMonitorTabProps) {
     enabled: !!hostId,
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+
+  // Group probe history by service type
+  const groupedProbeHistory = {
+    http: probeHistory.filter((item: ServiceHistoryInfo) => item.service_monitor_type === 'HTTP'),
+    tcp: probeHistory.filter((item: ServiceHistoryInfo) => item.service_monitor_type === 'TCP'),
+    icmp: probeHistory.filter((item: ServiceHistoryInfo) => item.service_monitor_type === 'ICMP'),
+  };
 
   useEffect(() => {
     localStorage.setItem('host-monitor-time-range', timeRange);
@@ -280,18 +288,34 @@ export function HostMonitorTab({ hostId }: HostMonitorTabProps) {
           <div className="grid gap-4">
             {probeHistory.length > 0 ? (
               <>
-                <NodeProbeChart
-                  data={probeHistory}
-                  title={`服务探测延迟（${TIME_RANGES[timeRange].label}）`}
-                  description="显示此节点对各服务的探测延迟变化趋势"
-                  metricType="latency"
-                />
-                <NodeProbeChart
-                  data={probeHistory}
-                  title={`服务探测可用率（${TIME_RANGES[timeRange].label}）`}
-                  description="显示此节点对各服务的探测成功率变化趋势"
-                  metricType="uptime"
-                />
+                {/* HTTP Probes - Display with heatmap blocks */}
+                {groupedProbeHistory.http.length > 0 && (
+                  <HttpProbeHeatmap
+                    data={groupedProbeHistory.http}
+                    title={`HTTP 服务探测延迟（${TIME_RANGES[timeRange].label}）`}
+                    description="使用方块显示 HTTP 服务的探测延迟，颜色表示响应速度"
+                  />
+                )}
+
+                {/* TCP Probes - Display with line chart */}
+                {groupedProbeHistory.tcp.length > 0 && (
+                  <NodeProbeChart
+                    data={groupedProbeHistory.tcp}
+                    title={`TCP 服务探测延迟（${TIME_RANGES[timeRange].label}）`}
+                    description="显示此节点对 TCP 服务的探测延迟变化趋势"
+                    metricType="latency"
+                  />
+                )}
+
+                {/* ICMP Probes - Display with line chart */}
+                {groupedProbeHistory.icmp.length > 0 && (
+                  <NodeProbeChart
+                    data={groupedProbeHistory.icmp}
+                    title={`ICMP 服务探测延迟（${TIME_RANGES[timeRange].label}）`}
+                    description="显示此节点对 ICMP 服务的探测延迟变化趋势"
+                    metricType="latency"
+                  />
+                )}
               </>
             ) : (
               <Card>

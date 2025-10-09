@@ -10,26 +10,26 @@ type MessageType string
 
 const (
 	// Client to Server messages
-	MessageTypeInput      MessageType = "input"      // Terminal input
-	MessageTypeResize     MessageType = "resize"     // Terminal resize
-	MessageTypePing       MessageType = "ping"       // Keep-alive ping
-	MessageTypeCommand    MessageType = "command"    // Special commands (e.g., close)
+	MessageTypeInput   MessageType = "input"   // Terminal input
+	MessageTypeResize  MessageType = "resize"  // Terminal resize
+	MessageTypePing    MessageType = "ping"    // Keep-alive ping
+	MessageTypeCommand MessageType = "command" // Special commands (e.g., close)
 
 	// Server to Client messages
-	MessageTypeOutput     MessageType = "output"     // Terminal output
-	MessageTypePong       MessageType = "pong"       // Keep-alive pong
-	MessageTypeError      MessageType = "error"      // Error message
-	MessageTypeConnected  MessageType = "connected"  // Connection established
+	MessageTypeOutput       MessageType = "output"       // Terminal output
+	MessageTypePong         MessageType = "pong"         // Keep-alive pong
+	MessageTypeError        MessageType = "error"        // Error message
+	MessageTypeConnected    MessageType = "connected"    // Connection established
 	MessageTypeDisconnected MessageType = "disconnected" // Connection closed
-	MessageTypeInfo       MessageType = "info"       // Information message
+	MessageTypeInfo         MessageType = "info"         // Information message
 )
 
 // Message represents a WebSocket message
 type Message struct {
 	Type      MessageType     `json:"type"`
 	Data      json.RawMessage `json:"data,omitempty"`
-	Timestamp int64          `json:"timestamp"`
-	SessionID string         `json:"session_id,omitempty"`
+	Timestamp int64           `json:"timestamp"`
+	SessionID string          `json:"session_id,omitempty"`
 }
 
 // InputMessage represents terminal input from client

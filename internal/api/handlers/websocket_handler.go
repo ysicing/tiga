@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/internal/services/host"
 )
 
@@ -32,8 +33,8 @@ func NewWebSocketHandler(stateCollector *host.StateCollector) *WebSocketHandler 
 
 // WebSocketMessage represents messages between client and server
 type WebSocketMessage struct {
-	Action  string   `json:"action"`  // "subscribe" | "unsubscribe" | "state_update"
-	HostIDs []string `json:"host_ids,omitempty"`
+	Action  string      `json:"action"` // "subscribe" | "unsubscribe" | "state_update"
+	HostIDs []string    `json:"host_ids,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
 }
 
@@ -148,25 +149,25 @@ func (h *WebSocketHandler) HostMonitor(c *gin.Context) {
 						msg := WebSocketMessage{
 							Action: "state_update",
 							Data: map[string]interface{}{
-								"host_id":         state.HostNodeID.String(),
-								"timestamp":       state.Timestamp,
-								"cpu_usage":       state.CPUUsage,
-								"load_1":          state.Load1,
-								"load_5":          state.Load5,
-								"load_15":         state.Load15,
-								"mem_used":        state.MemUsed,
-								"mem_usage":       state.MemUsage,
-								"swap_used":       state.SwapUsed,
-								"disk_used":       state.DiskUsed,
-								"disk_usage":      state.DiskUsage,
-								"net_in_transfer": state.NetInTransfer,
+								"host_id":          state.HostNodeID.String(),
+								"timestamp":        state.Timestamp,
+								"cpu_usage":        state.CPUUsage,
+								"load_1":           state.Load1,
+								"load_5":           state.Load5,
+								"load_15":          state.Load15,
+								"mem_used":         state.MemUsed,
+								"mem_usage":        state.MemUsage,
+								"swap_used":        state.SwapUsed,
+								"disk_used":        state.DiskUsed,
+								"disk_usage":       state.DiskUsage,
+								"net_in_transfer":  state.NetInTransfer,
 								"net_out_transfer": state.NetOutTransfer,
-								"net_in_speed":    state.NetInSpeed,
-								"net_out_speed":   state.NetOutSpeed,
-								"tcp_conn_count":  state.TCPConnCount,
-								"udp_conn_count":  state.UDPConnCount,
-								"process_count":   state.ProcessCount,
-								"uptime":          state.Uptime,
+								"net_in_speed":     state.NetInSpeed,
+								"net_out_speed":    state.NetOutSpeed,
+								"tcp_conn_count":   state.TCPConnCount,
+								"udp_conn_count":   state.UDPConnCount,
+								"process_count":    state.ProcessCount,
+								"uptime":           state.Uptime,
 							},
 						}
 

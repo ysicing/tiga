@@ -16,16 +16,16 @@ func TestAlertAPI_CreateRule(t *testing.T) {
 	t.Skip("Waiting for implementation: internal/api/handlers/alert_handler.go")
 
 	reqBody := map[string]interface{}{
-		"name":        "CPU高负载告警",
-		"type":        "host",
-		"target_id":   1,
-		"condition":   "cpu_usage > 80 && load_5 > 10",
-		"severity":    "warning",
-		"duration":    300,
-		"enabled":     true,
+		"name":            "CPU高负载告警",
+		"type":            "host",
+		"target_id":       1,
+		"condition":       "cpu_usage > 80 && load_5 > 10",
+		"severity":        "warning",
+		"duration":        300,
+		"enabled":         true,
 		"notify_channels": []string{"email", "webhook"},
 		"notify_config": map[string]interface{}{
-			"email": []string{"admin@example.com"},
+			"email":   []string{"admin@example.com"},
 			"webhook": "https://hooks.example.com/alert",
 		},
 	}

@@ -108,7 +108,7 @@ const ServiceOverviewPage: React.FC = () => {
           <h1 className="text-2xl font-bold">服务监控概览</h1>
           <p className="text-muted-foreground">30天服务可用性统计和趋势分析</p>
         </div>
-        <Button onClick={() => navigate('/vms/service-monitors')}>
+        <Button onClick={() => navigate('/vms/service-monitors/list')}>
           <Plus className="mr-2 h-4 w-4" />
           管理监控
         </Button>

@@ -41,6 +41,7 @@ export interface ServiceMonitor {
 export interface ServiceProbeResult {
   id: string;
   service_monitor_id: string;
+  host_node_id?: string;  // Node that executed the probe (null for server-side probes)
   timestamp: string;
   success: boolean;
   latency: number;
@@ -100,17 +101,17 @@ export const ServiceMonitorService = {
     if (params?.page) queryParams.append('page', String(params.page));
     if (params?.page_size) queryParams.append('page_size', String(params.page_size));
 
-    const response = await fetch(`/api/v1/service-monitors?${queryParams.toString()}`);
+    const response = await fetch(`/api/v1/vms/service-monitors?${queryParams.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to fetch service monitors');
     }
     const data = await response.json();
-    return data.data || [];
+    return data.data?.items || [];
   },
 
   // Get single service monitor
   async get(id: string): Promise<ServiceMonitor> {
-    const response = await fetch(`/api/v1/service-monitors/${id}`);
+    const response = await fetch(`/api/v1/vms/service-monitors/${id}`);
     if (!response.ok) {
       throw new Error('Failed to fetch service monitor');
     }
@@ -120,7 +121,7 @@ export const ServiceMonitorService = {
 
   // Create service monitor
   async create(data: ServiceMonitorFormData): Promise<ServiceMonitor> {
-    const response = await fetch('/api/v1/service-monitors', {
+    const response = await fetch('/api/v1/vms/service-monitors', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -136,7 +137,7 @@ export const ServiceMonitorService = {
 
   // Update service monitor
   async update(id: string, data: Partial<ServiceMonitorFormData>): Promise<ServiceMonitor> {
-    const response = await fetch(`/api/v1/service-monitors/${id}`, {
+    const response = await fetch(`/api/v1/vms/service-monitors/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -152,7 +153,7 @@ export const ServiceMonitorService = {
 
   // Delete service monitor
   async delete(id: string): Promise<void> {
-    const response = await fetch(`/api/v1/service-monitors/${id}`, {
+    const response = await fetch(`/api/v1/vms/service-monitors/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) {
@@ -162,7 +163,7 @@ export const ServiceMonitorService = {
 
   // Trigger manual probe
   async triggerProbe(id: string): Promise<ServiceProbeResult> {
-    const response = await fetch(`/api/v1/service-monitors/${id}/trigger`, {
+    const response = await fetch(`/api/v1/vms/service-monitors/${id}/trigger`, {
       method: 'POST',
     });
     if (!response.ok) {
@@ -186,7 +187,7 @@ export const ServiceMonitorService = {
     if (params?.end_time) queryParams.append('end_time', params.end_time);
     if (params?.limit) queryParams.append('limit', String(params.limit));
 
-    const response = await fetch(`/api/v1/service-monitors/${id}/history?${queryParams.toString()}`);
+    const response = await fetch(`/api/v1/vms/service-monitors/${id}/history?${queryParams.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to fetch probe history');
     }
@@ -205,14 +206,14 @@ export const ServiceMonitorService = {
     total_checks: number;
     successful_checks: number;
     failed_checks: number;
-    average_latency: number;
-    p95_latency: number;
-    p99_latency: number;
+    avg_latency: number;
+    min_latency: number;
+    max_latency: number;
   }> {
     const queryParams = new URLSearchParams();
     if (params?.period) queryParams.append('period', params.period);
 
-    const response = await fetch(`/api/v1/service-monitors/${id}/stats?${queryParams.toString()}`);
+    const response = await fetch(`/api/v1/vms/service-monitors/${id}/availability?${queryParams.toString()}`);
     if (!response.ok) {
       throw new Error('Failed to fetch availability stats');
     }
@@ -225,7 +226,7 @@ export const ServiceMonitorService = {
     ids: string[],
     action: 'enable' | 'disable'
   ): Promise<void> {
-    const response = await fetch('/api/v1/service-monitors/batch', {
+    const response = await fetch('/api/v1/vms/service-monitors/batch', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -243,7 +244,7 @@ export const ServiceMonitorService = {
 
   // Export monitors configuration
   async export(format: 'json' | 'yaml' = 'json'): Promise<Blob> {
-    const response = await fetch(`/api/v1/service-monitors/export?format=${format}`);
+    const response = await fetch(`/api/v1/vms/service-monitors/export?format=${format}`);
     if (!response.ok) {
       throw new Error('Failed to export monitors');
     }
@@ -254,7 +255,7 @@ export const ServiceMonitorService = {
   async import(file: File): Promise<{ imported: number; failed: number }> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch('/api/v1/service-monitors/import', {
+    const response = await fetch('/api/v1/vms/service-monitors/import', {
       method: 'POST',
       body: formData,
     });
@@ -330,6 +331,7 @@ export interface ServiceOverviewResponse {
 export interface ServiceHistoryInfo {
   service_monitor_id: string;
   service_monitor_name: string; // Target name
+  service_monitor_type: string; // HTTP, TCP, or ICMP
   host_node_id: string;
   host_node_name?: string;      // Executor name
   timestamps: number[];         // Unix timestamps in milliseconds

@@ -14,13 +14,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	probing "github.com/prometheus-community/pro-bing"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/proto"
+
+	probing "github.com/prometheus-community/pro-bing"
 )
 
 // AgentTaskDispatcher describes the minimal agent manager capabilities required by the scheduler.
@@ -765,8 +767,30 @@ func (s *ServiceProbeScheduler) GetTaskStatus(monitorID uuid.UUID) (*ProbeTask, 
 // ReportAgentProbeResultBatch receives batch probe results from Agents and forwards to ServiceSentinel
 // This is a performance optimization to reduce gRPC overhead and database transactions
 func (s *ServiceProbeScheduler) ReportAgentProbeResultBatch(reports []*ProbeReport) {
-	// Forward each result to ServiceSentinel for aggregation
+	ctx := context.Background()
+
+	// Save each probe result to database for detailed history
 	for _, report := range reports {
+		// Convert ProbeReport to ServiceProbeResult model
+		probeResult := &models.ServiceProbeResult{
+			ServiceMonitorID: report.ServiceMonitorID,
+			Timestamp:        report.Timestamp,
+			Success:          report.Success,
+			Latency:          int(report.Latency),
+			ErrorMessage:     report.ErrorMessage,
+		}
+
+		// Set HostNodeID if this is an agent probe (not server-side)
+		if report.HostNodeID != uuid.Nil {
+			probeResult.HostNodeID = &report.HostNodeID
+		}
+
+		// Save to database (detailed probe results)
+		if err := s.serviceRepo.SaveProbeResult(ctx, probeResult); err != nil {
+			logrus.Errorf("[ServiceProbe] Failed to save agent probe result: %v", err)
+		}
+
+		// Forward to ServiceSentinel for aggregation
 		s.sentinel.ReportProbeResult(report)
 	}
 }

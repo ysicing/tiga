@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/host"
@@ -34,11 +35,11 @@ func NewHostHandler(hostService *host.HostService) *HostHandler {
 // @Router /api/v1/hosts [post]
 func (h *HostHandler) CreateHost(c *gin.Context) {
 	var req struct {
-		Name         string  `json:"name" binding:"required"`
-		Note         string  `json:"note"`
-		PublicNote   string  `json:"public_note"`
-		DisplayIndex int     `json:"display_index"`
-		HideForGuest bool    `json:"hide_for_guest"`
+		Name         string `json:"name" binding:"required"`
+		Note         string `json:"note"`
+		PublicNote   string `json:"public_note"`
+		DisplayIndex int    `json:"display_index"`
+		HideForGuest bool   `json:"hide_for_guest"`
 
 		// Billing information
 		Cost         float64 `json:"cost"`
@@ -50,7 +51,6 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 
 		// Group
 		GroupName string `json:"group_name"`
-		
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -91,8 +91,7 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 		ExpiryDate:   expiryDate,
 		AutoRenew:    req.AutoRenew,
 		TrafficLimit: req.TrafficLimit,
-		GroupName: req.GroupName,
-		
+		GroupName:    req.GroupName,
 	}
 
 	if err := h.hostService.CreateHost(c.Request.Context(), hostNode); err != nil {
@@ -126,10 +125,10 @@ func (h *HostHandler) CreateHost(c *gin.Context) {
 			"auto_renew":        hostNode.AutoRenew,
 			"traffic_limit":     hostNode.TrafficLimit,
 			"traffic_used":      hostNode.TrafficUsed,
-			"group_name": hostNode.GroupName,
-			
-			"created_at":        hostNode.CreatedAt,
-			"updated_at":        hostNode.UpdatedAt,
+			"group_name":        hostNode.GroupName,
+
+			"created_at": hostNode.CreatedAt,
+			"updated_at": hostNode.UpdatedAt,
 		},
 	})
 }
@@ -187,10 +186,10 @@ func (h *HostHandler) ListHosts(c *gin.Context) {
 			"auto_renew":     host.AutoRenew,
 			"traffic_limit":  host.TrafficLimit,
 			"traffic_used":   host.TrafficUsed,
-			"group_name": host.GroupName,
-			
-			"online":         host.Online,
-			"created_at":     host.CreatedAt,
+			"group_name":     host.GroupName,
+
+			"online":     host.Online,
+			"created_at": host.CreatedAt,
 		}
 
 		if host.LastActive != nil {
@@ -212,11 +211,11 @@ func (h *HostHandler) ListHosts(c *gin.Context) {
 		// Get current state
 		if state, err := h.hostService.GetHostState(c.Request.Context(), host.ID); err == nil {
 			item["current_state"] = gin.H{
-				"cpu_usage":      state.CPUUsage,
-				"mem_usage":      state.MemUsage,
-				"disk_usage":     state.DiskUsage,
-				"net_in_speed":   state.NetInSpeed,
-				"net_out_speed":  state.NetOutSpeed,
+				"cpu_usage":     state.CPUUsage,
+				"mem_usage":     state.MemUsage,
+				"disk_usage":    state.DiskUsage,
+				"net_in_speed":  state.NetInSpeed,
+				"net_out_speed": state.NetOutSpeed,
 			}
 		}
 
@@ -262,25 +261,25 @@ func (h *HostHandler) GetHost(c *gin.Context) {
 	}
 
 	data := gin.H{
-		"id":            host.ID,
-		"uuid":          host.ID.String(),
-		"name":          host.Name,
-		"note":          host.Note,
-		"public_note":   host.PublicNote,
-		"display_index": host.DisplayIndex,
+		"id":             host.ID,
+		"uuid":           host.ID.String(),
+		"name":           host.Name,
+		"note":           host.Note,
+		"public_note":    host.PublicNote,
+		"display_index":  host.DisplayIndex,
 		"hide_for_guest": host.HideForGuest,
-		"cost":          host.Cost,
-		"renewal_type":  host.RenewalType,
-		"purchase_date": host.PurchaseDate,
-		"expiry_date":   host.ExpiryDate,
-		"auto_renew":    host.AutoRenew,
-		"traffic_limit": host.TrafficLimit,
-		"traffic_used":  host.TrafficUsed,
-		"group_name": host.GroupName,
-		
-		"online":        host.Online,
-		"created_at":    host.CreatedAt,
-		"updated_at":    host.UpdatedAt,
+		"cost":           host.Cost,
+		"renewal_type":   host.RenewalType,
+		"purchase_date":  host.PurchaseDate,
+		"expiry_date":    host.ExpiryDate,
+		"auto_renew":     host.AutoRenew,
+		"traffic_limit":  host.TrafficLimit,
+		"traffic_used":   host.TrafficUsed,
+		"group_name":     host.GroupName,
+
+		"online":     host.Online,
+		"created_at": host.CreatedAt,
+		"updated_at": host.UpdatedAt,
 	}
 
 	if host.LastActive != nil {
@@ -321,11 +320,11 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 	}
 
 	var req struct {
-		Name         string  `json:"name"`
-		Note         string  `json:"note"`
-		PublicNote   string  `json:"public_note"`
-		DisplayIndex int     `json:"display_index"`
-		HideForGuest bool    `json:"hide_for_guest"`
+		Name         string `json:"name"`
+		Note         string `json:"note"`
+		PublicNote   string `json:"public_note"`
+		DisplayIndex int    `json:"display_index"`
+		HideForGuest bool   `json:"hide_for_guest"`
 
 		// Billing information
 		Cost         float64 `json:"cost"`
@@ -337,7 +336,6 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 
 		// Group
 		GroupName string `json:"group_name"`
-		
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -383,7 +381,6 @@ func (h *HostHandler) UpdateHost(c *gin.Context) {
 	host.AutoRenew = req.AutoRenew
 	host.TrafficLimit = req.TrafficLimit
 	host.GroupName = req.GroupName
-	
 
 	if err := h.hostService.UpdateHost(c.Request.Context(), host); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

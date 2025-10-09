@@ -387,9 +387,9 @@ func (h *WebSSHHandler) ListAllSessions(c *gin.Context) {
 	// Parse query parameters for pagination and filtering
 	page := 1
 	pageSize := 20
-	status := c.Query("status")       // active or closed
-	hostID := c.Query("host_id")      // filter by host
-	userID := c.Query("user_id")      // filter by user
+	status := c.Query("status")        // active or closed
+	hostID := c.Query("host_id")       // filter by host
+	userID := c.Query("user_id")       // filter by user
 	startDate := c.Query("start_date") // filter by start date
 
 	if p := c.Query("page"); p != "" {
@@ -432,10 +432,10 @@ func (h *WebSSHHandler) ListAllSessions(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"sessions":   sessions,
-			"total":      total,
-			"page":       page,
-			"page_size":  pageSize,
+			"sessions":    sessions,
+			"total":       total,
+			"page":        page,
+			"page_size":   pageSize,
 			"total_pages": (total + int64(pageSize) - 1) / int64(pageSize),
 		},
 	})

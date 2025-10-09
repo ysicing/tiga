@@ -180,7 +180,7 @@ const ServiceMonitorListPage: React.FC = () => {
           <h1 className="text-2xl font-bold">服务监控</h1>
           <p className="text-muted-foreground">管理和监控服务健康状态</p>
         </div>
-        <Button onClick={() => window.location.href = '/hosts/service-monitors/new'}>
+        <Button onClick={() => window.location.href = '/vms/service-monitors/new'}>
           <Plus className="mr-2 h-4 w-4" />
           新建监控
         </Button>
@@ -312,7 +312,7 @@ const ServiceMonitorListPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         {getTypeIcon(monitor.type)}
                         <a
-                          href={`/hosts/service-monitors/${monitor.id}`}
+                          href={`/vms/service-monitors/${monitor.id}`}
                           className="font-medium hover:underline"
                         >
                           {monitor.name}
@@ -342,7 +342,7 @@ const ServiceMonitorListPage: React.FC = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => window.location.href = `/hosts/service-monitors/${monitor.id}`}
+                            onClick={() => window.location.href = `/vms/service-monitors/${monitor.id}`}
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             查看详情

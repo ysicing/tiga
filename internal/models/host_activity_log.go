@@ -11,11 +11,11 @@ import (
 type HostActivityLog struct {
 	BaseModel
 
-	HostNodeID uuid.UUID `gorm:"type:char(36);index;not null" json:"host_node_id"`
+	HostNodeID uuid.UUID  `gorm:"type:char(36);index;not null" json:"host_node_id"`
 	UserID     *uuid.UUID `gorm:"type:char(36);index" json:"user_id,omitempty"` // Optional: for user-initiated actions
 
 	// Activity details
-	Action      string `gorm:"type:varchar(100);not null;index" json:"action"` // terminal_created, terminal_closed, agent_connected, agent_disconnected, node_edited, etc.
+	Action      string `gorm:"type:varchar(100);not null;index" json:"action"`     // terminal_created, terminal_closed, agent_connected, agent_disconnected, node_edited, etc.
 	ActionType  string `gorm:"type:varchar(50);not null;index" json:"action_type"` // terminal, agent, system, user
 	Description string `gorm:"type:text" json:"description"`
 
@@ -23,8 +23,8 @@ type HostActivityLog struct {
 	Metadata string `gorm:"type:text" json:"metadata,omitempty"` // JSON string for additional data (session_id, etc.)
 
 	// IP and User-Agent for user actions
-	ClientIP    string `json:"client_ip,omitempty"`
-	UserAgent   string `json:"user_agent,omitempty"`
+	ClientIP  string `json:"client_ip,omitempty"`
+	UserAgent string `json:"user_agent,omitempty"`
 
 	// Timestamp
 	CreatedAt time.Time `gorm:"not null;index" json:"created_at"`

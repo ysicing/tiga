@@ -371,6 +371,7 @@ func SetupRoutes(
 					serviceMonitorsGroup.DELETE("/:id", serviceMonitorHandler.DeleteMonitor)
 					serviceMonitorsGroup.POST("/:id/trigger", serviceMonitorHandler.TriggerProbe)
 					serviceMonitorsGroup.GET("/:id/availability", serviceMonitorHandler.GetAvailability)
+					serviceMonitorsGroup.GET("/:id/history", serviceMonitorHandler.GetProbeHistory)
 				}
 
 				// WebSSH

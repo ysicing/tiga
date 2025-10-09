@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/cmd/tiga-agent/probe"
 	"github.com/ysicing/tiga/proto"
 )

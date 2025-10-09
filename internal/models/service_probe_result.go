@@ -11,8 +11,9 @@ import (
 type ServiceProbeResult struct {
 	BaseModel
 
-	ServiceMonitorID uuid.UUID `gorm:"type:char(36);index:idx_monitor_timestamp,priority:1;not null" json:"service_monitor_id"`
-	Timestamp        time.Time `gorm:"index:idx_monitor_timestamp,priority:2;index;not null" json:"timestamp"`
+	ServiceMonitorID uuid.UUID  `gorm:"type:char(36);index:idx_monitor_timestamp,priority:1;not null" json:"service_monitor_id"`
+	HostNodeID       *uuid.UUID `gorm:"type:char(36);index:idx_host_service,priority:1" json:"host_node_id,omitempty"` // Nullable, nil for server-side probes
+	Timestamp        time.Time  `gorm:"index:idx_monitor_timestamp,priority:2;index;not null" json:"timestamp"`
 
 	// Probe result
 	Success      bool   `gorm:"index" json:"success"`
@@ -26,8 +27,9 @@ type ServiceProbeResult struct {
 	// TCP-specific result
 	TCPResponse string `gorm:"type:text" json:"tcp_response,omitempty"`
 
-	// Relationship
+	// Relationships
 	ServiceMonitor *ServiceMonitor `gorm:"foreignKey:ServiceMonitorID" json:"-"`
+	HostNode       *HostNode       `gorm:"foreignKey:HostNodeID" json:"-"`
 }
 
 // TableName specifies the table name for ServiceProbeResult

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -107,9 +108,9 @@ func (h *MonitorAlertRuleHandler) ListRules(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"items": rules,
-			"total": total,
-			"page":  filter.Page,
+			"items":     rules,
+			"total":     total,
+			"page":      filter.Page,
 			"page_size": filter.PageSize,
 		},
 	})
@@ -211,9 +212,9 @@ func (h *MonitorAlertRuleHandler) ListEvents(c *gin.Context) {
 		"code":    0,
 		"message": "success",
 		"data": gin.H{
-			"items": events,
-			"total": total,
-			"page":  filter.Page,
+			"items":     events,
+			"total":     total,
+			"page":      filter.Page,
 			"page_size": filter.PageSize,
 		},
 	})

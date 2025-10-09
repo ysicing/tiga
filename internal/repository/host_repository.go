@@ -5,18 +5,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // HostFilter represents filtering options for host queries
 type HostFilter struct {
-	Page       int
-	PageSize   int
-	GroupName  string // Filter by group name
-	Online     *bool
-	Search     string // Search in name or note
-	Sort       string // display_index/-display_index/name/-name/created_at/-created_at
+	Page      int
+	PageSize  int
+	GroupName string // Filter by group name
+	Online    *bool
+	Search    string // Search in name or note
+	Sort      string // display_index/-display_index/name/-name/created_at/-created_at
 }
 
 // HostRepository defines the interface for host data access

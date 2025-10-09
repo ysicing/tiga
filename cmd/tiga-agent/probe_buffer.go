@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/proto"
 )
 
@@ -36,8 +37,8 @@ func NewProbeResultBuffer(uuid string, client proto.HostMonitorClient) *ProbeRes
 	return &ProbeResultBuffer{
 		uuid:          uuid,
 		client:        client,
-		batchSize:     10,                 // Flush after 10 results
-		flushInterval: 10 * time.Second,   // Or flush every 10 seconds
+		batchSize:     10,               // Flush after 10 results
+		flushInterval: 10 * time.Second, // Or flush every 10 seconds
 		buffer:        make([]*proto.ProbeResultItem, 0, 10),
 		resultChan:    make(chan *proto.ProbeResultItem, 100),
 		stopChan:      make(chan struct{}),

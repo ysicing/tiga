@@ -30,15 +30,15 @@ type AsciinemaEvent struct {
 
 // SessionRecorder records terminal session in asciicast v2 format
 type SessionRecorder struct {
-	sessionID   string
-	file        *os.File
-	writer      *bufio.Writer
-	startTime   time.Time
-	recordDir   string
-	cols        int
-	rows        int
-	mu          sync.Mutex
-	closed      bool
+	sessionID    string
+	file         *os.File
+	writer       *bufio.Writer
+	startTime    time.Time
+	recordDir    string
+	cols         int
+	rows         int
+	mu           sync.Mutex
+	closed       bool
 	bytesWritten int64
 }
 

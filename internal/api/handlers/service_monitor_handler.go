@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/monitor"
 )
@@ -29,16 +30,16 @@ func NewServiceMonitorHandler(probeService *monitor.ServiceProbeService) *Servic
 // CreateMonitor creates a new service monitor
 func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
 	var req struct {
-		Name             string `json:"name" binding:"required"`
-		Type             string `json:"type" binding:"required"`
-		Target           string `json:"target" binding:"required"`
-		Interval         int    `json:"interval"`
-		Timeout          int    `json:"timeout"`
-		ProbeStrategy    string `json:"probe_strategy"`     // server/include/exclude/group
-		ProbeNodeIDs     string `json:"probe_node_ids"`     // JSON array of UUIDs
-		ProbeGroupName   string `json:"probe_group_name"`   // Node group name
-		Enabled          bool   `json:"enabled"`
-		NotifyOnFailure  bool   `json:"notify_on_failure"`
+		Name            string `json:"name" binding:"required"`
+		Type            string `json:"type" binding:"required"`
+		Target          string `json:"target" binding:"required"`
+		Interval        int    `json:"interval"`
+		Timeout         int    `json:"timeout"`
+		ProbeStrategy   string `json:"probe_strategy"`   // server/include/exclude/group
+		ProbeNodeIDs    string `json:"probe_node_ids"`   // JSON array of UUIDs
+		ProbeGroupName  string `json:"probe_group_name"` // Node group name
+		Enabled         bool   `json:"enabled"`
+		NotifyOnFailure bool   `json:"notify_on_failure"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -105,16 +106,16 @@ func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
 	}
 
 	var req struct {
-		Name             *string `json:"name"`
-		Type             *string `json:"type"`
-		Target           *string `json:"target"`
-		Interval         *int    `json:"interval"`
-		Timeout          *int    `json:"timeout"`
-		ProbeStrategy    *string `json:"probe_strategy"`
-		ProbeNodeIDs     *string `json:"probe_node_ids"`
-		ProbeGroupName   *string `json:"probe_group_name"`
-		Enabled          *bool   `json:"enabled"`
-		NotifyOnFailure  *bool   `json:"notify_on_failure"`
+		Name            *string `json:"name"`
+		Type            *string `json:"type"`
+		Target          *string `json:"target"`
+		Interval        *int    `json:"interval"`
+		Timeout         *int    `json:"timeout"`
+		ProbeStrategy   *string `json:"probe_strategy"`
+		ProbeNodeIDs    *string `json:"probe_node_ids"`
+		ProbeGroupName  *string `json:"probe_group_name"`
+		Enabled         *bool   `json:"enabled"`
+		NotifyOnFailure *bool   `json:"notify_on_failure"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -224,6 +225,55 @@ func (h *ServiceMonitorHandler) GetAvailability(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": stats})
+}
+
+// GetProbeHistory gets probe history for a specific monitor
+func (h *ServiceMonitorHandler) GetProbeHistory(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	// Parse query parameters
+	var start, end time.Time
+	var limit int = 100
+
+	if startTimeStr := c.Query("start_time"); startTimeStr != "" {
+		start, err = time.Parse(time.RFC3339, startTimeStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid start_time format (use RFC3339)"})
+			return
+		}
+	}
+
+	if endTimeStr := c.Query("end_time"); endTimeStr != "" {
+		end, err = time.Parse(time.RFC3339, endTimeStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid end_time format (use RFC3339)"})
+			return
+		}
+	}
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit <= 0 || limit > 1000 {
+			limit = 100
+		}
+	}
+
+	results, total, err := h.probeService.GetProbeHistory(c.Request.Context(), id, start, end, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get probe history"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data":    results,
+		"total":   total,
+	})
 }
 
 // ListMonitors lists service monitors

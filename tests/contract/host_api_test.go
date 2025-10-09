@@ -330,24 +330,24 @@ func TestHostAPI_ErrorResponses(t *testing.T) {
 	t.Skip("Waiting for implementation: internal/api/handlers/host_handler.go")
 
 	tests := []struct {
-		name           string
-		method         string
-		path           string
-		expectedCode   int
+		name            string
+		method          string
+		path            string
+		expectedCode    int
 		expectedErrCode float64
 	}{
 		{
-			name:           "Host not found",
-			method:         http.MethodGet,
-			path:           "/api/v1/hosts/99999",
-			expectedCode:   http.StatusNotFound,
+			name:            "Host not found",
+			method:          http.MethodGet,
+			path:            "/api/v1/hosts/99999",
+			expectedCode:    http.StatusNotFound,
 			expectedErrCode: 40404,
 		},
 		{
-			name:           "Invalid request body",
-			method:         http.MethodPost,
-			path:           "/api/v1/hosts",
-			expectedCode:   http.StatusBadRequest,
+			name:            "Invalid request body",
+			method:          http.MethodPost,
+			path:            "/api/v1/hosts",
+			expectedCode:    http.StatusBadRequest,
 			expectedErrCode: 40001,
 		},
 	}

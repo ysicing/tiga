@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -67,11 +68,14 @@ func (s *ServiceProbeService) GetMonitor(ctx context.Context, id uuid.UUID) (*mo
 	// Enrich with latest probe result
 	if latest, err := s.serviceRepo.GetLatestProbeResult(ctx, id); err == nil {
 		if latest.Success {
-			monitor.Status = "online"
+			monitor.Status = "up"
 		} else {
-			monitor.Status = "offline"
+			monitor.Status = "down"
 		}
 		monitor.LastCheckTime = &latest.Timestamp
+	} else {
+		// No probe results yet - set default status
+		monitor.Status = "unknown"
 	}
 
 	return monitor, nil
@@ -106,6 +110,11 @@ func (s *ServiceProbeService) GetAvailabilityStats(ctx context.Context, monitorI
 	return availability, nil
 }
 
+// GetProbeHistory retrieves probe history for a specific monitor
+func (s *ServiceProbeService) GetProbeHistory(ctx context.Context, monitorID uuid.UUID, start, end time.Time, limit int) ([]*models.ServiceProbeResult, int64, error) {
+	return s.serviceRepo.GetProbeHistory(ctx, monitorID, start, end, limit)
+}
+
 // TriggerManualProbe triggers a manual probe execution
 func (s *ServiceProbeService) TriggerManualProbe(ctx context.Context, monitorID uuid.UUID) (*models.ServiceProbeResult, error) {
 	return s.scheduler.TriggerManualProbe(ctx, monitorID)
@@ -118,7 +127,36 @@ func (s *ServiceProbeService) ListMonitors(ctx context.Context) ([]*models.Servi
 		Page:     1,
 		PageSize: 100,
 	}
-	return s.serviceRepo.List(ctx, filter)
+	monitors, total, err := s.serviceRepo.List(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Enrich each monitor with latest status and 24h uptime
+	now := time.Now()
+	start24h := now.Add(-24 * time.Hour)
+
+	for _, monitor := range monitors {
+		// Get latest status
+		if latest, err := s.serviceRepo.GetLatestProbeResult(ctx, monitor.ID); err == nil {
+			if latest.Success {
+				monitor.Status = "up"
+			} else {
+				monitor.Status = "down"
+			}
+			monitor.LastCheckTime = &latest.Timestamp
+		} else {
+			// No probe results yet
+			monitor.Status = "unknown"
+		}
+
+		// Calculate 24h uptime percentage
+		if availability, err := s.serviceRepo.CalculateAvailability(ctx, monitor.ID, start24h, now); err == nil && availability.TotalChecks > 0 {
+			monitor.Uptime24h = availability.UptimePercentage
+		}
+	}
+
+	return monitors, total, nil
 }
 
 // ServiceHistoryInfo represents probe history info for a single service monitor
@@ -126,6 +164,7 @@ func (s *ServiceProbeService) ListMonitors(ctx context.Context) ([]*models.Servi
 type ServiceHistoryInfo struct {
 	ServiceMonitorID   uuid.UUID `json:"service_monitor_id"`
 	ServiceMonitorName string    `json:"service_monitor_name"` // Target name
+	ServiceMonitorType string    `json:"service_monitor_type"` // HTTP, TCP, or ICMP
 	HostNodeID         uuid.UUID `json:"host_node_id"`
 	HostNodeName       string    `json:"host_node_name"` // Executor name
 	Timestamps         []int64   `json:"timestamps"`     // Unix timestamps in milliseconds
@@ -160,6 +199,7 @@ func (s *ServiceProbeService) GetHostProbeHistory(ctx context.Context, hostNodeI
 		info := &ServiceHistoryInfo{
 			ServiceMonitorID:   serviceMonitorID,
 			ServiceMonitorName: monitor.Name + " (" + monitor.Target + ")",
+			ServiceMonitorType: string(monitor.Type),
 			HostNodeID:         hostNodeID,
 			Timestamps:         make([]int64, 0, len(serviceHistories)),
 			AvgDelays:          make([]float32, 0, len(serviceHistories)),
@@ -205,12 +245,12 @@ type NetworkTopologyNode struct {
 type NetworkTopologyEdge struct {
 	SourceID      uuid.UUID `json:"source_id"`
 	TargetID      uuid.UUID `json:"target_id"`
-	AvgLatency    float32   `json:"avg_latency"`    // Average latency in ms
-	MinLatency    float32   `json:"min_latency"`    // Minimum latency in ms
-	MaxLatency    float32   `json:"max_latency"`    // Maximum latency in ms
-	PacketLoss    float64   `json:"packet_loss"`    // Packet loss percentage
-	SuccessRate   float64   `json:"success_rate"`   // Success rate percentage
-	ProbeCount    int       `json:"probe_count"`    // Number of probes
+	AvgLatency    float32   `json:"avg_latency"`  // Average latency in ms
+	MinLatency    float32   `json:"min_latency"`  // Minimum latency in ms
+	MaxLatency    float32   `json:"max_latency"`  // Maximum latency in ms
+	PacketLoss    float64   `json:"packet_loss"`  // Packet loss percentage
+	SuccessRate   float64   `json:"success_rate"` // Success rate percentage
+	ProbeCount    int       `json:"probe_count"`  // Number of probes
 	LastProbeTime time.Time `json:"last_probe_time"`
 }
 
@@ -264,7 +304,7 @@ func (s *ServiceProbeService) GetNetworkTopology(ctx context.Context, hours int)
 			ID:       monitor.ID,
 			Name:     monitor.Name,
 			Type:     "service",
-			IsOnline: monitor.Status == "online",
+			IsOnline: monitor.Status == "up",
 		}
 		nodes = append(nodes, node)
 		nodeMap[monitor.ID] = node

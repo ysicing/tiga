@@ -35,13 +35,13 @@ type WebSSHSession struct {
 
 	// Recording fields
 	RecordingEnabled bool   `gorm:"default:true" json:"recording_enabled"`       // Whether recording is enabled
-	RecordingPath    string `json:"recording_path,omitempty"`                     // Path to recording file
+	RecordingPath    string `json:"recording_path,omitempty"`                    // Path to recording file
 	RecordingSize    int64  `gorm:"default:0" json:"recording_size"`             // Size of recording in bytes
 	RecordingFormat  string `gorm:"default:'asciicast'" json:"recording_format"` // Format: asciicast, ttyrec
 
 	// Legacy audit log (will be deprecated)
-	AuditLog     string `gorm:"type:text" json:"-"`             // Full terminal log (encrypted)
-	CloseReason  string `json:"close_reason,omitempty"`
+	AuditLog    string `gorm:"type:text" json:"-"` // Full terminal log (encrypted)
+	CloseReason string `json:"close_reason,omitempty"`
 
 	// Relationships
 	HostNode *HostNode `gorm:"foreignKey:HostNodeID" json:"-"`

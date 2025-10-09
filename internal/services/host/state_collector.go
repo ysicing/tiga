@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
@@ -218,17 +219,17 @@ func (sc *StateCollector) GetHistoricalStates(ctx context.Context, hostID uuid.U
 		// Auto-calculate interval based on time range
 		duration := end.Sub(start)
 		if duration.Hours() <= 1 {
-			intervalSeconds = 60      // 1 minute for 1 hour range
+			intervalSeconds = 60 // 1 minute for 1 hour range
 		} else if duration.Hours() <= 6 {
-			intervalSeconds = 300     // 5 minutes for 6 hours
+			intervalSeconds = 300 // 5 minutes for 6 hours
 		} else if duration.Hours() <= 12 {
-			intervalSeconds = 300     // 5 minutes for 12 hours
+			intervalSeconds = 300 // 5 minutes for 12 hours
 		} else if duration.Hours() <= 24 {
-			intervalSeconds = 600     // 10 minutes for 1 day
+			intervalSeconds = 600 // 10 minutes for 1 day
 		} else if duration.Hours() <= 168 {
-			intervalSeconds = 3600    // 1 hour for 1 week
+			intervalSeconds = 3600 // 1 hour for 1 week
 		} else {
-			intervalSeconds = 86400   // 1 day for longer ranges
+			intervalSeconds = 86400 // 1 day for longer ranges
 		}
 	}
 

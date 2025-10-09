@@ -16,10 +16,10 @@ import (
 
 // HostService handles business logic for host management
 type HostService struct {
-	hostRepo     repository.HostRepository
-	agentMgr     *AgentManager
+	hostRepo       repository.HostRepository
+	agentMgr       *AgentManager
 	stateCollector *StateCollector
-	serverURL    string // Server URL for agent installation
+	serverURL      string // Server URL for agent installation
 }
 
 // NewHostService creates a new HostService
@@ -218,17 +218,17 @@ func (s *HostService) GetHostStateHistory(ctx context.Context, id uuid.UUID, sta
 		// Auto-calculate interval based on time range
 		duration := endTime.Sub(startTime)
 		if duration.Hours() <= 1 {
-			intervalSeconds = 60      // 1 minute for 1 hour range
+			intervalSeconds = 60 // 1 minute for 1 hour range
 		} else if duration.Hours() <= 6 {
-			intervalSeconds = 300     // 5 minutes for 6 hours
+			intervalSeconds = 300 // 5 minutes for 6 hours
 		} else if duration.Hours() <= 12 {
-			intervalSeconds = 300     // 5 minutes for 12 hours
+			intervalSeconds = 300 // 5 minutes for 12 hours
 		} else if duration.Hours() <= 24 {
-			intervalSeconds = 600     // 10 minutes for 1 day
+			intervalSeconds = 600 // 10 minutes for 1 day
 		} else if duration.Hours() <= 168 {
-			intervalSeconds = 3600    // 1 hour for 1 week
+			intervalSeconds = 3600 // 1 hour for 1 week
 		} else {
-			intervalSeconds = 86400   // 1 day for longer ranges
+			intervalSeconds = 86400 // 1 day for longer ranges
 		}
 	default:
 		// Try to parse as integer seconds

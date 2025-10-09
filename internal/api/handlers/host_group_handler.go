@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // HostGroupHandler handles host group operations

@@ -9,12 +9,13 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"github.com/ysicing/tiga/internal/models"
-	"github.com/ysicing/tiga/internal/repository"
-	"github.com/ysicing/tiga/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
+	"github.com/ysicing/tiga/internal/repository"
+	"github.com/ysicing/tiga/proto"
 )
 
 // AgentConnection represents an active agent connection

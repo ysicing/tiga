@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // MonitorAlertRuleFilter represents filtering options for monitor alert rule queries

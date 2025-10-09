@@ -39,10 +39,10 @@ type ServiceMonitor struct {
 	Enabled  bool      `gorm:"default:true;index" json:"enabled"`
 
 	// Probe node selection strategy
-	ProbeStrategy ProbeStrategy `gorm:"default:'server';index" json:"probe_strategy"`      // server/include/exclude/group
-	ProbeNodeIDs  string        `gorm:"type:text" json:"probe_node_ids,omitempty"`         // JSON array of node UUIDs
-	ProbeGroupName string       `gorm:"type:varchar(100);index" json:"probe_group_name,omitempty"` // Node group name for group strategy
-	HostNodeID    *uuid.UUID    `gorm:"type:char(36);index" json:"host_node_id,omitempty"` // Legacy: single executor host (deprecated, use ProbeStrategy)
+	ProbeStrategy  ProbeStrategy `gorm:"default:'server';index" json:"probe_strategy"`              // server/include/exclude/group
+	ProbeNodeIDs   string        `gorm:"type:text" json:"probe_node_ids,omitempty"`                 // JSON array of node UUIDs
+	ProbeGroupName string        `gorm:"type:varchar(100);index" json:"probe_group_name,omitempty"` // Node group name for group strategy
+	HostNodeID     *uuid.UUID    `gorm:"type:char(36);index" json:"host_node_id,omitempty"`         // Legacy: single executor host (deprecated, use ProbeStrategy)
 
 	// HTTP-specific configuration
 	HTTPMethod   string `json:"http_method,omitempty"`                   // GET/POST

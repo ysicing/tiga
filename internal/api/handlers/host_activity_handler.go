@@ -6,8 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // HostActivityHandler handles host activity log operations
@@ -28,7 +29,7 @@ func (h *HostActivityHandler) ListActivities(c *gin.Context) {
 	page := 1
 	pageSize := 20
 	actionType := c.Query("action_type") // terminal, agent, system, user
-	action := c.Query("action")           // Specific action
+	action := c.Query("action")          // Specific action
 
 	if p := c.Query("page"); p != "" {
 		fmt.Sscanf(p, "%d", &page)

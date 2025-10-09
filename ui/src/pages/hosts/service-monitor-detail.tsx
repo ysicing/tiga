@@ -29,8 +29,6 @@ import {
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -56,6 +54,7 @@ import { format, subHours, subDays } from 'date-fns';
 import { toast } from 'sonner';
 import { ServiceMonitorService } from '@/services/service-monitor';
 import { AvailabilityHeatmap } from '@/components/service-monitor/availability-heatmap';
+import { devopsAPI } from '@/lib/api-client';
 
 const ServiceMonitorDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,43 +73,36 @@ const ServiceMonitorDetailPage: React.FC = () => {
   const { data: probeHistory = [] } = useQuery({
     queryKey: ['service-monitor-history', id, timePeriod],
     queryFn: () => {
-      const now = new Date();
-      let startTime: Date;
-
-      switch (timePeriod) {
-        case '15m':
-          startTime = new Date(now.getTime() - 15 * 60 * 1000); // 15 minutes
-          break;
-        case '1h':
-          startTime = subHours(now, 1);
-          break;
-        case '6h':
-          startTime = subHours(now, 6);
-          break;
-        case '12h':
-          startTime = subHours(now, 12);
-          break;
-        case '1d':
-          startTime = subDays(now, 1);
-          break;
-        case '1w':
-          startTime = subDays(now, 7);
-          break;
-        case '1m':
-          startTime = subDays(now, 30);
-          break;
-        default:
-          startTime = subDays(now, 1);
-      }
+      // For now, fetch all recent history without time filtering
+      // The limit will restrict the number of results
+      const limitMap = {
+        '15m': 100,
+        '1h': 200,
+        '6h': 500,
+        '12h': 720,
+        '1d': 1440,
+        '1w': 1000,
+        '1m': 1000,
+      };
 
       return ServiceMonitorService.getProbeHistory(id!, {
-        start_time: startTime.toISOString(),
-        end_time: now.toISOString(),
-        limit: 1000,
+        limit: limitMap[timePeriod],
       });
     },
     enabled: !!id,
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch host nodes for displaying node names
+  const { data: hostNodes = [] } = useQuery({
+    queryKey: ['host-nodes'],
+    queryFn: async () => {
+      const res: any = await devopsAPI.vms.hosts.list();
+      if (res?.code !== 0) {
+        throw new Error(res?.message || 'Failed to fetch hosts');
+      }
+      return res.data?.items ?? [];
+    },
   });
 
   // Fetch availability stats
@@ -167,8 +159,15 @@ const ServiceMonitorDetailPage: React.FC = () => {
   const triggerProbeMutation = useMutation({
     mutationFn: () => ServiceMonitorService.triggerProbe(id!),
     onSuccess: () => {
-      toast.success('探测任务已触发');
+      toast.success('探测任务已触发，正在执行...');
+      // Invalidate all related queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['service-monitor', id] });
       queryClient.invalidateQueries({ queryKey: ['service-monitor-history', id] });
+      queryClient.invalidateQueries({ queryKey: ['service-monitor-stats', id] });
+      queryClient.invalidateQueries({ queryKey: ['service-monitor-monthly', id] });
+    },
+    onError: (error) => {
+      toast.error(`探测失败: ${error.message}`);
     },
   });
 
@@ -198,60 +197,150 @@ const ServiceMonitorDetailPage: React.FC = () => {
     }
   };
 
-  // Convert UTC time to Beijing time (UTC+8)
-  const toBeijingTime = (date: Date): Date => {
-    return new Date(date.getTime() + (8 * 60 * 60 * 1000));
+  // Filter probe history based on selected time period
+  const getFilteredHistory = () => {
+    const now = new Date();
+    let startTime: Date;
+
+    switch (timePeriod) {
+      case '15m':
+        startTime = new Date(now.getTime() - 15 * 60 * 1000);
+        break;
+      case '1h':
+        startTime = subHours(now, 1);
+        break;
+      case '6h':
+        startTime = subHours(now, 6);
+        break;
+      case '12h':
+        startTime = subHours(now, 12);
+        break;
+      case '1d':
+        startTime = subDays(now, 1);
+        break;
+      case '1w':
+        startTime = subDays(now, 7);
+        break;
+      case '1m':
+        startTime = subDays(now, 30);
+        break;
+      default:
+        startTime = subDays(now, 1);
+    }
+
+    return probeHistory.filter(result => {
+      const resultTime = new Date(result.timestamp);
+      return resultTime >= startTime && resultTime <= now;
+    });
   };
+
+  const filteredHistory = getFilteredHistory();
 
   // Prepare chart data with appropriate time formatting based on period
   const getTimeFormat = (date: Date) => {
-    const beijingDate = toBeijingTime(date);
     switch (timePeriod) {
       case '15m':
       case '1h':
       case '6h':
       case '12h':
-        return format(beijingDate, 'HH:mm');
+        return format(date, 'HH:mm');
       case '1d':
-        return format(beijingDate, 'HH:mm');
+        return format(date, 'HH:mm');
       case '1w':
-        return format(beijingDate, 'MM-dd HH:mm');
+        return format(date, 'MM-dd HH:mm');
       case '1m':
-        return format(beijingDate, 'MM-dd');
+        return format(date, 'MM-dd');
       default:
-        return format(beijingDate, 'HH:mm');
+        return format(date, 'HH:mm');
     }
   };
 
-  const chartData = probeHistory
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .map(result => ({
-      time: getTimeFormat(new Date(result.timestamp)),
-      latency: result.latency,
-      status: result.success ? 1 : 0,
+  // Prepare chart data with multi-node support
+  const chartData = React.useMemo(() => {
+    if (filteredHistory.length === 0) return [];
+
+    // Create a map of nodeId to nodeName for quick lookup
+    const nodeNameMap: { [nodeId: string]: string } = {
+      'server': '服务器',
+    };
+    hostNodes.forEach((host: any) => {
+      nodeNameMap[host.id] = host.name || host.hostname || `节点-${host.id.slice(0, 8)}`;
+    });
+
+    // Group results by timestamp first
+    const timeGroups: { [time: string]: { [nodeName: string]: number } } = {};
+
+    filteredHistory
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .forEach(result => {
+        const time = getTimeFormat(new Date(result.timestamp));
+        const nodeId = result.host_node_id || 'server';
+        const nodeName = nodeNameMap[nodeId] || `节点-${nodeId.slice(0, 8)}`;
+
+        if (!timeGroups[time]) {
+          timeGroups[time] = {};
+        }
+
+        // If multiple results for same node at same time, take average
+        if (timeGroups[time][nodeName]) {
+          timeGroups[time][nodeName] = (timeGroups[time][nodeName] + result.latency) / 2;
+        } else {
+          timeGroups[time][nodeName] = result.latency;
+        }
+      });
+
+    // Convert to array format for recharts
+    return Object.entries(timeGroups).map(([time, nodes]) => ({
+      time,
+      ...nodes,
     }));
+  }, [filteredHistory, hostNodes]);
+
+  // Get all node names for chart lines
+  const nodeNames = React.useMemo(() => {
+    const nameSet = new Set<string>();
+
+    // Create node name map
+    const nodeNameMap: { [nodeId: string]: string } = {
+      'server': '服务器',
+    };
+    hostNodes.forEach((host: any) => {
+      nodeNameMap[host.id] = host.name || host.hostname || `节点-${host.id.slice(0, 8)}`;
+    });
+
+    // Collect all unique node names from history
+    filteredHistory.forEach(result => {
+      const nodeId = result.host_node_id || 'server';
+      const nodeName = nodeNameMap[nodeId] || `节点-${nodeId.slice(0, 8)}`;
+      nameSet.add(nodeName);
+    });
+
+    return Array.from(nameSet);
+  }, [filteredHistory, hostNodes]);
+
+  // Colors for different nodes
+  const nodeColors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
   // Calculate uptime timeline with appropriate grouping based on time period
   const getGroupingFormat = (date: Date) => {
-    const beijingDate = toBeijingTime(date);
     switch (timePeriod) {
       case '15m':
       case '1h':
-        return format(beijingDate, 'HH:mm'); // Group by minute
+        return format(date, 'HH:mm'); // Group by minute
       case '6h':
       case '12h':
       case '1d':
-        return format(beijingDate, 'HH:00'); // Group by hour
+        return format(date, 'HH:00'); // Group by hour
       case '1w':
-        return format(beijingDate, 'MM-dd'); // Group by day
+        return format(date, 'MM-dd'); // Group by day
       case '1m':
-        return format(beijingDate, 'MM-dd'); // Group by day
+        return format(date, 'MM-dd'); // Group by day
       default:
-        return format(beijingDate, 'HH:00');
+        return format(date, 'HH:00');
     }
   };
 
-  const uptimeData = probeHistory
+  const uptimeData = filteredHistory
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .reduce((acc: any[], result) => {
       const groupKey = getGroupingFormat(new Date(result.timestamp));
@@ -291,7 +380,7 @@ const ServiceMonitorDetailPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <p className="text-muted-foreground">监控服务未找到</p>
-          <Button className="mt-4" onClick={() => navigate('/hosts/service-monitors')}>
+          <Button className="mt-4" onClick={() => navigate('/vms/service-monitors/list')}>
             返回列表
           </Button>
         </div>
@@ -304,7 +393,7 @@ const ServiceMonitorDetailPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/hosts/service-monitors')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/vms/service-monitors/list')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -322,8 +411,8 @@ const ServiceMonitorDetailPage: React.FC = () => {
             onClick={() => triggerProbeMutation.mutate()}
             disabled={triggerProbeMutation.isPending}
           >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            手动探测
+            <RefreshCw className={`mr-2 h-4 w-4 ${triggerProbeMutation.isPending ? 'animate-spin' : ''}`} />
+            {triggerProbeMutation.isPending ? '探测中...' : '手动探测'}
           </Button>
           <Button
             variant="outline"
@@ -342,7 +431,7 @@ const ServiceMonitorDetailPage: React.FC = () => {
             )}
           </Button>
           <Button
-            onClick={() => navigate(`/hosts/service-monitors/${id}/edit`)}
+            onClick={() => navigate(`/vms/service-monitors/${id}/edit`)}
           >
             <Edit className="mr-2 h-4 w-4" />
             编辑
@@ -366,7 +455,7 @@ const ServiceMonitorDetailPage: React.FC = () => {
             {monitor.status === 'degraded' && (
               <Badge className="bg-yellow-500">降级</Badge>
             )}
-            {!monitor.status && (
+            {(monitor.status === 'unknown' || !monitor.status) && (
               <Badge variant="outline">未知</Badge>
             )}
           </CardContent>
@@ -392,10 +481,10 @@ const ServiceMonitorDetailPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.average_latency || 0}ms
+              {stats?.avg_latency?.toFixed(2) || 0}ms
             </div>
             <p className="text-xs text-muted-foreground">
-              P95: {stats?.p95_latency || 0}ms
+              最大: {stats?.max_latency || 0}ms
             </p>
           </CardContent>
         </Card>
@@ -419,7 +508,7 @@ const ServiceMonitorDetailPage: React.FC = () => {
           <CardContent>
             <div className="text-sm">
               {monitor.last_check_time
-                ? format(toBeijingTime(new Date(monitor.last_check_time)), 'MM-dd HH:mm:ss')
+                ? format(new Date(monitor.last_check_time), 'MM-dd HH:mm:ss')
                 : '-'}
             </div>
           </CardContent>
@@ -474,14 +563,18 @@ const ServiceMonitorDetailPage: React.FC = () => {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="latency"
-                    stroke="#3b82f6"
-                    name="延迟(ms)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
+                  {nodeNames.map((nodeName, index) => (
+                    <Line
+                      key={nodeName}
+                      type="monotone"
+                      dataKey={nodeName}
+                      stroke={nodeColors[index % nodeColors.length]}
+                      name={nodeName}
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls
+                    />
+                  ))}
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -517,20 +610,71 @@ const ServiceMonitorDetailPage: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={uptimeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="time" />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="percentage"
-                    fill="#22c55e"
-                    name="可用率(%)"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="space-y-4">
+                {/* Status grid */}
+                <div className="flex flex-wrap gap-1">
+                  {uptimeData.map((item, index) => {
+                    const getStatusColor = (percentage: number) => {
+                      if (percentage >= 95) return 'bg-green-500';
+                      if (percentage >= 80) return 'bg-yellow-500';
+                      if (percentage > 0) return 'bg-red-500';
+                      return 'bg-gray-300';
+                    };
+
+                    return (
+                      <div
+                        key={index}
+                        className={`w-8 h-8 rounded ${getStatusColor(item.percentage)} transition-all hover:scale-110 cursor-pointer`}
+                        title={`${item.time}: ${item.percentage.toFixed(1)}% (${item.successful}/${item.total})`}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-green-500" />
+                    <span>&gt;95%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-yellow-500" />
+                    <span>80-95%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-red-500" />
+                    <span>&lt;80%</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-gray-300" />
+                    <span>无数据</span>
+                  </div>
+                </div>
+
+                {/* Summary statistics */}
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                  <div>
+                    <p className="text-sm text-muted-foreground">平均可用率</p>
+                    <p className="text-2xl font-bold">
+                      {uptimeData.length > 0
+                        ? (uptimeData.reduce((sum, item) => sum + item.percentage, 0) / uptimeData.length).toFixed(2)
+                        : '0'}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">总检测次数</p>
+                    <p className="text-2xl font-bold">
+                      {uptimeData.reduce((sum, item) => sum + item.total, 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">成功次数</p>
+                    <p className="text-2xl font-bold">
+                      {uptimeData.reduce((sum, item) => sum + item.successful, 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -542,34 +686,66 @@ const ServiceMonitorDetailPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>时间</TableHead>
+                    <TableHead>执行节点</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>延迟</TableHead>
-                    <TableHead>状态码</TableHead>
+                    {monitor.type === 'HTTP' && <TableHead>状态码</TableHead>}
                     <TableHead>错误信息</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {probeHistory.slice(0, 50).map((result) => (
-                    <TableRow key={result.id}>
-                      <TableCell>
-                        {format(toBeijingTime(new Date(result.timestamp)), 'MM-dd HH:mm:ss')}
-                      </TableCell>
-                      <TableCell>
-                        {result.success ? (
-                          <Badge className="bg-green-500">成功</Badge>
-                        ) : (
-                          <Badge variant="destructive">失败</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{result.latency}ms</TableCell>
-                      <TableCell>
-                        {result.http_status_code || '-'}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {result.error_message || '-'}
+                  {filteredHistory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={monitor.type === 'HTTP' ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                        暂无探测日志数据
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    (() => {
+                      // Create node name map outside of the loop for efficiency
+                      const nodeNameMap: { [nodeId: string]: string } = {
+                        'server': '服务器',
+                      };
+                      hostNodes.forEach((host: any) => {
+                        nodeNameMap[host.id] = host.name || host.hostname || `节点-${host.id.slice(0, 8)}`;
+                      });
+
+                      return filteredHistory
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .slice(0, 50)
+                        .map((result) => {
+                          const nodeId = result.host_node_id || 'server';
+                          const nodeName = nodeNameMap[nodeId] || `节点-${nodeId.slice(0, 8)}`;
+
+                          return (
+                            <TableRow key={result.id}>
+                              <TableCell>
+                                {format(new Date(result.timestamp), 'MM-dd HH:mm:ss')}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{nodeName}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {result.success ? (
+                                  <Badge className="bg-green-500">成功</Badge>
+                                ) : (
+                                  <Badge variant="destructive">失败</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{result.latency}ms</TableCell>
+                              {monitor.type === 'HTTP' && (
+                                <TableCell>
+                                  {result.http_status_code || '-'}
+                                </TableCell>
+                              )}
+                              <TableCell className="max-w-xs truncate">
+                                {result.error_message || '-'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        });
+                    })()
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -636,7 +812,7 @@ const ServiceMonitorDetailPage: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium">创建时间</p>
                   <p className="text-sm text-muted-foreground">
-                    {format(toBeijingTime(new Date(monitor.created_at)), 'yyyy-MM-dd HH:mm:ss')}
+                    {format(new Date(monitor.created_at), 'yyyy-MM-dd HH:mm:ss')}
                   </p>
                 </div>
               </div>

@@ -21,13 +21,13 @@ type HostNode struct {
 	HideForGuest bool   `gorm:"default:false" json:"hide_for_guest"`
 
 	// Billing and expiry information
-	Cost         float64    `gorm:"default:0" json:"cost"`               // 费用（根据续费周期决定是月费还是年费）
-	RenewalType  string     `gorm:"default:monthly" json:"renewal_type"` // 续费周期：monthly 或 yearly
+	Cost         float64    `gorm:"default:0" json:"cost"`                // 费用（根据续费周期决定是月费还是年费）
+	RenewalType  string     `gorm:"default:monthly" json:"renewal_type"`  // 续费周期：monthly 或 yearly
 	PurchaseDate *time.Time `gorm:"index" json:"purchase_date,omitempty"` // 购买日期
-	ExpiryDate   *time.Time `gorm:"index" json:"expiry_date,omitempty"`  // 到期时间
-	AutoRenew    bool       `gorm:"default:false" json:"auto_renew"`     // 是否自动续费
-	TrafficLimit int64      `gorm:"default:0" json:"traffic_limit"`      // 流量限制 (GB), 0表示无限
-	TrafficUsed  int64      `gorm:"default:0" json:"traffic_used"`       // 已用流量 (GB)
+	ExpiryDate   *time.Time `gorm:"index" json:"expiry_date,omitempty"`   // 到期时间
+	AutoRenew    bool       `gorm:"default:false" json:"auto_renew"`      // 是否自动续费
+	TrafficLimit int64      `gorm:"default:0" json:"traffic_limit"`       // 流量限制 (GB), 0表示无限
+	TrafficUsed  int64      `gorm:"default:0" json:"traffic_used"`        // 已用流量 (GB)
 
 	// Grouping
 	GroupName string `gorm:"default:'默认分组';index" json:"group_name"` // 分组标签

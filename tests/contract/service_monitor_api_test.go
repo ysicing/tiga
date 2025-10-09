@@ -16,13 +16,13 @@ func TestServiceMonitorAPI_CreateMonitor(t *testing.T) {
 	t.Skip("Waiting for implementation: internal/api/handlers/service_monitor_handler.go")
 
 	reqBody := map[string]interface{}{
-		"name":        "MySQL健康检查",
-		"type":        "TCP",
-		"target":      "192.168.1.100:3306",
-		"interval":    60,
-		"timeout":     5,
-		"host_id":     1,
-		"enabled":     true,
+		"name":              "MySQL健康检查",
+		"type":              "TCP",
+		"target":            "192.168.1.100:3306",
+		"interval":          60,
+		"timeout":           5,
+		"host_id":           1,
+		"enabled":           true,
 		"notify_on_failure": true,
 	}
 

@@ -146,7 +146,7 @@ func parseFlags() *Config {
 	flag.StringVar(&config.UUID, "uuid", "", "Host UUID")
 	flag.StringVar(&config.SecretKey, "key", "", "Secret key for authentication")
 	flag.StringVar(&config.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
-	flag.IntVar(&config.ReportInterval, "interval", 30, "Report interval in seconds (default: 30)")
+	flag.IntVar(&config.ReportInterval, "interval", 10, "Report interval in seconds (default: 30)")
 	flag.BoolVar(&config.DisableWebSSH, "disable-webssh", false, "Disable WebSSH terminal functionality")
 
 	showVersion := flag.Bool("version", false, "Show version information")

@@ -82,7 +82,7 @@ func (p *ICMPProbe) buildPingCommand(target string) *exec.Cmd {
 func (p *ICMPProbe) parseRTT(output string) int64 {
 	// Common patterns across different OS ping outputs
 	patterns := []string{
-		"time=",    // Linux/macOS
+		"time=",     // Linux/macOS
 		"Average =", // Windows
 	}
 

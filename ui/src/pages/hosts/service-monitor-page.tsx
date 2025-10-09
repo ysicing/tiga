@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,8 @@ type MonitorFormData = {
 };
 
 export function ServiceMonitorPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [monitors, setMonitors] = useState<ServiceMonitor[]>([]);
   const [monitorStats, setMonitorStats] = useState<Record<string, { lastProbeSuccess?: boolean; lastProbeTime?: string; uptime?: number }>>({});
   const [hosts, setHosts] = useState<Array<{ id: string; name: string; ip: string }>>([]);
@@ -69,7 +72,12 @@ export function ServiceMonitorPage() {
     fetchMonitors();
     fetchHosts();
     fetchHostGroups();
-  }, []);
+
+    // If we have an ID in the URL (edit mode), fetch and load that monitor
+    if (id) {
+      fetchMonitorForEdit(id);
+    }
+  }, [id]);
 
   const fetchHosts = async () => {
     try {
@@ -142,6 +150,46 @@ export function ServiceMonitorPage() {
       }
     } catch (error) {
       console.error(`Failed to fetch stats for monitor ${monitorId}:`, error);
+    }
+  };
+
+  const fetchMonitorForEdit = async (monitorId: string) => {
+    try {
+      const response = await fetch(`/api/v1/vms/service-monitors/${monitorId}`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.code === 0 && data.data) {
+        const monitor = data.data;
+        setEditingMonitor(monitor);
+
+        // Parse probe_node_ids from JSON string
+        let nodeIds: string[] = [];
+        if (monitor.probe_node_ids) {
+          try {
+            nodeIds = JSON.parse(monitor.probe_node_ids);
+          } catch (e) {
+            console.error('Failed to parse probe_node_ids:', e);
+          }
+        }
+
+        setFormData({
+          name: monitor.name,
+          type: monitor.type as 'HTTP' | 'TCP' | 'ICMP',
+          target: monitor.target,
+          interval: monitor.interval || 60,
+          timeout: monitor.timeout || 5,
+          enabled: monitor.enabled,
+          probe_strategy: (monitor.probe_strategy as any) || 'server',
+          probe_node_ids: nodeIds,
+          probe_group_name: monitor.probe_group_name,
+        });
+
+        // Open the dialog in edit mode
+        setIsDialogOpen(true);
+      }
+    } catch (error) {
+      console.error('Failed to fetch monitor for edit:', error);
     }
   };
 
@@ -247,7 +295,12 @@ export function ServiceMonitorPage() {
       const data = await response.json();
       if (data.code === 0) {
         setIsDialogOpen(false);
-        fetchMonitors();
+        // If we're in edit mode (from URL), navigate back to list
+        if (id) {
+          navigate('/vms/service-monitors/list');
+        } else {
+          fetchMonitors();
+        }
       } else if (data.message) {
         // Display backend validation error
         if (data.message.includes('target') || data.message.includes('目标')) {
@@ -762,7 +815,13 @@ export function ServiceMonitorPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsDialogOpen(false)}
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  // If we're in edit mode (from URL), navigate back to list
+                  if (id) {
+                    navigate('/vms/service-monitors/list');
+                  }
+                }}
               >
                 取消
               </Button>
