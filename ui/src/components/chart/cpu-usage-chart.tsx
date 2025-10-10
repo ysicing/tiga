@@ -44,7 +44,7 @@ const CPUUsageChart = React.memo((prop: CpuUsageChartProps) => {
       .map((point) => ({
         timestamp: point.timestamp,
         time: new Date(point.timestamp).getTime(),
-        cpu: point.value,
+        cpu: point.value < 0 ? null : point.value,
       }))
       .sort((a, b) => a.time - b.time)
   }, [data])
@@ -145,6 +145,7 @@ const CPUUsageChart = React.memo((prop: CpuUsageChartProps) => {
               type="monotone"
               fill="var(--color-cpu)"
               stroke="var(--color-cpu)"
+              connectNulls={false}
             />
           </AreaChart>
         </ChartContainer>

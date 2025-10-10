@@ -11,7 +11,6 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	App      AppConfig
 	Server   ServerConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
@@ -23,18 +22,11 @@ type Config struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	Mode         string
+	Debug        bool
 	Port         int
+	GRPCPort     int
 	ReadTimeout  int
 	WriteTimeout int
-}
-
-// AppConfig holds application-level configuration
-type AppConfig struct {
-	Name  string
-	Env   string
-	Port  int
-	Debug bool
 }
 
 // DatabaseConfig holds database connection configuration
@@ -116,15 +108,10 @@ func LoadFromFile(filename string) (*Config, error) {
 
 	// Convert ConfigFile to Config
 	config := &Config{
-		App: AppConfig{
-			Name:  getOrDefault(configFile.Server.AppName, getEnv("APP_NAME", "DevOps Management Platform")),
-			Env:   getEnv("APP_ENV", "production"),
-			Port:  configFile.Server.HTTPPort,
-			Debug: getEnvAsBool("APP_DEBUG", false),
-		},
 		Server: ServerConfig{
-			Mode:         getEnv("SERVER_MODE", "release"),
+			Debug:        getEnvAsBool("DEBUG", false),
 			Port:         configFile.Server.HTTPPort,
+			GRPCPort:     getIntOrDefault(configFile.Server.GRPCPort, 12307),
 			ReadTimeout:  getEnvAsInt("SERVER_READ_TIMEOUT", 60),
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 60),
 		},
@@ -181,7 +168,7 @@ type ConfigFile struct {
 		AppSubtitle string `yaml:"app_subtitle"`
 		Domain      string `yaml:"domain"`
 		HTTPPort    int    `yaml:"http_port"`
-		HTTPSPort   int    `yaml:"https_port"`
+		GRPCPort    int    `yaml:"grpc_port"`
 		TLSEnabled  bool   `yaml:"tls_enabled"`
 	} `yaml:"server"`
 
@@ -204,15 +191,10 @@ type ConfigFile struct {
 // LoadFromEnv loads configuration from environment variables
 func LoadFromEnv() *Config {
 	config := &Config{
-		App: AppConfig{
-			Name:  getEnv("APP_NAME", "DevOps Management Platform"),
-			Env:   getEnv("APP_ENV", "development"),
-			Port:  getEnvAsInt("APP_PORT", 12306),
-			Debug: getEnvAsBool("APP_DEBUG", true),
-		},
 		Server: ServerConfig{
-			Mode:         getEnv("SERVER_MODE", "debug"),
+			Debug:        getEnvAsBool("DEBUG", false),
 			Port:         getEnvAsInt("SERVER_PORT", 12306),
+			GRPCPort:     getEnvAsInt("SERVER_GRPC_PORT", 12307),
 			ReadTimeout:  getEnvAsInt("SERVER_READ_TIMEOUT", 60),
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 60),
 		},

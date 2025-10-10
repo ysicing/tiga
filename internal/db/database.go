@@ -155,6 +155,20 @@ func (d *Database) AutoMigrate() error {
 		// Kubernetes management
 		&models.Cluster{},
 		&models.ResourceHistory{},
+
+		// Host monitoring subsystem (Nezha-inspired)
+		&models.HostNode{},
+		&models.HostInfo{},
+		&models.HostState{},
+		&models.ServiceMonitor{},
+		&models.ServiceProbeResult{},
+		&models.ServiceAvailability{},
+		&models.ServiceHistory{}, // 30-day aggregated service history
+		&models.WebSSHSession{},
+		&models.HostActivityLog{},
+		&models.MonitorAlertRule{},
+		&models.MonitorAlertEvent{},
+		&models.AgentConnection{},
 	)
 
 	if err != nil {
@@ -167,6 +181,17 @@ func (d *Database) AutoMigrate() error {
 	}
 
 	logrus.Info("Database migrations completed successfully")
+	return nil
+}
+
+// SeedDefaultData creates default data if not exists
+func (d *Database) SeedDefaultData() error {
+	logrus.Info("Seeding default data...")
+
+	// Note: Default host groups are no longer needed as we use simple string grouping
+	// Hosts will default to "默认分组" via model BeforeCreate hook
+
+	logrus.Info("Default data seeding completed")
 	return nil
 }
 

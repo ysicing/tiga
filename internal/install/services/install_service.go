@@ -179,6 +179,11 @@ func (s *InstallService) Finalize(req models.FinalizeRequest) (*models.FinalizeR
 		}
 
 		// 6.2 保存系统配置到数据库 (key-value 格式)
+		grpcPort := req.Settings.GRPCPort
+		if grpcPort == 0 {
+			grpcPort = 12307
+		}
+
 		configs := []struct {
 			Key       string
 			Value     interface{}
@@ -189,6 +194,7 @@ func (s *InstallService) Finalize(req models.FinalizeRequest) (*models.FinalizeR
 			{"app_subtitle", req.Settings.AppSubtitle, "string"},
 			{"domain", req.Settings.Domain, "string"},
 			{"http_port", req.Settings.HTTPPort, "number"},
+			{"grpc_port", grpcPort, "number"},
 			{"language", req.Settings.Language, "string"},
 			{"enable_analytics", req.Settings.EnableAnalytics, "boolean"},
 		}

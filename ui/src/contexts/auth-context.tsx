@@ -65,6 +65,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const checkAuth = async () => {
+    // Skip auth check on login page to avoid 401 redirect loop
+    const currentPath = window.location.pathname
+    if (currentPath === '/login' || currentPath.startsWith('/login')) {
+      setIsLoading(false)
+      return
+    }
+
     try {
       const response = await fetch(`${base}/api/auth/user`, {
         credentials: 'include',
@@ -86,6 +93,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else {
           setUser(null)
         }
+      } else if (response.status === 401) {
+        // Unauthorized - redirect to login (unless already on login page)
+        setUser(null)
+        setIsLoading(false)
+        const currentPath = window.location.pathname
+        if (currentPath !== '/login' && !currentPath.startsWith('/login')) {
+          window.location.href = '/login'
+        }
+        return
       } else {
         setUser(null)
       }
@@ -130,7 +146,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       })
 
       if (response.ok) {
-        await checkAuth()
+        // Login successful - redirect to home page
+        window.location.href = '/'
       } else {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Password login failed')
@@ -153,9 +170,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error('Token refresh failed:', error)
-      // If refresh fails, redirect to login
+      // If refresh fails, redirect to login (unless already on login page)
       setUser(null)
-      window.location.href = '/login'
+      const currentPath = window.location.pathname
+      if (currentPath !== '/login' && !currentPath.startsWith('/login')) {
+        window.location.href = '/login'
+      }
     }
   }
 

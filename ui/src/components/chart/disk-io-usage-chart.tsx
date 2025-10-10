@@ -39,8 +39,11 @@ const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0'
 
   const k = 1024
-  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s']
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    sizes.length - 1
+  )
 
   const value = bytes / Math.pow(k, i)
   return value >= 10
@@ -68,24 +71,24 @@ const DiskIOUsageChart = React.memo((prop: DiskIOUsageChartProps) => {
     // Combine DiskRead and DiskWrite data by timestamp
     const combinedData = new Map()
 
-    // Add DiskRead data (as negative values to display below X-axis)
+    // Add DiskRead data (convert -1 to null for offline periods)
     diskRead.forEach((point) => {
       const timestamp = new Date(point.timestamp).getTime()
       combinedData.set(timestamp, {
         timestamp: point.timestamp,
         time: timestamp,
-        diskRead: Math.max(0, point.value),
+        diskRead: point.value < 0 ? null : point.value,
       })
     })
 
-    // Add DiskWrite data (positive values for above X-axis)
+    // Add DiskWrite data (convert -1 to null for offline periods)
     diskWrite.forEach((point) => {
       const timestamp = new Date(point.timestamp).getTime()
       const existing = combinedData.get(timestamp) || {
         timestamp: point.timestamp,
         time: timestamp,
       }
-      existing.diskWrite = Math.max(0, point.value) // Positive values for above X-axis
+      existing.diskWrite = point.value < 0 ? null : point.value
       combinedData.set(timestamp, existing)
     })
 
@@ -243,6 +246,7 @@ const DiskIOUsageChart = React.memo((prop: DiskIOUsageChartProps) => {
               stroke="var(--color-diskWrite)"
               strokeWidth={2}
               dot={false}
+              connectNulls={false}
             />
             <Area
               isAnimationActive={false}
@@ -252,6 +256,7 @@ const DiskIOUsageChart = React.memo((prop: DiskIOUsageChartProps) => {
               stroke="var(--color-diskRead)"
               strokeWidth={2}
               dot={false}
+              connectNulls={false}
             />
             <ChartLegend content={<ChartLegendContent />} />
           </AreaChart>

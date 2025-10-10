@@ -2,6 +2,7 @@ package managers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -101,5 +102,5 @@ func (m *BaseManager) GetConnectionString() (string, error) {
 		return "", ErrInvalidConnection
 	}
 
-	return host + ":" + string(rune(int(port))), nil
+	return fmt.Sprintf("%s:%d", host, int(port)), nil
 }

@@ -13,7 +13,7 @@ type BaseModel struct {
 	ID        uuid.UUID      `gorm:"type:char(36);primary_key" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"` // Soft delete
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"` // Soft delete
 }
 
 // BeforeCreate hook to auto-generate UUID
@@ -53,6 +53,12 @@ func (m *AppendOnlyModel) BeforeCreate(tx *gorm.DB) error {
 		m.ID = uuid.New()
 	}
 	return nil
+}
+
+// TimeSeriesModel is optimized for time-series data with auto-increment ID
+// Use this for high-volume monitoring/metrics data where UUID overhead is unnecessary
+type TimeSeriesModel struct {
+	ID uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
 }
 
 // Usage examples:

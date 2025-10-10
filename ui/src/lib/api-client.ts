@@ -37,27 +37,56 @@ class ApiClient {
     return this.refreshPromise
   }
 
-  private async makeRequest<T>(
+  private buildUrlWithParams(
+    url: string,
+    params?: Record<string, any>
+  ): string {
+    if (!params) {
+      return url
+    }
+
+    const searchParams = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null) {
+        continue
+      }
+      searchParams.append(key, String(value))
+    }
+
+    if (!searchParams.toString()) {
+      return url
+    }
+
+    return `${url}${url.includes('?') ? '&' : '?'}${searchParams.toString()}`
+  }
+
+  private async fetchWithAuth(
     url: string,
     options: RequestInit = {}
-  ): Promise<T> {
+  ): Promise<Response> {
     const fullUrl = this.baseUrl + url
+    const headers = new Headers(options.headers as HeadersInit | undefined)
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
+    // Add JSON content type if we have a body and header not already supplied
+    const hasBody = options.body !== undefined && options.body !== null
+    if (
+      hasBody &&
+      !headers.has('Content-Type') &&
+      !(options.body instanceof FormData)
+    ) {
+      headers.set('Content-Type', 'application/json')
     }
 
     // Add cluster header if available
     const currentCluster = this.getCurrentCluster?.()
-    if (currentCluster) {
-      headers['x-cluster-name'] = currentCluster
+    if (currentCluster && !headers.has('x-cluster-name')) {
+      headers.set('x-cluster-name', currentCluster)
     }
 
     const defaultOptions: RequestInit = {
       credentials: 'include',
-      headers,
       ...options,
+      headers,
     }
 
     try {
@@ -65,40 +94,83 @@ class ApiClient {
 
       // Handle authentication errors with automatic retry
       if (response.status === 401) {
+        // Avoid redirect loop: don't redirect if already on login page
+        const currentPath = window.location.pathname
+        const isLoginPage =
+          currentPath === '/login' || currentPath.startsWith('/login')
+
         try {
           // Try to refresh the token
           await this.refreshToken()
           // Retry the original request
           response = await fetch(fullUrl, defaultOptions)
         } catch (refreshError) {
-          // If refresh fails, redirect to login page
+          // If refresh fails, redirect to login page (unless already there)
           console.error('Token refresh failed:', refreshError)
-          window.location.href = '/login'
+          if (!isLoginPage) {
+            window.location.href = '/login'
+          }
           throw new Error('Authentication failed')
         }
       }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`
-        )
-      }
-
-      const contentType = response.headers.get('content-type')
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json()
-      } else {
-        return (await response.text()) as T
-      }
+      return response
     } catch (error) {
       console.error('API request failed:', error)
       throw error
     }
   }
 
-  async get<T>(url: string, options?: RequestInit): Promise<T> {
-    return this.makeRequest<T>(url, { ...options, method: 'GET' })
+  private async handleError(response: Response): Promise<never> {
+    const contentType = response.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      const errorData = await response.json().catch(() => ({}))
+      const message =
+        (errorData as { error?: string }).error ||
+        `HTTP error! status: ${response.status}`
+      console.error('API request failed:', message)
+      throw new Error(message)
+    }
+
+    const text = await response.text().catch(() => '')
+    const message = text || `HTTP error! status: ${response.status}`
+    console.error('API request failed:', message)
+    throw new Error(message)
+  }
+
+  private async ensureSuccess(response: Response): Promise<void> {
+    if (!response.ok) {
+      await this.handleError(response)
+    }
+  }
+
+  private async parseResponse<T>(response: Response): Promise<T> {
+    await this.ensureSuccess(response)
+
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      return (await response.json()) as T
+    }
+
+    return (await response.text()) as T
+  }
+
+  private async makeRequest<T>(
+    url: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const response = await this.fetchWithAuth(url, options)
+    return this.parseResponse<T>(response)
+  }
+
+  async get<T>(
+    url: string,
+    params?: Record<string, any>,
+    options?: RequestInit
+  ): Promise<T> {
+    const requestUrl = this.buildUrlWithParams(url, params)
+    return this.makeRequest<T>(requestUrl, { ...options, method: 'GET' })
   }
 
   async post<T>(
@@ -113,7 +185,38 @@ class ApiClient {
     })
   }
 
-  async put<T>(url: string, data?: unknown, options?: RequestInit): Promise<T> {
+  async postForm<T>(
+    url: string,
+    formData: FormData,
+    options?: RequestInit
+  ): Promise<T> {
+    const response = await this.fetchWithAuth(url, {
+      ...options,
+      method: 'POST',
+      body: formData,
+    })
+    return this.parseResponse<T>(response)
+  }
+
+  async getBlob(
+    url: string,
+    params?: Record<string, any>,
+    options?: RequestInit
+  ): Promise<Blob> {
+    const requestUrl = this.buildUrlWithParams(url, params)
+    const response = await this.fetchWithAuth(requestUrl, {
+      ...options,
+      method: 'GET',
+    })
+    await this.ensureSuccess(response)
+    return response.blob()
+  }
+
+  async put<T>(
+    url: string,
+    data?: unknown,
+    options?: RequestInit
+  ): Promise<T> {
     return this.makeRequest<T>(url, {
       ...options,
       method: 'PUT',
@@ -205,7 +308,7 @@ export const devopsAPI = {
 
   // Instances
   instances: {
-    list: (params?: Record<string, any>) => apiClient.get('/instances', { ...params }),
+    list: (params?: Record<string, any>) => apiClient.get('/instances', params),
     get: (id: string) => apiClient.get(`/instances/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/instances', data),
     update: (id: string, data: Record<string, any>) => apiClient.patch(`/instances/${id}`, data),
@@ -219,22 +322,22 @@ export const devopsAPI = {
 
   // Metrics
   metrics: {
-    query: (params: Record<string, any>) => apiClient.get('/metrics', { ...params }),
+    query: (params: Record<string, any>) => apiClient.get('/metrics', params),
     create: (data: Record<string, any>) => apiClient.post('/metrics', data),
-    aggregate: (params: Record<string, any>) => apiClient.get('/metrics/aggregate', { ...params }),
-    timeseries: (params: Record<string, any>) => apiClient.get('/metrics/timeseries', { ...params }),
+    aggregate: (params: Record<string, any>) => apiClient.get('/metrics/aggregate', params),
+    timeseries: (params: Record<string, any>) => apiClient.get('/metrics/timeseries', params),
   },
 
   // Alerts
   alerts: {
-    listRules: (params?: Record<string, any>) => apiClient.get('/alerts', { ...params }),
+    listRules: (params?: Record<string, any>) => apiClient.get('/alerts', params),
     getRule: (id: string) => apiClient.get(`/alerts/${id}`),
     createRule: (data: Record<string, any>) => apiClient.post('/alerts', data),
     updateRule: (id: string, data: Record<string, any>) => apiClient.patch(`/alerts/${id}`, data),
     deleteRule: (id: string) => apiClient.delete(`/alerts/${id}`),
     toggleRule: (id: string, enabled: boolean) =>
       apiClient.patch(`/alerts/${id}/toggle`, { enabled }),
-    listEvents: (params?: Record<string, any>) => apiClient.get('/alerts/events', { ...params }),
+    listEvents: (params?: Record<string, any>) => apiClient.get('/alerts/events', params),
     acknowledgeEvent: (eventId: string, note?: string) =>
       apiClient.post(`/alerts/events/${eventId}/acknowledge`, { note }),
     resolveEvent: (eventId: string, note?: string) =>
@@ -255,7 +358,7 @@ export const devopsAPI = {
 
   // Users
   users: {
-    list: (params?: Record<string, any>) => apiClient.get('/users', { ...params }),
+    list: (params?: Record<string, any>) => apiClient.get('/users', params),
     get: (id: string) => apiClient.get(`/users/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/users', data),
     update: (id: string, data: Record<string, any>) => apiClient.patch(`/users/${id}`, data),
@@ -266,7 +369,7 @@ export const devopsAPI = {
 
   // Roles
   roles: {
-    list: (params?: Record<string, any>) => apiClient.get('/roles', { ...params }),
+    list: (params?: Record<string, any>) => apiClient.get('/roles', params),
     get: (id: string) => apiClient.get(`/roles/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/roles', data),
     update: (id: string, data: Record<string, any>) => apiClient.patch(`/roles/${id}`, data),
@@ -331,5 +434,69 @@ export const devopsAPI = {
         database,
         query,
       }),
+  },
+
+  // VMs (Host Monitoring)
+  vms: {
+    // Host management
+    hosts: {
+      list: () => apiClient.get('/vms/hosts'),
+      get: (id: string) => apiClient.get(`/vms/hosts/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/vms/hosts', data),
+      update: (id: string, data: Record<string, any>) => apiClient.put(`/vms/hosts/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/vms/hosts/${id}`),
+      getCurrentState: (id: string) => apiClient.get(`/vms/hosts/${id}/state/current`),
+      getHistoryState: (id: string, params?: Record<string, any>) =>
+        apiClient.get(`/vms/hosts/${id}/state/history`, params),
+      getActivities: (id: string, params?: Record<string, any>) =>
+        apiClient.get(`/vms/hosts/${id}/activities`, params),
+    },
+
+    // Service monitors
+    serviceMonitors: {
+      list: () => apiClient.get('/vms/service-monitors'),
+      get: (id: string) => apiClient.get(`/vms/service-monitors/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/vms/service-monitors', data),
+      update: (id: string, data: Record<string, any>) =>
+        apiClient.put(`/vms/service-monitors/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/vms/service-monitors/${id}`),
+      trigger: (id: string) => apiClient.post(`/vms/service-monitors/${id}/trigger`, {}),
+      getAvailability: (id: string, params?: Record<string, any>) =>
+        apiClient.get(`/vms/service-monitors/${id}/availability`, params),
+    },
+
+    // Alert rules
+    alertRules: {
+      list: () => apiClient.get('/alerts/rules'),
+      get: (id: string) => apiClient.get(`/alerts/rules/${id}`),
+      create: (data: Record<string, any>) => apiClient.post('/alerts/rules', data),
+      update: (id: string, data: Record<string, any>) =>
+        apiClient.put(`/alerts/rules/${id}`, data),
+      delete: (id: string) => apiClient.delete(`/alerts/rules/${id}`),
+      toggle: (id: string, enabled: boolean) =>
+        apiClient.post(`/alerts/rules/${id}/toggle`, { enabled }),
+    },
+
+    // Alert events
+    alertEvents: {
+      list: (params?: Record<string, any>) => apiClient.get('/alerts/events', params),
+      get: (id: string) => apiClient.get(`/alerts/events/${id}`),
+      acknowledge: (id: string, note?: string) =>
+        apiClient.post(`/alerts/events/${id}/acknowledge`, { note }),
+      resolve: (id: string, note?: string) =>
+        apiClient.post(`/alerts/events/${id}/resolve`, { note }),
+    },
+
+    // WebSSH
+    webssh: {
+      createSession: (data: { host_id: string; username?: string; password?: string }) =>
+        apiClient.post('/vms/webssh/sessions', data),
+      listSessions: () => apiClient.get('/vms/webssh/sessions'),
+      listAllSessions: (params?: Record<string, any>) =>
+        apiClient.get('/vms/webssh/sessions/all', params),
+      getSession: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}`),
+      getRecording: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}/playback`),
+      closeSession: (id: string) => apiClient.delete(`/vms/webssh/sessions/${id}`),
+    },
   },
 };

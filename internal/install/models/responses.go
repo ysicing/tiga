@@ -36,8 +36,8 @@ type FinalizeResponse struct {
 	Success        bool   `json:"success"`
 	Message        string `json:"message,omitempty"`
 	SessionToken   string `json:"session_token,omitempty"`
-	RedirectURL    string `json:"redirect_url,omitempty"`     // 重定向URL（包含端口）
-	NeedsRestart   bool   `json:"needs_restart,omitempty"`    // 是否需要重启
+	RedirectURL    string `json:"redirect_url,omitempty"`    // 重定向URL（包含端口）
+	NeedsRestart   bool   `json:"needs_restart,omitempty"`   // 是否需要重启
 	RestartMessage string `json:"restart_message,omitempty"` // 重启提示信息
 	Error          string `json:"error,omitempty"`
 }

@@ -1,0 +1,484 @@
+package handlers
+
+import (
+	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
+	"github.com/ysicing/tiga/internal/models"
+	"github.com/ysicing/tiga/internal/services/monitor"
+)
+
+// ServiceMonitorHandler handles service monitoring operations
+type ServiceMonitorHandler struct {
+	probeService *monitor.ServiceProbeService
+}
+
+// NewServiceMonitorHandler creates a new handler
+func NewServiceMonitorHandler(probeService *monitor.ServiceProbeService) *ServiceMonitorHandler {
+	return &ServiceMonitorHandler{probeService: probeService}
+}
+
+// CreateMonitor creates a new service monitor
+func (h *ServiceMonitorHandler) CreateMonitor(c *gin.Context) {
+	var req struct {
+		Name            string `json:"name" binding:"required"`
+		Type            string `json:"type" binding:"required"`
+		Target          string `json:"target" binding:"required"`
+		Interval        int    `json:"interval"`
+		Timeout         int    `json:"timeout"`
+		ProbeStrategy   string `json:"probe_strategy"`   // server/include/exclude/group
+		ProbeNodeIDs    string `json:"probe_node_ids"`   // JSON array of UUIDs
+		ProbeGroupName  string `json:"probe_group_name"` // Node group name
+		Enabled         bool   `json:"enabled"`
+		NotifyOnFailure bool   `json:"notify_on_failure"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid request"})
+		return
+	}
+
+	// Validate and clean target
+	cleanedTarget, err := validateAndCleanTarget(req.Target, models.ProbeType(req.Type))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40002, "message": fmt.Sprintf("Invalid target: %v", err)})
+		return
+	}
+
+	mon := &models.ServiceMonitor{
+		Name:            req.Name,
+		Type:            models.ProbeType(req.Type),
+		Target:          cleanedTarget, // Use cleaned target
+		Interval:        req.Interval,
+		Timeout:         req.Timeout,
+		ProbeStrategy:   models.ProbeStrategy(req.ProbeStrategy),
+		ProbeNodeIDs:    req.ProbeNodeIDs,
+		ProbeGroupName:  req.ProbeGroupName,
+		Enabled:         req.Enabled,
+		NotifyOnFailure: req.NotifyOnFailure,
+	}
+
+	// Default to server strategy if not specified
+	if mon.ProbeStrategy == "" {
+		mon.ProbeStrategy = models.ProbeStrategyServer
+	}
+
+	if err := h.probeService.CreateMonitor(c.Request.Context(), mon); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to create monitor"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"code": 0, "message": "success", "data": mon})
+}
+
+// GetMonitor gets a service monitor
+func (h *ServiceMonitorHandler) GetMonitor(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	mon, err := h.probeService.GetMonitor(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Monitor not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": mon})
+}
+
+// UpdateMonitor updates a service monitor
+func (h *ServiceMonitorHandler) UpdateMonitor(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	var req struct {
+		Name            *string `json:"name"`
+		Type            *string `json:"type"`
+		Target          *string `json:"target"`
+		Interval        *int    `json:"interval"`
+		Timeout         *int    `json:"timeout"`
+		ProbeStrategy   *string `json:"probe_strategy"`
+		ProbeNodeIDs    *string `json:"probe_node_ids"`
+		ProbeGroupName  *string `json:"probe_group_name"`
+		Enabled         *bool   `json:"enabled"`
+		NotifyOnFailure *bool   `json:"notify_on_failure"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid request"})
+		return
+	}
+
+	mon, err := h.probeService.GetMonitor(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 40404, "message": "Monitor not found"})
+		return
+	}
+
+	// Update only provided fields
+	if req.Name != nil {
+		mon.Name = *req.Name
+	}
+	if req.Type != nil {
+		mon.Type = models.ProbeType(*req.Type)
+	}
+	if req.Target != nil {
+		// Validate and clean target when updating
+		cleanedTarget, err := validateAndCleanTarget(*req.Target, mon.Type)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 40002, "message": fmt.Sprintf("Invalid target: %v", err)})
+			return
+		}
+		mon.Target = cleanedTarget
+	}
+	if req.Interval != nil {
+		mon.Interval = *req.Interval
+	}
+	if req.Timeout != nil {
+		mon.Timeout = *req.Timeout
+	}
+	if req.ProbeStrategy != nil {
+		mon.ProbeStrategy = models.ProbeStrategy(*req.ProbeStrategy)
+	}
+	if req.ProbeNodeIDs != nil {
+		mon.ProbeNodeIDs = *req.ProbeNodeIDs
+	}
+	if req.ProbeGroupName != nil {
+		mon.ProbeGroupName = *req.ProbeGroupName
+	}
+	if req.Enabled != nil {
+		mon.Enabled = *req.Enabled
+	}
+	if req.NotifyOnFailure != nil {
+		mon.NotifyOnFailure = *req.NotifyOnFailure
+	}
+
+	if err := h.probeService.UpdateMonitor(c.Request.Context(), mon); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to update"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": mon})
+}
+
+// DeleteMonitor deletes a service monitor
+func (h *ServiceMonitorHandler) DeleteMonitor(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	if err := h.probeService.DeleteMonitor(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to delete"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success"})
+}
+
+// TriggerProbe triggers manual probe
+func (h *ServiceMonitorHandler) TriggerProbe(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	result, err := h.probeService.TriggerManualProbe(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to trigger probe"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": result})
+}
+
+// GetAvailability gets availability statistics
+func (h *ServiceMonitorHandler) GetAvailability(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	period := c.DefaultQuery("period", "24h")
+
+	stats, err := h.probeService.GetAvailabilityStats(c.Request.Context(), id, period)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": stats})
+}
+
+// GetProbeHistory gets probe history for a specific monitor
+func (h *ServiceMonitorHandler) GetProbeHistory(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid monitor ID"})
+		return
+	}
+
+	// Parse query parameters
+	var start, end time.Time
+	var limit int = 100
+
+	if startTimeStr := c.Query("start_time"); startTimeStr != "" {
+		start, err = time.Parse(time.RFC3339, startTimeStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid start_time format (use RFC3339)"})
+			return
+		}
+	}
+
+	if endTimeStr := c.Query("end_time"); endTimeStr != "" {
+		end, err = time.Parse(time.RFC3339, endTimeStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid end_time format (use RFC3339)"})
+			return
+		}
+	}
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit <= 0 || limit > 1000 {
+			limit = 100
+		}
+	}
+
+	results, total, err := h.probeService.GetProbeHistory(c.Request.Context(), id, start, end, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get probe history"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data":    results,
+		"total":   total,
+	})
+}
+
+// ListMonitors lists service monitors
+func (h *ServiceMonitorHandler) ListMonitors(c *gin.Context) {
+	// TODO: Add filter query parameters
+	monitors, total, err := h.probeService.ListMonitors(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to list monitors"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    0,
+		"message": "success",
+		"data": gin.H{
+			"items": monitors,
+			"total": total,
+		},
+	})
+}
+
+// GetHostProbeHistory gets probe history for a specific host (multi-line chart data)
+// This endpoint returns probe histories grouped by service monitor, showing all probes
+// executed by a specific host node to various targets
+func (h *ServiceMonitorHandler) GetHostProbeHistory(c *gin.Context) {
+	hostID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 40001, "message": "Invalid host ID"})
+		return
+	}
+
+	// Get time range (default to last 24 hours)
+	hoursStr := c.DefaultQuery("hours", "24")
+	hours, err := strconv.Atoi(hoursStr)
+	if err != nil || hours <= 0 || hours > 720 {
+		hours = 24
+	}
+
+	start := time.Now().Add(-time.Duration(hours) * time.Hour)
+	end := time.Now()
+
+	histories, err := h.probeService.GetHostProbeHistory(c.Request.Context(), hostID, start, end)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get probe history"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": histories})
+}
+
+// GetOverview gets 30-day aggregated statistics for all service monitors
+// This endpoint is used for the service overview page with availability heatmap
+func (h *ServiceMonitorHandler) GetOverview(c *gin.Context) {
+	overview, err := h.probeService.GetOverview(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get overview"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": overview})
+}
+
+// GetNetworkTopology gets network topology matrix data showing latencies between nodes
+// This endpoint aggregates probe results to show connectivity between monitoring nodes
+func (h *ServiceMonitorHandler) GetNetworkTopology(c *gin.Context) {
+	// Get time range (default to last 1 hour)
+	hoursStr := c.DefaultQuery("hours", "1")
+	hours, err := strconv.Atoi(hoursStr)
+	if err != nil || hours <= 0 || hours > 24 {
+		hours = 1
+	}
+
+	topology, err := h.probeService.GetNetworkTopology(c.Request.Context(), hours)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 50001, "message": "Failed to get network topology"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "success", "data": topology})
+}
+
+// validateAndCleanTarget validates and cleans the monitoring target
+// It removes leading/trailing whitespace and special characters, and validates format
+func validateAndCleanTarget(target string, probeType models.ProbeType) (string, error) {
+	// Trim all leading/trailing whitespace including spaces, tabs, newlines
+	cleaned := strings.TrimSpace(target)
+	cleaned = strings.Trim(cleaned, "\t\n\r")
+
+	// Additional cleanup: remove any control characters
+	cleaned = strings.Map(func(r rune) rune {
+		if r < 32 && r != '\t' && r != '\n' && r != '\r' {
+			return -1 // Remove control characters
+		}
+		return r
+	}, cleaned)
+	cleaned = strings.TrimSpace(cleaned) // Final trim
+
+	if cleaned == "" {
+		return "", fmt.Errorf("target cannot be empty")
+	}
+
+	switch probeType {
+	case models.ProbeTypeHTTP:
+		return validateHTTPTarget(cleaned)
+	case models.ProbeTypeICMP:
+		return validateICMPTarget(cleaned)
+	case models.ProbeTypeTCP:
+		return validateTCPTarget(cleaned)
+	default:
+		return "", fmt.Errorf("unsupported probe type: %s", probeType)
+	}
+}
+
+// validateHTTPTarget validates HTTP/HTTPS URL format
+func validateHTTPTarget(target string) (string, error) {
+	// Add http:// prefix if missing
+	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
+		target = "http://" + target
+	}
+
+	// Parse URL
+	u, err := url.Parse(target)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL format: %v", err)
+	}
+
+	// Validate scheme
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return "", fmt.Errorf("URL scheme must be http or https")
+	}
+
+	// Validate host
+	if u.Host == "" {
+		return "", fmt.Errorf("URL must have a valid host")
+	}
+
+	// Return the cleaned URL
+	return u.String(), nil
+}
+
+// validateICMPTarget validates IP address or domain name for ICMP ping
+func validateICMPTarget(target string) (string, error) {
+	// Check if it's a valid IP address
+	if ip := net.ParseIP(target); ip != nil {
+		return target, nil
+	}
+
+	// Check if it's a valid domain name
+	domainRegex := regexp.MustCompile(`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
+	if domainRegex.MatchString(target) {
+		return target, nil
+	}
+
+	// Also allow simple hostnames (no dots)
+	hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
+	if hostnameRegex.MatchString(target) {
+		return target, nil
+	}
+
+	return "", fmt.Errorf("target must be a valid IP address or domain name")
+}
+
+// validateTCPTarget validates TCP target in format "host:port" or "host" (port optional)
+func validateTCPTarget(target string) (string, error) {
+	// Check if port is specified
+	host, port, err := net.SplitHostPort(target)
+	if err != nil {
+		// If error, assume no port specified - validate as host only
+		if validateHost(target) {
+			return target, nil
+		}
+		return "", fmt.Errorf("invalid TCP target format (expected host:port or host)")
+	}
+
+	// Validate host
+	if !validateHost(host) {
+		return "", fmt.Errorf("invalid host in TCP target")
+	}
+
+	// Validate port
+	portNum, err := strconv.Atoi(port)
+	if err != nil {
+		return "", fmt.Errorf("invalid port number: %s", port)
+	}
+	if portNum < 1 || portNum > 65535 {
+		return "", fmt.Errorf("port must be between 1 and 65535")
+	}
+
+	return net.JoinHostPort(host, port), nil
+}
+
+// validateHost validates if a string is a valid IP or domain name
+func validateHost(host string) bool {
+	// Check if it's a valid IP address
+	if ip := net.ParseIP(host); ip != nil {
+		return true
+	}
+
+	// Check if it's a valid domain name
+	domainRegex := regexp.MustCompile(`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
+	if domainRegex.MatchString(host) {
+		return true
+	}
+
+	// Also allow simple hostnames (no dots)
+	hostnameRegex := regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$`)
+	return hostnameRegex.MatchString(host)
+}

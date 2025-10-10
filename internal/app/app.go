@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 
 	"github.com/ysicing/tiga/internal/api"
 	"github.com/ysicing/tiga/internal/api/middleware"
@@ -23,10 +25,13 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
+	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/managers"
+	"github.com/ysicing/tiga/internal/services/monitor"
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/common"
+	"github.com/ysicing/tiga/proto"
 
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
 )
@@ -40,9 +45,20 @@ type Application struct {
 	scheduler      *scheduler.Scheduler
 	coordinator    *managers.ManagerCoordinator
 	httpServer     *http.Server
+	grpcServer     *grpc.Server
 	installMode    bool
 	installChannel chan struct{}
 	staticFS       embed.FS
+
+	// Host monitoring services (shared between gRPC and HTTP)
+	hostRepo        repository.HostRepository
+	stateCollector  *host.StateCollector
+	agentManager    *host.AgentManager
+	terminalManager *host.TerminalManager
+	hostService     *host.HostService
+
+	// Service monitoring
+	probeScheduler *monitor.ServiceProbeScheduler
 }
 
 // NewApplication creates a new application instance
@@ -66,6 +82,11 @@ func NewApplication(cfg *config.Config, configPath string, installMode bool, sta
 		// Auto migrate
 		if err := database.AutoMigrate(); err != nil {
 			return nil, fmt.Errorf("failed to migrate database: %w", err)
+		}
+
+		// Seed default data (groups, etc.)
+		if err := database.SeedDefaultData(); err != nil {
+			logrus.Warnf("Failed to seed default data: %v", err)
 		}
 
 		app.db = database
@@ -144,6 +165,16 @@ func (a *Application) Initialize(ctx context.Context) error {
 		a.coordinator,
 	)
 
+	// Initialize service monitoring
+	serviceRepo := repository.NewServiceRepository(a.db.DB)
+
+	// Initialize AlertEngine for service monitoring alerts
+	alertEngine := alert.NewAlertEngine(
+		repository.NewMonitorAlertRepository(a.db.DB),
+		a.hostRepo,
+		serviceRepo,
+	)
+
 	// Setup scheduled tasks
 	alertTask := scheduler.NewAlertTask(alertProcessor)
 	a.scheduler.AddTask("alert_processing", alertTask, 30*time.Second)
@@ -171,16 +202,34 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	// Simplified: removed RBAC middleware initialization
 
+	// Initialize host monitoring services (shared between gRPC and HTTP)
+	serverURL := fmt.Sprintf("http://localhost:%d", a.config.Server.Port)
+	a.hostRepo = repository.NewHostRepository(a.db.DB)
+	a.stateCollector = host.NewStateCollector(a.hostRepo)
+	a.agentManager = host.NewAgentManager(a.hostRepo, a.stateCollector, a.db.DB)
+	a.stateCollector.SetAgentManager(a.agentManager) // Complete the circular reference
+	a.terminalManager = host.NewTerminalManager()
+	a.hostService = host.NewHostService(a.hostRepo, a.agentManager, a.stateCollector, serverURL)
+
+	logrus.Info("Host monitoring services initialized")
+
+	// Initialize service monitoring (ServiceProbeScheduler + ServiceSentinel)
+	// Use serviceRepo and alertEngine initialized earlier
+	a.probeScheduler = monitor.NewServiceProbeScheduler(serviceRepo, alertEngine)
+	a.probeScheduler.SetAgentManager(a.agentManager) // Wire up agent task distribution
+
+	logrus.Info("Service monitoring initialized")
+
 	// Setup HTTP router
 	routerConfig := &middleware.RouterConfig{
-		Mode:          a.config.Server.Mode,
+		DebugMode:       a.config.Server.Debug, // Set debug mode based on config
 		EnableSwagger: true, // Enable Swagger UI
 	}
 
 	router := middleware.NewRouter(routerConfig)
 
-	// Register all API handlers - pass the same jwtManager instance used by middleware
-	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret)
+	// Register all API handlers - pass host services and probe scheduler to avoid duplicate instances
+	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector, a.terminalManager, a.probeScheduler)
 
 	// Serve static files from embedded filesystem
 	a.setupStaticFiles(router)
@@ -192,6 +241,14 @@ func (a *Application) Initialize(ctx context.Context) error {
 		WriteTimeout: time.Duration(a.config.Server.WriteTimeout) * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+
+	// Initialize gRPC server for Agent communication - use shared services
+	grpcService := host.NewGRPCServer(a.agentManager, a.terminalManager, a.probeScheduler)
+
+	a.grpcServer = grpc.NewServer()
+	proto.RegisterHostMonitorServer(a.grpcServer, grpcService)
+
+	logrus.Info("gRPC server initialized for Agent monitoring")
 
 	// Suppress unused variable warnings
 	_ = userRepo
@@ -208,7 +265,7 @@ func (a *Application) initializeInstallMode(_ context.Context) error {
 
 	// Setup HTTP router in installation mode
 	routerConfig := &middleware.RouterConfig{
-		Mode:          a.config.Server.Mode,
+		DebugMode:       a.config.Server.Debug,
 		EnableSwagger: false, // Disable Swagger in installation mode
 	}
 
@@ -236,6 +293,24 @@ func (a *Application) initializeInstallMode(_ context.Context) error {
 
 // Run runs the application
 func (a *Application) Run(ctx context.Context) error {
+	// Start gRPC server for Agents (if not in install mode)
+	if !a.installMode && a.grpcServer != nil {
+		grpcPort := a.config.Server.GRPCPort
+		if grpcPort == 0 {
+			grpcPort = 12307
+		}
+		go func() {
+			listener, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
+			if err != nil {
+				logrus.Fatalf("Failed to listen on gRPC port %d: %v", grpcPort, err)
+			}
+			logrus.Infof("Starting gRPC server on port %d", grpcPort)
+			if err := a.grpcServer.Serve(listener); err != nil {
+				logrus.Fatalf("gRPC server failed: %v", err)
+			}
+		}()
+	}
+
 	// Start HTTP server
 	go func() {
 		logrus.Infof("Starting HTTP server on %s", a.httpServer.Addr)
@@ -284,12 +359,24 @@ func (a *Application) Run(ctx context.Context) error {
 	// Normal mode: start services
 	go a.scheduler.Start(ctx)
 
+	// Start service probe scheduler (includes ServiceSentinel)
+	if a.probeScheduler != nil {
+		go a.probeScheduler.Start()
+		logrus.Info("Service probe scheduler started")
+	}
+
 	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	logrus.Info("Shutting down server...")
+
+	// Shutdown gRPC server
+	if a.grpcServer != nil {
+		logrus.Info("Stopping gRPC server...")
+		a.grpcServer.GracefulStop()
+	}
 
 	// Shutdown HTTP server
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -301,6 +388,12 @@ func (a *Application) Run(ctx context.Context) error {
 
 	// Stop scheduler
 	a.scheduler.Stop()
+
+	// Stop service probe scheduler (includes ServiceSentinel)
+	if a.probeScheduler != nil {
+		a.probeScheduler.Stop()
+		logrus.Info("Service probe scheduler stopped")
+	}
 
 	// Stop monitoring
 	a.coordinator.StopMonitoring()

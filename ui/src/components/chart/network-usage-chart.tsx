@@ -39,8 +39,11 @@ const formatBytes = (bytes: number) => {
   if (bytes === 0) return '0'
 
   const k = 1024
-  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s']
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(k)),
+    sizes.length - 1
+  )
 
   const value = bytes / Math.pow(k, i)
   return value >= 10
@@ -68,24 +71,24 @@ const NetworkUsageChart = React.memo((prop: NetworkUsageChartProps) => {
     // Combine NetworkIn and NetworkOut data by timestamp
     const combinedData = new Map()
 
-    // Add NetworkIn data (as negative values to display below X-axis)
+    // Add NetworkIn data (convert -1 to null for offline periods)
     networkIn.forEach((point) => {
       const timestamp = new Date(point.timestamp).getTime()
       combinedData.set(timestamp, {
         timestamp: point.timestamp,
         time: timestamp,
-        networkIn: Math.max(0, point.value), // Convert to negative for below X-axis
+        networkIn: point.value < 0 ? null : point.value,
       })
     })
 
-    // Add NetworkOut data (positive values for above X-axis)
+    // Add NetworkOut data (convert -1 to null for offline periods)
     networkOut.forEach((point) => {
       const timestamp = new Date(point.timestamp).getTime()
       const existing = combinedData.get(timestamp) || {
         timestamp: point.timestamp,
         time: timestamp,
       }
-      existing.networkOut = Math.max(0, point.value) // Positive values for above X-axis
+      existing.networkOut = point.value < 0 ? null : point.value
       combinedData.set(timestamp, existing)
     })
 
@@ -243,6 +246,7 @@ const NetworkUsageChart = React.memo((prop: NetworkUsageChartProps) => {
               stroke="var(--color-networkOut)"
               strokeWidth={2}
               dot={false}
+              connectNulls={false}
             />
             <Area
               isAnimationActive={false}
@@ -252,6 +256,7 @@ const NetworkUsageChart = React.memo((prop: NetworkUsageChartProps) => {
               stroke="var(--color-networkIn)"
               strokeWidth={2}
               dot={false}
+              connectNulls={false}
             />
             <ChartLegend content={<ChartLegendContent />} />
           </AreaChart>

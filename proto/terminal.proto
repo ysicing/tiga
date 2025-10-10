@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/ysicing/tiga/proto;proto";
+
+// Terminal WebSSH终端服务
+service Terminal {
+  // CreateSession 创建终端会话
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+
+  // Terminal 终端IO流(双向流)
+  rpc Terminal(stream TerminalRequest) returns (stream TerminalResponse);
+
+  // CloseSession 关闭终端会话
+  rpc CloseSession(CloseSessionRequest) returns (CloseSessionResponse);
+}
+
+// 创建会话请求
+message CreateSessionRequest {
+  string uuid = 1;                  // 主机UUID
+  string session_id = 2;            // 会话ID
+  int32 cols = 3;                   // 终端列数
+  int32 rows = 4;                   // 终端行数
+  string ssh_user = 5;              // SSH用户名
+  int32 ssh_port = 6;               // SSH端口
+}
+
+// 创建会话响应
+message CreateSessionResponse {
+  bool success = 1;                 // 是否成功
+  string message = 2;               // 消息
+  string session_id = 3;            // 会话ID
+}
+
+// 终端请求(Server → Agent)
+message TerminalRequest {
+  string session_id = 1;            // 会话ID
+
+  oneof payload {
+    TerminalInput input = 2;        // 终端输入
+    ResizeRequest resize = 3;       // 调整大小
+    CloseRequest close = 4;         // 关闭会话
+  }
+}
+
+// 终端响应(Agent → Server)
+message TerminalResponse {
+  string session_id = 1;            // 会话ID
+
+  oneof payload {
+    TerminalOutput output = 2;      // 终端输出
+    ErrorResponse error = 3;        // 错误消息
+  }
+}
+
+// 终端输入
+message TerminalInput {
+  bytes data = 1;                   // 输入数据
+}
+
+// 终端输出
+message TerminalOutput {
+  bytes data = 1;                   // 输出数据
+}
+
+// 调整大小请求
+message ResizeRequest {
+  int32 cols = 1;                   // 新列数
+  int32 rows = 2;                   // 新行数
+}
+
+// 关闭请求
+message CloseRequest {
+  string reason = 1;                // 关闭原因
+}
+
+// 错误响应
+message ErrorResponse {
+  string message = 1;               // 错误消息
+}
+
+// 关闭会话请求
+message CloseSessionRequest {
+  string session_id = 1;            // 会话ID
+}
+
+// 关闭会话响应
+message CloseSessionResponse {
+  bool success = 1;                 // 是否成功
+  string message = 2;               // 消息
+}
