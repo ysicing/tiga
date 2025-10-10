@@ -32,10 +32,10 @@ type ListInstancesRequest struct {
 	PageSize    int      `form:"page_size"`
 }
 
-// ListInstances lists all instances with pagination
-// @Summary List instances
-// @Description Get a paginated list of instances
-// @Tags instances
+// ListInstances lists all database instances with pagination
+// @Summary List database instances
+// @Description Get a paginated list of database instances
+// @Tags dbs
 // @Produce json
 // @Security BearerAuth
 // @Param service_type query string false "Filter by service type"
@@ -47,7 +47,7 @@ type ListInstancesRequest struct {
 // @Param page_size query int false "Page size" default(20)
 // @Success 200 {object} PaginatedResponse
 // @Failure 401 {object} ErrorResponse
-// @Router /api/v1/instances [get]
+// @Router /api/v1/dbs [get]
 func (h *InstanceHandler) ListInstances(c *gin.Context) {
 	var req ListInstancesRequest
 	if !BindQuery(c, &req) {
@@ -85,17 +85,17 @@ type GetInstanceRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
-// GetInstance gets an instance by ID
-// @Summary Get instance
-// @Description Get instance details by ID
-// @Tags instances
+// GetInstance gets a database instance by ID
+// @Summary Get database instance
+// @Description Get database instance details by ID
+// @Tags dbs
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id} [get]
+// @Router /api/v1/dbs/{instance_id} [get]
 func (h *InstanceHandler) GetInstance(c *gin.Context) {
 	var req GetInstanceRequest
 	if !BindURI(c, &req) {
@@ -130,10 +130,10 @@ type CreateInstanceRequest struct {
 	Tags        []string               `json:"tags"`
 }
 
-// CreateInstance creates a new instance
-// @Summary Create instance
-// @Description Create a new service instance
-// @Tags instances
+// CreateInstance creates a new database instance
+// @Summary Create database instance
+// @Description Create a new database service instance
+// @Tags dbs
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -141,7 +141,7 @@ type CreateInstanceRequest struct {
 // @Success 201 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 409 {object} ErrorResponse
-// @Router /api/v1/instances [post]
+// @Router /api/v1/dbs [post]
 func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 	var req CreateInstanceRequest
 	if !BindJSON(c, &req) {
@@ -200,10 +200,10 @@ type UpdateInstanceRequest struct {
 	Tags        []string               `json:"tags,omitempty"`
 }
 
-// UpdateInstance updates an instance
-// @Summary Update instance
-// @Description Update instance details
-// @Tags instances
+// UpdateInstance updates a database instance
+// @Summary Update database instance
+// @Description Update database instance details
+// @Tags dbs
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -212,7 +212,7 @@ type UpdateInstanceRequest struct {
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id} [patch]
+// @Router /api/v1/dbs/{instance_id} [patch]
 func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	var req UpdateInstanceRequest
 	if !BindURI(c, &req) {
@@ -283,17 +283,17 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	RespondSuccess(c, instance)
 }
 
-// DeleteInstance deletes an instance
-// @Summary Delete instance
-// @Description Soft delete an instance
-// @Tags instances
+// DeleteInstance deletes a database instance
+// @Summary Delete database instance
+// @Description Soft delete a database instance
+// @Tags dbs
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
 // @Success 204
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id} [delete]
+// @Router /api/v1/dbs/{instance_id} [delete]
 func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 	var req GetInstanceRequest
 	if !BindURI(c, &req) {
@@ -320,10 +320,10 @@ type UpdateInstanceStatusRequest struct {
 	Status     string `json:"status" binding:"required,oneof=pending running stopped failed"`
 }
 
-// UpdateInstanceStatus updates an instance status
-// @Summary Update instance status
-// @Description Update instance operational status
-// @Tags instances
+// UpdateInstanceStatus updates a database instance status
+// @Summary Update database instance status
+// @Description Update database instance operational status
+// @Tags dbs
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -331,7 +331,7 @@ type UpdateInstanceStatusRequest struct {
 // @Param request body UpdateInstanceStatusRequest true "Status update request"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id}/status [patch]
+// @Router /api/v1/dbs/{instance_id}/status [patch]
 func (h *InstanceHandler) UpdateInstanceStatus(c *gin.Context) {
 	var req UpdateInstanceStatusRequest
 	if !BindURI(c, &req) {
@@ -362,10 +362,10 @@ type UpdateInstanceHealthRequest struct {
 	HealthMessage *string `json:"health_message,omitempty"`
 }
 
-// UpdateInstanceHealth updates an instance health status
-// @Summary Update instance health
-// @Description Update instance health status
-// @Tags instances
+// UpdateInstanceHealth updates a database instance health status
+// @Summary Update database instance health
+// @Description Update database instance health status
+// @Tags dbs
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -373,7 +373,7 @@ type UpdateInstanceHealthRequest struct {
 // @Param request body UpdateInstanceHealthRequest true "Health update request"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id}/health [patch]
+// @Router /api/v1/dbs/{instance_id}/health [patch]
 func (h *InstanceHandler) UpdateInstanceHealth(c *gin.Context) {
 	var req UpdateInstanceHealthRequest
 	if !BindURI(c, &req) {
@@ -397,15 +397,15 @@ func (h *InstanceHandler) UpdateInstanceHealth(c *gin.Context) {
 	RespondSuccessWithMessage(c, nil, "instance health updated")
 }
 
-// GetInstanceStatistics gets instance statistics
-// @Summary Get instance statistics
-// @Description Get overall instance statistics
-// @Tags instances
+// GetInstanceStatistics gets database instance statistics
+// @Summary Get database instance statistics
+// @Description Get overall database instance statistics
+// @Tags dbs
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} SuccessResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /api/v1/instances/statistics [get]
+// @Router /api/v1/dbs/statistics [get]
 func (h *InstanceHandler) GetInstanceStatistics(c *gin.Context) {
 	stats, err := h.instanceRepo.GetStatistics(c.Request.Context())
 	if err != nil {
@@ -422,10 +422,10 @@ type ManageTagsRequest struct {
 	Tags       []string `json:"tags" binding:"required"`
 }
 
-// AddTags adds tags to an instance
+// AddTags adds tags to a database instance
 // @Summary Add tags
-// @Description Add tags to an instance
-// @Tags instances
+// @Description Add tags to a database instance
+// @Tags dbs
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -433,7 +433,7 @@ type ManageTagsRequest struct {
 // @Param request body ManageTagsRequest true "Tags to add"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id}/tags [post]
+// @Router /api/v1/dbs/{instance_id}/tags [post]
 func (h *InstanceHandler) AddTags(c *gin.Context) {
 	var req ManageTagsRequest
 	if !BindURI(c, &req) {
@@ -457,10 +457,10 @@ func (h *InstanceHandler) AddTags(c *gin.Context) {
 	RespondSuccessWithMessage(c, nil, "tags added successfully")
 }
 
-// RemoveTags removes tags from an instance
+// RemoveTags removes tags from a database instance
 // @Summary Remove tags
-// @Description Remove tags from an instance
-// @Tags instances
+// @Description Remove tags from a database instance
+// @Tags dbs
 // @Accept json
 // @Produce json
 // @Security BearerAuth
@@ -468,7 +468,7 @@ func (h *InstanceHandler) AddTags(c *gin.Context) {
 // @Param request body ManageTagsRequest true "Tags to remove"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id}/tags [delete]
+// @Router /api/v1/dbs/{instance_id}/tags [delete]
 func (h *InstanceHandler) RemoveTags(c *gin.Context) {
 	var req ManageTagsRequest
 	if !BindURI(c, &req) {

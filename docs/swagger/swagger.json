@@ -1450,7 +1450,7 @@
                 }
             }
         },
-        "/api/v1/instances": {
+        "/api/v1/dbs": {
             "get": {
                 "security": [
                     {
@@ -1462,7 +1462,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "List instances",
                 "parameters": [
@@ -1540,7 +1540,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Create instance",
                 "parameters": [
@@ -1576,7 +1576,7 @@
                 }
             }
         },
-        "/api/v1/instances/statistics": {
+        "/api/v1/dbs/statistics": {
             "get": {
                 "security": [
                     {
@@ -1588,7 +1588,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance statistics",
                 "responses": {
@@ -1607,7 +1607,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}": {
+        "/api/v1/dbs/{instance_id}": {
             "get": {
                 "security": [
                     {
@@ -1619,7 +1619,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance",
                 "parameters": [
@@ -1663,7 +1663,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Delete instance",
                 "parameters": [
@@ -1707,7 +1707,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Update instance",
                 "parameters": [
@@ -1750,7 +1750,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/health": {
+        "/api/v1/dbs/{instance_id}/health": {
             "get": {
                 "security": [
                     {
@@ -1762,7 +1762,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance health",
                 "parameters": [
@@ -1827,7 +1827,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Update instance health",
                 "parameters": [
@@ -1864,7 +1864,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics": {
+        "/api/v1/dbs/{instance_id}/metrics": {
             "get": {
                 "security": [
                     {
@@ -1876,7 +1876,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance metrics",
                 "parameters": [
@@ -1928,7 +1928,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics/latest": {
+        "/api/v1/dbs/{instance_id}/metrics/latest": {
             "get": {
                 "security": [
                     {
@@ -1968,7 +1968,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics/names": {
+        "/api/v1/dbs/{instance_id}/metrics/names": {
             "get": {
                 "security": [
                     {
@@ -2008,7 +2008,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/status": {
+        "/api/v1/dbs/{instance_id}/status": {
             "patch": {
                 "security": [
                     {
@@ -2023,7 +2023,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Update instance status",
                 "parameters": [
@@ -2060,7 +2060,7 @@
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/tags": {
+        "/api/v1/dbs/{instance_id}/tags": {
             "post": {
                 "security": [
                     {
@@ -2075,7 +2075,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Add tags",
                 "parameters": [
@@ -2125,7 +2125,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Remove tags",
                 "parameters": [
@@ -3697,7 +3697,7 @@
     "tags": [
         {
             "description": "Instance management operations",
-            "name": "instances"
+            "name": "dbs"
         },
         {
             "description": "MinIO object storage operations",

@@ -10,12 +10,15 @@ import { ResourceDetail } from './pages/resource-detail'
 import { ResourceList } from './pages/resource-list'
 import { SettingsPage } from './pages/settings'
 import InstallPage from './pages/install'
+import InstanceFormPage from './pages/host-form'
+import InstanceDetailPage from './pages/host-detail'
+import InstanceMetricsPage from './pages/host-metrics'
 
 // Layouts
 import { DevOpsLayout } from './layouts/devops-layout'
 import { K8sLayout } from './layouts/k8s-layout'
 import { MinIOLayout } from './layouts/minio-layout'
-import { MiddlewareLayout } from './layouts/middleware-layout'
+import { DbsLayout } from './layouts/dbs-layout'
 import { DockerLayout } from './layouts/docker-layout'
 import { VMsLayout } from './layouts/vms-layout'
 import { StorageLayout } from './layouts/storage-layout'
@@ -41,8 +44,8 @@ import RoleFormPage from './pages/role-form'
 import MinIOManagementPage from './pages/minio-management'
 import DatabaseManagementPage from './pages/database-management'
 
-// Middleware Pages
-import { MiddlewareOverview } from './pages/middleware-overview'
+// Database Pages
+import { DbsOverview } from './pages/dbs-overview'
 
 // Docker Pages
 import { DockerOverview } from './pages/docker-overview'
@@ -204,13 +207,13 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // Middleware 子系统 - 中间件管理（MySQL, PostgreSQL, Redis）
+  // 数据库 子系统 - 数据库管理（MySQL, PostgreSQL, Redis）
   {
-    path: '/middleware',
+    path: '/dbs',
     element: (
       <InstallGuard>
         <ProtectedRoute>
-          <MiddlewareLayout />
+          <DbsLayout />
         </ProtectedRoute>
       </InstallGuard>
     ),
@@ -221,15 +224,31 @@ export const router = createBrowserRouter([
       },
       {
         path: 'mysql',
-        element: <MiddlewareOverview type="mysql" />,
+        element: <DbsOverview type="mysql" />,
       },
       {
         path: 'postgresql',
-        element: <MiddlewareOverview type="postgresql" />,
+        element: <DbsOverview type="postgresql" />,
       },
       {
         path: 'redis',
-        element: <MiddlewareOverview type="redis" />,
+        element: <DbsOverview type="redis" />,
+      },
+      {
+        path: 'new',
+        element: <InstanceFormPage />,
+      },
+      {
+        path: ':id/edit',
+        element: <InstanceFormPage />,
+      },
+      {
+        path: ':id',
+        element: <InstanceDetailPage />,
+      },
+      {
+        path: ':id/metrics',
+        element: <InstanceMetricsPage />,
       },
     ],
   },

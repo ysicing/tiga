@@ -715,8 +715,8 @@
     "devops.description": "Development and operations management, including hosts, users, alerts",
     "hosts": "Host Management",
     "hosts.description": "Manage physical and virtual servers",
-    "middleware": "Middleware",
-    "middleware.description": "Database and storage middleware management",
+    "dbs": "Databases",
+    "dbs.description": "Database service management",
     "minio": "Object Storage",
     "minio.description": "MinIO object storage service management",
     "kubernetes": "Kubernetes",
@@ -728,18 +728,20 @@
     "monitoring": "Monitoring",
     "monitoring.description": "System monitoring and alert management"
   },
-  "middleware": {
-    "title": "Middleware Management",
-    "overview": "Middleware Overview",
+  "dbs": {
+    "title": "Database Management",
+    "overview": "Database Overview",
     "mysql": "MySQL",
     "postgresql": "PostgreSQL",
     "redis": "Redis",
     "minio": "MinIO",
     "docker": "Docker",
+    "instances": "instances",
     "createInstance": "Create Instance",
     "noInstances": "No instances",
     "allInstances": "All Instances",
-    "noInstancesFound": "No middleware instances found",
+    "noInstancesOfType": "No {{type}} instances found",
+    "noInstancesFound": "No database instances found",
     "createFirstInstance": "Create First Instance"
   },
   "docker": {

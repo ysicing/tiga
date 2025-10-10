@@ -86,14 +86,15 @@ function OverviewDashboardContent() {
         navigate('/k8s')
         break
       case 'minio':
+      case 'docker':
+      case 'caddy':
+        navigate(`/devops/instances?type=${lowerType}`)
+        break
       case 'mysql':
       case 'postgresql':
       case 'postgres':
       case 'redis':
-      case 'docker':
-      case 'caddy':
-        // Navigate to DevOps instances page filtered by type
-        navigate(`/devops/instances?type=${lowerType}`)
+        navigate(`/dbs/${lowerType === 'postgres' ? 'postgresql' : lowerType}`)
         break
       default:
         // Default: navigate to DevOps instances with type filter

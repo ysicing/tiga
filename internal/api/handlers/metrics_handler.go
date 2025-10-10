@@ -290,7 +290,7 @@ type GetLatestMetricRequest struct {
 	MetricName string `form:"metric_name" binding:"required"`
 }
 
-// GetLatestMetric gets the latest metric for an instance and metric name
+// GetLatestMetric gets the latest metric for a database instance and metric name
 // @Summary Get latest metric
 // @Description Get the most recent metric value
 // @Tags metrics
@@ -328,16 +328,16 @@ type GetLatestMetricsRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
-// GetLatestMetrics gets all latest metrics for an instance
+// GetLatestMetrics gets all latest metrics for a database instance
 // @Summary Get all latest metrics
-// @Description Get the most recent value for all metrics of an instance
+// @Description Get the most recent value for all metrics of a database instance
 // @Tags metrics
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id}/metrics/latest [get]
+// @Router /api/v1/dbs/{instance_id}/metrics/latest [get]
 func (h *MetricsHandler) GetLatestMetrics(c *gin.Context) {
 	var req GetLatestMetricsRequest
 	if !BindURI(c, &req) {
@@ -420,16 +420,16 @@ type GetMetricNamesRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
-// GetMetricNames gets all distinct metric names for an instance
+// GetMetricNames gets all distinct metric names for a database instance
 // @Summary Get metric names
-// @Description Get all available metric names for an instance
+// @Description Get all available metric names for a database instance
 // @Tags metrics
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
 // @Success 200 {object} SuccessResponse
 // @Failure 400 {object} ErrorResponse
-// @Router /api/v1/instances/{instance_id}/metrics/names [get]
+// @Router /api/v1/dbs/{instance_id}/metrics/names [get]
 func (h *MetricsHandler) GetMetricNames(c *gin.Context) {
 	var req GetMetricNamesRequest
 	if !BindURI(c, &req) {

@@ -254,20 +254,24 @@ func SetupRoutes(
 				resources.RegisterRoutes(clusterGroup)
 			}
 
-			// ==================== Instance Management Subsystem ====================
-			instancesGroup := protected.Group("/instances")
-			{
-				// Instance CRUD
-				instancesGroup.GET("", instanceHandler.ListInstances)
-				instancesGroup.POST("", instanceHandler.CreateInstance)
-				instancesGroup.GET("/:instance_id", instanceHandler.GetInstance)
-				instancesGroup.PUT("/:instance_id", instanceHandler.UpdateInstance)
-				instancesGroup.DELETE("/:instance_id", instanceHandler.DeleteInstance)
+			// ==================== Database Instance Management Subsystem ====================
+			registerDatabaseRoutes := func(group *gin.RouterGroup) {
+				// Database instance CRUD
+				group.GET("", instanceHandler.ListInstances)
+				group.POST("", instanceHandler.CreateInstance)
+				group.GET("/:instance_id", instanceHandler.GetInstance)
+				group.PUT("/:instance_id", instanceHandler.UpdateInstance)
+				group.DELETE("/:instance_id", instanceHandler.DeleteInstance)
 
 				// Instance health and metrics
-				instancesGroup.GET("/:instance_id/health", healthHandler.GetInstanceHealth)
-				instancesGroup.GET("/:instance_id/metrics", metricsHandler.GetInstanceMetrics)
+				group.GET("/:instance_id/health", healthHandler.GetInstanceHealth)
+				group.GET("/:instance_id/metrics", metricsHandler.GetInstanceMetrics)
 			}
+
+			// Primary database routes
+			registerDatabaseRoutes(protected.Group("/dbs"))
+			// Legacy routes for backward compatibility
+			registerDatabaseRoutes(protected.Group("/instances"))
 
 			// ==================== MinIO Subsystem ====================
 			minioGroup := protected.Group("/minio/instances/:id")

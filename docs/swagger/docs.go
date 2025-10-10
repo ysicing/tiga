@@ -1456,7 +1456,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances": {
+        "/api/v1/dbs": {
             "get": {
                 "security": [
                     {
@@ -1468,7 +1468,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "List instances",
                 "parameters": [
@@ -1546,7 +1546,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Create instance",
                 "parameters": [
@@ -1582,7 +1582,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/statistics": {
+        "/api/v1/dbs/statistics": {
             "get": {
                 "security": [
                     {
@@ -1594,7 +1594,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance statistics",
                 "responses": {
@@ -1613,7 +1613,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}": {
+        "/api/v1/dbs/{instance_id}": {
             "get": {
                 "security": [
                     {
@@ -1625,7 +1625,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance",
                 "parameters": [
@@ -1669,7 +1669,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Delete instance",
                 "parameters": [
@@ -1713,7 +1713,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Update instance",
                 "parameters": [
@@ -1756,7 +1756,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/health": {
+        "/api/v1/dbs/{instance_id}/health": {
             "get": {
                 "security": [
                     {
@@ -1768,7 +1768,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance health",
                 "parameters": [
@@ -1833,7 +1833,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Update instance health",
                 "parameters": [
@@ -1870,7 +1870,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics": {
+        "/api/v1/dbs/{instance_id}/metrics": {
             "get": {
                 "security": [
                     {
@@ -1882,7 +1882,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Get instance metrics",
                 "parameters": [
@@ -1934,7 +1934,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics/latest": {
+        "/api/v1/dbs/{instance_id}/metrics/latest": {
             "get": {
                 "security": [
                     {
@@ -1974,7 +1974,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics/names": {
+        "/api/v1/dbs/{instance_id}/metrics/names": {
             "get": {
                 "security": [
                     {
@@ -2014,7 +2014,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/status": {
+        "/api/v1/dbs/{instance_id}/status": {
             "patch": {
                 "security": [
                     {
@@ -2029,7 +2029,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Update instance status",
                 "parameters": [
@@ -2066,7 +2066,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/tags": {
+        "/api/v1/dbs/{instance_id}/tags": {
             "post": {
                 "security": [
                     {
@@ -2081,7 +2081,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Add tags",
                 "parameters": [
@@ -2131,7 +2131,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Remove tags",
                 "parameters": [
@@ -3703,7 +3703,7 @@ const docTemplate = `{
     "tags": [
         {
             "description": "Instance management operations",
-            "name": "instances"
+            "name": "dbs"
         },
         {
             "description": "MinIO object storage operations",

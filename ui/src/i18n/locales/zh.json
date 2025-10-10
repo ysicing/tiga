@@ -620,8 +620,8 @@
     "devops.description": "开发运维管理，包含主机、用户、告警等",
     "hosts": "主机管理",
     "hosts.description": "管理物理和虚拟服务器",
-    "middleware": "中间件",
-    "middleware.description": "数据库和存储中间件管理",
+    "dbs": "数据库",
+    "dbs.description": "数据库服务管理",
     "minio": "对象存储",
     "minio.description": "MinIO 对象存储服务管理",
     "kubernetes": "Kubernetes",
@@ -633,18 +633,20 @@
     "monitoring": "监控",
     "monitoring.description": "系统监控和告警管理"
   },
-  "middleware": {
-    "title": "中间件管理",
-    "overview": "中间件概览",
+  "dbs": {
+    "title": "数据库管理",
+    "overview": "数据库概览",
     "mysql": "MySQL",
     "postgresql": "PostgreSQL",
     "redis": "Redis",
     "minio": "MinIO",
     "docker": "Docker",
+    "instances": "个实例",
     "createInstance": "创建实例",
     "noInstances": "暂无实例",
     "allInstances": "所有实例",
-    "noInstancesFound": "暂无中间件实例",
+    "noInstancesOfType": "暂无 {{type}} 实例",
+    "noInstancesFound": "暂无数据库实例",
     "createFirstInstance": "创建第一个实例"
   },
   "docker": {

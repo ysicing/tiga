@@ -1320,7 +1320,7 @@ paths:
       summary: Invalidate session
       tags:
       - auth
-  /api/v1/instances:
+  /api/v1/dbs:
     get:
       description: Get a paginated list of instances
       parameters:
@@ -1369,7 +1369,7 @@ paths:
       - BearerAuth: []
       summary: List instances
       tags:
-      - instances
+      - dbs
     post:
       consumes:
       - application/json
@@ -1400,8 +1400,8 @@ paths:
       - BearerAuth: []
       summary: Create instance
       tags:
-      - instances
-  /api/v1/instances/{instance_id}:
+      - dbs
+  /api/v1/dbs/{instance_id}:
     delete:
       description: Soft delete an instance
       parameters:
@@ -1427,7 +1427,7 @@ paths:
       - BearerAuth: []
       summary: Delete instance
       tags:
-      - instances
+      - dbs
     get:
       description: Get instance details by ID
       parameters:
@@ -1455,7 +1455,7 @@ paths:
       - BearerAuth: []
       summary: Get instance
       tags:
-      - instances
+      - dbs
     patch:
       consumes:
       - application/json
@@ -1491,8 +1491,8 @@ paths:
       - BearerAuth: []
       summary: Update instance
       tags:
-      - instances
-  /api/v1/instances/{instance_id}/health:
+      - dbs
+  /api/v1/dbs/{instance_id}/health:
     get:
       description: Get health status for a specific instance
       parameters:
@@ -1529,7 +1529,7 @@ paths:
       - BearerAuth: []
       summary: Get instance health
       tags:
-      - instances
+      - dbs
     patch:
       consumes:
       - application/json
@@ -1561,8 +1561,8 @@ paths:
       - BearerAuth: []
       summary: Update instance health
       tags:
-      - instances
-  /api/v1/instances/{instance_id}/metrics:
+      - dbs
+  /api/v1/dbs/{instance_id}/metrics:
     get:
       description: Get metrics for a specific instance
       parameters:
@@ -1599,8 +1599,8 @@ paths:
       - BearerAuth: []
       summary: Get instance metrics
       tags:
-      - instances
-  /api/v1/instances/{instance_id}/metrics/latest:
+      - dbs
+  /api/v1/dbs/{instance_id}/metrics/latest:
     get:
       description: Get the most recent value for all metrics of an instance
       parameters:
@@ -1625,7 +1625,7 @@ paths:
       summary: Get all latest metrics
       tags:
       - metrics
-  /api/v1/instances/{instance_id}/metrics/names:
+  /api/v1/dbs/{instance_id}/metrics/names:
     get:
       description: Get all available metric names for an instance
       parameters:
@@ -1650,7 +1650,7 @@ paths:
       summary: Get metric names
       tags:
       - metrics
-  /api/v1/instances/{instance_id}/status:
+  /api/v1/dbs/{instance_id}/status:
     patch:
       consumes:
       - application/json
@@ -1682,8 +1682,8 @@ paths:
       - BearerAuth: []
       summary: Update instance status
       tags:
-      - instances
-  /api/v1/instances/{instance_id}/tags:
+      - dbs
+  /api/v1/dbs/{instance_id}/tags:
     delete:
       consumes:
       - application/json
@@ -1715,7 +1715,7 @@ paths:
       - BearerAuth: []
       summary: Remove tags
       tags:
-      - instances
+      - dbs
     post:
       consumes:
       - application/json
@@ -1747,8 +1747,8 @@ paths:
       - BearerAuth: []
       summary: Add tags
       tags:
-      - instances
-  /api/v1/instances/statistics:
+      - dbs
+  /api/v1/dbs/statistics:
     get:
       description: Get overall instance statistics
       produces:
@@ -1766,7 +1766,7 @@ paths:
       - BearerAuth: []
       summary: Get instance statistics
       tags:
-      - instances
+      - dbs
   /api/v1/metrics:
     get:
       description: Query metrics with time range and filters
@@ -2394,7 +2394,7 @@ securityDefinitions:
 swagger: "2.0"
 tags:
 - description: Instance management operations
-  name: instances
+  name: dbs
 - description: MinIO object storage operations
   name: minio
 - description: Alert rules and events management

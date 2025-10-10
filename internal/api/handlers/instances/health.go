@@ -24,10 +24,10 @@ type GetInstanceHealthRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
-// GetInstanceHealth retrieves health status for an instance
-// @Summary Get instance health
-// @Description Get health status for a specific instance
-// @Tags instances
+// GetInstanceHealth retrieves health status for a database instance
+// @Summary Get database instance health
+// @Description Get health status for a specific database instance
+// @Tags dbs
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
@@ -35,7 +35,7 @@ type GetInstanceHealthRequest struct {
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/instances/{instance_id}/health [get]
+// @Router /api/v1/dbs/{instance_id}/health [get]
 func (h *HealthHandler) GetInstanceHealth(c *gin.Context) {
 	var req GetInstanceHealthRequest
 	if !handlers.BindURI(c, &req) {

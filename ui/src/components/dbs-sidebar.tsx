@@ -21,23 +21,23 @@ import Logo from '@/assets/logo.png'
 
 const menuItems = [
   {
-    title: 'middleware.mysql',
+    title: 'dbs.mysql',
     icon: IconDatabase,
-    path: '/middleware/mysql',
+    path: '/dbs/mysql',
   },
   {
-    title: 'middleware.postgresql',
+    title: 'dbs.postgresql',
     icon: IconDatabase,
-    path: '/middleware/postgresql',
+    path: '/dbs/postgresql',
   },
   {
-    title: 'middleware.redis',
+    title: 'dbs.redis',
     icon: IconServer2,
-    path: '/middleware/redis',
+    path: '/dbs/redis',
   },
 ]
 
-export function MiddlewareSidebar() {
+export function DbsSidebar() {
   const { t } = useTranslation()
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
@@ -82,9 +82,9 @@ export function MiddlewareSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* 中间件菜单 */}
+        {/* 数据库菜单 */}
         <SidebarGroup>
-          <SidebarGroupLabel>{t('middleware.title', '中间件管理')}</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('dbs.title', '数据库管理')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
