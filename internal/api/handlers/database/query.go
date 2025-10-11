@@ -1,147 +1,123 @@
 package database
 
 import (
-	"fmt"
+	"context"
+	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	"github.com/ysicing/tiga/internal/repository"
-	"github.com/ysicing/tiga/internal/services/managers"
+	"github.com/ysicing/tiga/internal/api/middleware"
+	dbservices "github.com/ysicing/tiga/internal/services/database"
 )
 
-// QueryHandler handles database query operations
+// QueryHandler executes SQL/Redis queries.
 type QueryHandler struct {
-	instanceRepo repository.InstanceRepository
+	executor *dbservices.QueryExecutor
+	audit    *dbservices.AuditLogger
 }
 
-// NewQueryHandler creates a new query handler
-func NewQueryHandler(instanceRepo repository.InstanceRepository) *QueryHandler {
+// NewQueryHandler constructs a QueryHandler.
+func NewQueryHandler(executor *dbservices.QueryExecutor, audit *dbservices.AuditLogger) *QueryHandler {
 	return &QueryHandler{
-		instanceRepo: instanceRepo,
+		executor: executor,
+		audit:    audit,
 	}
+}
+
+type executeQueryRequest struct {
+	Query    string `json:"query" binding:"required"`
+	Database string `json:"database"`
+	Limit    int    `json:"limit"`
 }
 
 // ExecuteQuery handles POST /api/v1/database/instances/{id}/query
 func (h *QueryHandler) ExecuteQuery(c *gin.Context) {
-	instanceIDStr := c.Param("id")
-
-	// Parse UUID
-	instanceID, err := handlers.ParseUUID(instanceIDStr)
+	instanceID, err := handlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		handlers.RespondBadRequest(c, err)
 		return
 	}
 
-	var request struct {
-		Query    string `json:"query" binding:"required"`
-		Database string `json:"database"`
-		Limit    int    `json:"limit"`
-	}
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		handlers.RespondBadRequest(c, err)
+	var req executeQueryRequest
+	if !handlers.BindJSON(c, &req) {
 		return
 	}
 
-	// Set default limit to prevent large result sets
-	if request.Limit <= 0 || request.Limit > 1000 {
-		request.Limit = 100
-	}
-
-	// Get instance
-	instance, err := h.instanceRepo.GetByID(c.Request.Context(), instanceID)
+	userID, err := middleware.GetUserID(c)
 	if err != nil {
-		handlers.RespondNotFound(c, err)
+		handlers.RespondUnauthorized(c, err)
 		return
 	}
 
-	// Check if instance is database type
-	if instance.Type != "mysql" && instance.Type != "postgresql" {
-		handlers.RespondBadRequest(c, fmt.Errorf("instance is not database type"))
+	result, execErr := h.executor.ExecuteQuery(c.Request.Context(), dbservices.QueryExecutionRequest{
+		InstanceID:   instanceID,
+		ExecutedBy:   userID.String(),
+		DatabaseName: req.Database,
+		Query:        req.Query,
+		Limit:        req.Limit,
+		ClientIP:     c.ClientIP(),
+	})
+
+	entry := dbservices.AuditEntry{
+		InstanceID: &instanceID,
+		Action:     "query.execute",
+		TargetType: "query",
+		TargetName: instanceID.String(),
+		Details: map[string]interface{}{
+			"database": req.Database,
+		},
+		Success: execErr == nil,
+		Error:   execErr,
+	}
+	entry.Operator = userID.String()
+
+	if execErr != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(execErr, dbservices.ErrSQLDangerousOperation) ||
+			errors.Is(execErr, dbservices.ErrSQLDangerousFunction) ||
+			errors.Is(execErr, dbservices.ErrSQLMissingWhere) ||
+			errors.Is(execErr, dbservices.ErrRedisDangerousCommand) {
+			status = http.StatusBadRequest
+			entry.Action = "query.blocked"
+		} else if errors.Is(execErr, context.DeadlineExceeded) {
+			status = http.StatusGatewayTimeout
+		} else if strings.Contains(execErr.Error(), "row limit exceeded") {
+			status = http.StatusBadRequest
+			entry.Action = "query.row_limit_exceeded"
+		}
+
+		h.logAudit(c, entry)
+		handlers.RespondError(c, status, execErr)
 		return
 	}
 
-	// Validate query for safety
-	if err := h.validateQuery(request.Query); err != nil {
-		handlers.RespondBadRequest(c, err)
-		return
-	}
+	h.logAudit(c, entry)
 
-	// Execute query based on type
-	var result *managers.QueryResult
-	var queryErr error
-
-	switch instance.Type {
-	case "mysql":
-		manager := managers.NewMySQLManager()
-		if err := manager.Initialize(c.Request.Context(), instance); err != nil {
-			handlers.RespondInternalError(c, err)
-			return
-		}
-		if err := manager.Connect(c.Request.Context()); err != nil {
-			handlers.RespondInternalError(c, err)
-			return
-		}
-		defer manager.Disconnect(c.Request.Context())
-
-		result, queryErr = manager.ExecuteQuery(c.Request.Context(), request.Database, request.Query, request.Limit)
-
-	case "postgresql":
-		manager := managers.NewPostgreSQLManager()
-		if err := manager.Initialize(c.Request.Context(), instance); err != nil {
-			handlers.RespondInternalError(c, err)
-			return
-		}
-		if err := manager.Connect(c.Request.Context()); err != nil {
-			handlers.RespondInternalError(c, err)
-			return
-		}
-		defer manager.Disconnect(c.Request.Context())
-
-		result, queryErr = manager.ExecuteQuery(c.Request.Context(), request.Database, request.Query, request.Limit)
-	}
-
-	if queryErr != nil {
-		handlers.RespondInternalError(c, queryErr)
-		return
-	}
-
-	handlers.RespondSuccess(c, gin.H{
+	payload := gin.H{
 		"columns":        result.Columns,
 		"rows":           result.Rows,
 		"affected_rows":  result.AffectedRows,
 		"row_count":      result.RowCount,
-		"execution_time": result.ExecutionTime,
-	})
+		"execution_time": result.ExecutionTime.Milliseconds(),
+		"truncated":      result.Truncated,
+	}
+	if result.Message != "" {
+		payload["message"] = result.Message
+	}
+
+	handlers.RespondSuccess(c, payload)
 }
 
-// validateQuery performs basic query validation to prevent dangerous operations
-func (h *QueryHandler) validateQuery(query string) error {
-	query = strings.TrimSpace(strings.ToUpper(query))
-
-	// Block dangerous keywords
-	dangerousKeywords := []string{
-		"DROP DATABASE",
-		"DROP SCHEMA",
-		"TRUNCATE",
-		"DELETE FROM mysql.",
-		"DELETE FROM pg_",
-		"UPDATE mysql.",
-		"UPDATE pg_",
-		"GRANT",
-		"REVOKE",
-		"CREATE USER",
-		"ALTER USER",
-		"DROP USER",
+func (h *QueryHandler) logAudit(c *gin.Context, entry dbservices.AuditEntry) {
+	if h.audit == nil {
+		return
 	}
-
-	for _, keyword := range dangerousKeywords {
-		if strings.Contains(query, keyword) {
-			return fmt.Errorf("query contains dangerous keyword: %s", keyword)
-		}
+	entry.ClientIP = c.ClientIP()
+	if err := h.audit.LogAction(c.Request.Context(), entry); err != nil {
+		logrus.WithError(err).Warn("failed to write database audit log")
 	}
-
-	return nil
 }

@@ -1,0 +1,765 @@
+openapi: 3.0.3
+info:
+  title: Tiga Database Management API
+  description: 数据库管理系统API契约 - 支持MySQL/PostgreSQL/Redis
+  version: 1.0.0
+  contact:
+    name: Tiga Team
+servers:
+  - url: http://localhost:12306/api/v1
+    description: 本地开发环境
+
+tags:
+  - name: instances
+    description: 数据库实例管理
+  - name: databases
+    description: 数据库操作
+  - name: users
+    description: 数据库用户管理
+  - name: permissions
+    description: 权限管理
+  - name: query
+    description: 查询执行
+  - name: audit
+    description: 审计日志
+
+paths:
+  # ===== 实例管理 =====
+  /database/instances:
+    get:
+      tags: [instances]
+      summary: 列出所有数据库实例
+      operationId: listInstances
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatabaseInstance'
+    post:
+      tags: [instances]
+      summary: 创建数据库实例
+      operationId: createInstance
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInstanceRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /database/instances/{id}:
+    get:
+      tags: [instances]
+      summary: 获取实例详情
+      operationId: getInstance
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/DatabaseInstance'
+    delete:
+      tags: [instances]
+      summary: 删除实例
+      operationId: deleteInstance
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+
+  /database/instances/{id}/test:
+    post:
+      tags: [instances]
+      summary: 测试实例连接
+      operationId: testInstanceConnection
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 测试成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: [online, offline, error]
+                      message:
+                        type: string
+                      version:
+                        type: string
+                      uptime:
+                        type: integer
+
+  # ===== 数据库操作 =====
+  /database/instances/{id}/databases:
+    get:
+      tags: [databases]
+      summary: 列出实例下的所有数据库
+      operationId: listDatabases
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Database'
+    post:
+      tags: [databases]
+      summary: 创建数据库
+      operationId: createDatabase
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDatabaseRequest'
+      responses:
+        '201':
+          description: 创建成功
+
+  /database/databases/{id}:
+    delete:
+      tags: [databases]
+      summary: 删除数据库(需要二次确认)
+      operationId: deleteDatabase
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                confirm_name:
+                  type: string
+                  description: 必须输入数据库名称确认
+              required:
+                - confirm_name
+      responses:
+        '200':
+          description: 删除成功
+
+  # ===== 用户管理 =====
+  /database/instances/{id}/users:
+    get:
+      tags: [users]
+      summary: 列出实例下的所有用户
+      operationId: listUsers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatabaseUser'
+    post:
+      tags: [users]
+      summary: 创建数据库用户
+      operationId: createUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: 创建成功
+
+  /database/users/{id}:
+    patch:
+      tags: [users]
+      summary: 修改用户密码
+      operationId: updateUserPassword
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                new_password:
+                  type: string
+                  minLength: 8
+              required:
+                - new_password
+      responses:
+        '200':
+          description: 修改成功
+    delete:
+      tags: [users]
+      summary: 删除用户
+      operationId: deleteUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+
+  # ===== 权限管理 =====
+  /database/permissions:
+    post:
+      tags: [permissions]
+      summary: 授予权限
+      operationId: grantPermission
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantPermissionRequest'
+      responses:
+        '201':
+          description: 授权成功
+
+  /database/permissions/{id}:
+    delete:
+      tags: [permissions]
+      summary: 撤销权限
+      operationId: revokePermission
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 撤销成功
+
+  /database/users/{id}/permissions:
+    get:
+      tags: [permissions]
+      summary: 查询用户的所有权限
+      operationId: getUserPermissions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PermissionPolicy'
+
+  # ===== 查询执行 =====
+  /database/instances/{id}/query:
+    post:
+      tags: [query]
+      summary: 执行SQL查询或Redis命令
+      operationId: executeQuery
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteQueryRequest'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResult'
+        '400':
+          description: 查询被拦截
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "DDL operations are forbidden"
+
+  # ===== 审计日志 =====
+  /database/audit-logs:
+    get:
+      tags: [audit]
+      summary: 查询审计日志
+      operationId: listAuditLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: instance_id
+          in: query
+          schema:
+            type: integer
+        - name: operator
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      logs:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DatabaseAuditLog'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    DatabaseInstance:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [mysql, postgresql, redis]
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        ssl_mode:
+          type: string
+          enum: [disable, require, verify-ca]
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, online, offline, error]
+        version:
+          type: string
+        uptime:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateInstanceRequest:
+      type: object
+      required:
+        - name
+        - type
+        - host
+        - port
+        - username
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        type:
+          type: string
+          enum: [mysql, postgresql, redis]
+        host:
+          type: string
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        username:
+          type: string
+        password:
+          type: string
+          minLength: 1
+        ssl_mode:
+          type: string
+          enum: [disable, require, verify-ca]
+          default: disable
+        description:
+          type: string
+          maxLength: 500
+
+    Database:
+      type: object
+      properties:
+        id:
+          type: integer
+        instance_id:
+          type: integer
+        name:
+          type: string
+        charset:
+          type: string
+        collation:
+          type: string
+        owner:
+          type: string
+        size:
+          type: integer
+        table_count:
+          type: integer
+        db_number:
+          type: integer
+        key_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    CreateDatabaseRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        charset:
+          type: string
+          default: utf8mb4
+        collation:
+          type: string
+
+    DatabaseUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        instance_id:
+          type: integer
+        username:
+          type: string
+        host:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+          pattern: '^(?=.*[A-Za-z])(?=.*\d).+$'
+        host:
+          type: string
+          default: "%"
+        description:
+          type: string
+          maxLength: 500
+
+    PermissionPolicy:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        database_id:
+          type: integer
+        role:
+          type: string
+          enum: [readonly, readwrite]
+        granted_by:
+          type: string
+        granted_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    GrantPermissionRequest:
+      type: object
+      required:
+        - user_id
+        - database_id
+        - role
+      properties:
+        user_id:
+          type: integer
+        database_id:
+          type: integer
+        role:
+          type: string
+          enum: [readonly, readwrite]
+
+    ExecuteQueryRequest:
+      type: object
+      required:
+        - query
+      properties:
+        database_name:
+          type: string
+          description: 目标数据库名称(Redis可选)
+        query:
+          type: string
+          minLength: 1
+          maxLength: 102400
+          description: SQL或Redis命令
+
+    QueryResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            columns:
+              type: array
+              items:
+                type: string
+            rows:
+              type: array
+              items:
+                type: object
+            row_count:
+              type: integer
+            affected_rows:
+              type: integer
+            duration:
+              type: integer
+              description: 执行时长(毫秒)
+            truncated:
+              type: boolean
+            message:
+              type: string
+
+    DatabaseAuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        instance_id:
+          type: integer
+          nullable: true
+        operator:
+          type: string
+        action:
+          type: string
+        target_type:
+          type: string
+        target_name:
+          type: string
+        details:
+          type: string
+        success:
+          type: boolean
+        error_msg:
+          type: string
+        client_ip:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object

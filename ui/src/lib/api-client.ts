@@ -450,6 +450,8 @@ export const devopsAPI = {
         apiClient.get(`/vms/hosts/${id}/state/history`, params),
       getActivities: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/hosts/${id}/activities`, params),
+      regenerateSecretKey: (id: string) => apiClient.post(`/vms/hosts/${id}/regenerate-key`),
+      getAgentInstallCommand: (id: string) => apiClient.get(`/vms/hosts/${id}/agent-command`),
     },
 
     // Service monitors

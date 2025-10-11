@@ -3,18 +3,21 @@ package app
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api"
 	"github.com/ysicing/tiga/internal/api/middleware"
@@ -31,6 +34,7 @@ import (
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/common"
+	"github.com/ysicing/tiga/pkg/crypto"
 	"github.com/ysicing/tiga/proto"
 
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
@@ -109,14 +113,30 @@ func (a *Application) Initialize(ctx context.Context) error {
 	models.DB = a.db.DB
 	models.InitRepositories(a.db.DB)
 
-	// Set encryption key from config for legacy code that uses common.GetEncryptKey()
-	if a.config.Security.EncryptionKey != "" {
-		// 验证加密密钥与数据库中存储的是否一致
-		if err := a.validateEncryptionKey(); err != nil {
-			return fmt.Errorf("encryption key validation failed: %w", err)
-		}
-		common.SetEncryptKey(a.config.Security.EncryptionKey)
+	// Ensure and initialize encryption keys
+	appEncryptionKey, err := a.ensureApplicationEncryptionKey(ctx)
+	if err != nil {
+		return err
 	}
+
+	credentialKey, err := a.ensureDatabaseCredentialKey(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Initialize default encryption service for database credential storage
+	if err := crypto.InitDefaultServiceFromBase64(credentialKey); err != nil {
+		if len(credentialKey) == 32 {
+			if errInit := crypto.InitDefaultService([]byte(credentialKey)); errInit != nil {
+				return fmt.Errorf("failed to initialize database credential encryption: %w", errInit)
+			}
+			logrus.Warn("DB credential key is not base64 encoded; falling back to raw 32-byte key")
+		} else {
+			return fmt.Errorf("failed to initialize database credential encryption: %w", err)
+		}
+	}
+
+	common.SetEncryptKey(appEncryptionKey)
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(a.db.DB)
@@ -222,14 +242,25 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	// Setup HTTP router
 	routerConfig := &middleware.RouterConfig{
-		DebugMode:       a.config.Server.Debug, // Set debug mode based on config
-		EnableSwagger: true, // Enable Swagger UI
+		DebugMode:     a.config.Server.Debug, // Set debug mode based on config
+		EnableSwagger: true,                  // Enable Swagger UI
 	}
 
 	router := middleware.NewRouter(routerConfig)
 
 	// Register all API handlers - pass host services and probe scheduler to avoid duplicate instances
-	api.SetupRoutes(router, a.db.DB, a.configPath, jwtManager, jwtSecret, a.hostService, a.stateCollector, a.terminalManager, a.probeScheduler)
+	api.SetupRoutes(
+		router,
+		a.db.DB,
+		a.configPath,
+		jwtManager,
+		jwtSecret,
+		a.config.DatabaseManagement,
+		a.hostService,
+		a.stateCollector,
+		a.terminalManager,
+		a.probeScheduler,
+	)
 
 	// Serve static files from embedded filesystem
 	a.setupStaticFiles(router)
@@ -265,7 +296,7 @@ func (a *Application) initializeInstallMode(_ context.Context) error {
 
 	// Setup HTTP router in installation mode
 	routerConfig := &middleware.RouterConfig{
-		DebugMode:       a.config.Server.Debug,
+		DebugMode:     a.config.Server.Debug,
 		EnableSwagger: false, // Disable Swagger in installation mode
 	}
 
@@ -410,29 +441,149 @@ func (a *Application) Run(ctx context.Context) error {
 	return nil
 }
 
-// validateEncryptionKey 验证配置文件中的加密密钥与数据库中存储的是否一致
-func (a *Application) validateEncryptionKey() error {
-	// 从数据库读取加密密钥
-	var systemConfig struct {
+func (a *Application) ensureApplicationEncryptionKey(ctx context.Context) (string, error) {
+	key := strings.TrimSpace(a.config.Security.EncryptionKey)
+	if key != "" {
+		if err := a.persistSystemKey(ctx, "encryption_key", key, true); err != nil {
+			return "", err
+		}
+		return key, nil
+	}
+
+	dbKey, err := a.getSystemConfigString(ctx, "encryption_key")
+	if err != nil {
+		return "", fmt.Errorf("failed to load encryption key: %w", err)
+	}
+	if dbKey != "" {
+		a.config.Security.EncryptionKey = dbKey
+		return dbKey, nil
+	}
+
+	legacyKey, err := a.getLegacyEncryptionKey(ctx)
+	if err != nil {
+		return "", err
+	}
+	if legacyKey != "" {
+		a.config.Security.EncryptionKey = legacyKey
+		if err := a.persistSystemKey(ctx, "encryption_key", legacyKey, true); err != nil {
+			logrus.Warnf("failed to sync legacy encryption key: %v", err)
+		}
+		return legacyKey, nil
+	}
+
+	generated, err := crypto.GenerateKeyBase64()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate encryption key: %w", err)
+	}
+
+	if err := a.persistSystemKey(ctx, "encryption_key", generated, true); err != nil {
+		return "", fmt.Errorf("failed to persist encryption key: %w", err)
+	}
+
+	a.config.Security.EncryptionKey = generated
+	logrus.Info("Generated new security encryption key")
+	return generated, nil
+}
+
+func (a *Application) ensureDatabaseCredentialKey(ctx context.Context) (string, error) {
+	key := strings.TrimSpace(a.config.DatabaseManagement.CredentialKey)
+	if key != "" {
+		if err := a.persistSystemKey(ctx, "database_credential_key", key, true); err != nil {
+			return "", err
+		}
+		return key, nil
+	}
+
+	dbKey, err := a.getSystemConfigString(ctx, "database_credential_key")
+	if err != nil {
+		return "", fmt.Errorf("failed to load database credential key: %w", err)
+	}
+	if dbKey != "" {
+		a.config.DatabaseManagement.CredentialKey = dbKey
+		return dbKey, nil
+	}
+
+	generated, err := crypto.GenerateKeyBase64()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate database credential key: %w", err)
+	}
+
+	if err := a.persistSystemKey(ctx, "database_credential_key", generated, true); err != nil {
+		return "", fmt.Errorf("failed to persist database credential key: %w", err)
+	}
+
+	a.config.DatabaseManagement.CredentialKey = generated
+	logrus.Info("Generated new database credential key")
+	return generated, nil
+}
+
+func (a *Application) persistSystemKey(ctx context.Context, keyName, value string, sensitive bool) error {
+	existing, err := a.getSystemConfigString(ctx, keyName)
+	if err != nil {
+		return err
+	}
+	if existing != "" && existing != value {
+		return fmt.Errorf("%s mismatch between configuration and system store", keyName)
+	}
+	if existing == "" {
+		return a.upsertSystemConfigString(ctx, keyName, value, sensitive)
+	}
+	return nil
+}
+
+func (a *Application) getSystemConfigString(ctx context.Context, key string) (string, error) {
+	var cfg models.SystemConfig
+	if err := a.db.DB.WithContext(ctx).Where("key = ?", key).First(&cfg).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	if raw, ok := cfg.Value["value"]; ok {
+		if str, ok := raw.(string); ok {
+			return strings.TrimSpace(str), nil
+		}
+	}
+	return "", nil
+}
+
+func (a *Application) upsertSystemConfigString(ctx context.Context, key string, value string, sensitive bool) error {
+	db := a.db.DB.WithContext(ctx)
+	var cfg models.SystemConfig
+	err := db.Where("key = ?", key).First(&cfg).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		cfg = models.SystemConfig{
+			Key:         key,
+			Value:       models.JSONB{"value": value},
+			ValueType:   "string",
+			IsSensitive: sensitive,
+		}
+		return db.Create(&cfg).Error
+	}
+	if err != nil {
+		return err
+	}
+	cfg.Value = models.JSONB{"value": value}
+	if sensitive && !cfg.IsSensitive {
+		cfg.IsSensitive = true
+	}
+	return db.Save(&cfg).Error
+}
+
+func (a *Application) getLegacyEncryptionKey(ctx context.Context) (string, error) {
+	if !a.db.DB.Migrator().HasTable("system_config") {
+		return "", nil
+	}
+	var legacy struct {
 		EncryptionKey string `gorm:"column:encryption_key"`
 	}
-
-	err := a.db.DB.Table("system_config").Select("encryption_key").First(&systemConfig).Error
-	if err != nil {
-		// 如果找不到记录，可能是首次启动或旧版本数据，记录警告但允许继续
-		logrus.Warnf("Could not load encryption key from database: %v. This might be the first startup or legacy data.", err)
-		return nil
+	if err := a.db.DB.WithContext(ctx).Table("system_config").Select("encryption_key").First(&legacy).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
 	}
-
-	// 比对配置文件和数据库中的加密密钥
-	if systemConfig.EncryptionKey != a.config.Security.EncryptionKey {
-		return fmt.Errorf("encryption key mismatch: config file encryption key does not match database. " +
-			"Modifying encryption key after installation will break encrypted data. " +
-			"If you need to change the encryption key, please use the key rotation procedure.")
-	}
-
-	logrus.Debug("Encryption key validation passed")
-	return nil
+	return strings.TrimSpace(legacy.EncryptionKey), nil
 }
 
 // setupStaticFiles configures static file serving from embedded filesystem

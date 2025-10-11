@@ -10,9 +10,6 @@ import { ResourceDetail } from './pages/resource-detail'
 import { ResourceList } from './pages/resource-list'
 import { SettingsPage } from './pages/settings'
 import InstallPage from './pages/install'
-import InstanceFormPage from './pages/host-form'
-import InstanceDetailPage from './pages/host-detail'
-import InstanceMetricsPage from './pages/host-metrics'
 
 // Layouts
 import { DevOpsLayout } from './layouts/devops-layout'
@@ -46,6 +43,9 @@ import DatabaseManagementPage from './pages/database-management'
 
 // Database Pages
 import { DbsOverview } from './pages/dbs-overview'
+import { DatabaseInstanceList } from './pages/database/instance-list'
+import { InstanceDetail } from './pages/database/instance-detail'
+import { InstanceForm } from './pages/database/instance-form'
 
 // Docker Pages
 import { DockerOverview } from './pages/docker-overview'
@@ -220,7 +220,19 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="mysql" replace />,
+        element: <Navigate to="instances" replace />,
+      },
+      {
+        path: 'instances',
+        element: <DatabaseInstanceList />,
+      },
+      {
+        path: 'instances/new',
+        element: <InstanceForm />,
+      },
+      {
+        path: 'instances/:id',
+        element: <InstanceDetail />,
       },
       {
         path: 'mysql',
@@ -233,22 +245,6 @@ export const router = createBrowserRouter([
       {
         path: 'redis',
         element: <DbsOverview type="redis" />,
-      },
-      {
-        path: 'new',
-        element: <InstanceFormPage />,
-      },
-      {
-        path: ':id/edit',
-        element: <InstanceFormPage />,
-      },
-      {
-        path: ':id',
-        element: <InstanceDetailPage />,
-      },
-      {
-        path: ':id/metrics',
-        element: <InstanceMetricsPage />,
       },
     ],
   },

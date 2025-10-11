@@ -11,13 +11,14 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	OAuth    OAuthConfig
-	Security SecurityConfig
-	Log      LogConfig
+	Server             ServerConfig
+	Database           DatabaseConfig
+	Redis              RedisConfig
+	JWT                JWTConfig
+	OAuth              OAuthConfig
+	Security           SecurityConfig
+	DatabaseManagement DatabaseManagementConfig
+	Log                LogConfig
 }
 
 // ServerConfig holds HTTP server configuration
@@ -49,6 +50,14 @@ type RedisConfig struct {
 	Port     int
 	Password string
 	DB       int
+}
+
+// DatabaseManagementConfig holds configuration for the database management subsystem.
+type DatabaseManagementConfig struct {
+	CredentialKey       string
+	QueryTimeoutSeconds int
+	MaxResultBytes      int
+	AuditRetentionDays  int
 }
 
 // JWTConfig holds JWT configuration
@@ -148,8 +157,14 @@ func LoadFromFile(filename string) (*Config, error) {
 			},
 		},
 		Security: SecurityConfig{
-			EncryptionKey: getEnv("ENCRYPTION_KEY", ""),
+			EncryptionKey: configFile.Security.EncryptionKey,
 			BcryptCost:    getEnvAsInt("BCRYPT_COST", 10),
+		},
+		DatabaseManagement: DatabaseManagementConfig{
+			CredentialKey:       configFile.DatabaseManagement.CredentialKey,
+			QueryTimeoutSeconds: getIntOrDefault(configFile.DatabaseManagement.QueryTimeoutSeconds, 30),
+			MaxResultBytes:      getIntOrDefault(configFile.DatabaseManagement.MaxResultBytes, 10*1024*1024),
+			AuditRetentionDays:  getIntOrDefault(configFile.DatabaseManagement.AuditRetentionDays, 90),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
@@ -184,8 +199,16 @@ type ConfigFile struct {
 	} `yaml:"database"`
 
 	Security struct {
-		JWTSecret string `yaml:"jwt_secret"`
+		JWTSecret     string `yaml:"jwt_secret"`
+		EncryptionKey string `yaml:"encryption_key"`
 	} `yaml:"security"`
+
+	DatabaseManagement struct {
+		CredentialKey       string `yaml:"credential_key"`
+		QueryTimeoutSeconds int    `yaml:"query_timeout_seconds"`
+		MaxResultBytes      int    `yaml:"max_result_bytes"`
+		AuditRetentionDays  int    `yaml:"audit_retention_days"`
+	} `yaml:"database_management"`
 }
 
 // LoadFromEnv loads configuration from environment variables
@@ -231,8 +254,14 @@ func LoadFromEnv() *Config {
 			},
 		},
 		Security: SecurityConfig{
-			EncryptionKey: getEnv("ENCRYPTION_KEY", ""),
+			EncryptionKey: "",
 			BcryptCost:    getEnvAsInt("BCRYPT_COST", 10),
+		},
+		DatabaseManagement: DatabaseManagementConfig{
+			CredentialKey:       "",
+			QueryTimeoutSeconds: getEnvAsInt("DB_MGMT_QUERY_TIMEOUT", 30),
+			MaxResultBytes:      getEnvAsInt("DB_MGMT_MAX_RESULT_BYTES", 10*1024*1024),
+			AuditRetentionDays:  getEnvAsInt("DB_MGMT_AUDIT_RETENTION_DAYS", 90),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "debug"),
@@ -252,6 +281,31 @@ func (c *DatabaseConfig) DSN() string {
 // RedisAddr returns the Redis connection address
 func (c *RedisConfig) Addr() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+}
+
+// QueryTimeout returns the configured query timeout or default (30s).
+func (c DatabaseManagementConfig) QueryTimeout() time.Duration {
+	if c.QueryTimeoutSeconds <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(c.QueryTimeoutSeconds) * time.Second
+}
+
+// ResultSizeLimit returns the query result size cap or default (10MB).
+func (c DatabaseManagementConfig) ResultSizeLimit() int64 {
+	if c.MaxResultBytes <= 0 {
+		return 10 * 1024 * 1024
+	}
+	return int64(c.MaxResultBytes)
+}
+
+// AuditRetention returns the audit retention duration or default (90 days).
+func (c DatabaseManagementConfig) AuditRetention() time.Duration {
+	days := c.AuditRetentionDays
+	if days <= 0 {
+		days = 90
+	}
+	return time.Duration(days) * 24 * time.Hour
 }
 
 // Helper functions

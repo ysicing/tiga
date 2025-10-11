@@ -169,6 +169,14 @@ func (d *Database) AutoMigrate() error {
 		&models.MonitorAlertRule{},
 		&models.MonitorAlertEvent{},
 		&models.AgentConnection{},
+
+		// Database management
+		&models.DatabaseInstance{},
+		&models.Database{},
+		&models.DatabaseUser{},
+		&models.PermissionPolicy{},
+		&models.QuerySession{},
+		&models.DatabaseAuditLog{},
 	)
 
 	if err != nil {

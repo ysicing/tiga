@@ -226,6 +226,17 @@ definitions:
       total_pages:
         type: integer
     type: object
+  handlers.PublicConfigResponse:
+    properties:
+      app_name:
+        type: string
+      app_subtitle:
+        type: string
+      enable_analytics:
+        type: boolean
+      language:
+        type: string
+    type: object
   handlers.RefreshTokenRequest:
     properties:
       refresh_token:
@@ -345,6 +356,17 @@ definitions:
     - instanceID
     - status
     type: object
+  handlers.UpdateSystemConfigRequest:
+    properties:
+      app_name:
+        type: string
+      app_subtitle:
+        type: string
+      enable_analytics:
+        type: boolean
+      language:
+        type: string
+    type: object
   handlers.UpdateUserRequest:
     properties:
       avatar_url:
@@ -387,7 +409,177 @@ definitions:
       timestamp:
         type: string
     type: object
-host: localhost:12306
+  models.AlertSeverity:
+    enum:
+    - info
+    - warning
+    - critical
+    type: string
+    x-enum-varnames:
+    - AlertSeverityInfo
+    - AlertSeverityWarning
+    - AlertSeverityCritical
+  models.AlertType:
+    enum:
+    - host
+    - service
+    type: string
+    x-enum-varnames:
+    - AlertTypeHost
+    - AlertTypeService
+  models.HostInfo:
+    properties:
+      agent_version:
+        description: Agent information
+        type: string
+      arch:
+        description: Architecture (amd64/arm64)
+        type: string
+      boot_time:
+        description: System boot time (Unix timestamp)
+        type: integer
+      cpu_cores:
+        description: Number of CPU cores
+        type: integer
+      cpu_model:
+        description: Hardware information
+        type: string
+      created_at:
+        type: string
+      disk_total:
+        description: Total disk space in bytes
+        type: integer
+      gpu_model:
+        description: GPU information (optional)
+        type: string
+      host_node_id:
+        description: One-to-one with HostNode
+        type: string
+      id:
+        type: string
+      mem_total:
+        description: Total memory in bytes
+        type: integer
+      platform:
+        description: System information
+        type: string
+      platform_version:
+        description: OS version (e.g., "Ubuntu 22.04")
+        type: string
+      ssh_enabled:
+        description: SSH configuration (reported by Agent)
+        type: boolean
+      swap_total:
+        description: Total swap space in bytes
+        type: integer
+      updated_at:
+        type: string
+      virtualization:
+        description: Virtualization type (kvm/docker/none)
+        type: string
+    type: object
+  models.HostNode:
+    properties:
+      auto_renew:
+        description: 是否自动续费
+        type: boolean
+      cost:
+        description: Billing and expiry information
+        type: number
+      created_at:
+        type: string
+      display_index:
+        type: integer
+      expiry_date:
+        description: 到期时间
+        type: string
+      group_name:
+        description: Grouping
+        type: string
+      hide_for_guest:
+        type: boolean
+      host_info:
+        allOf:
+        - $ref: '#/definitions/models.HostInfo'
+        description: Relationships
+      id:
+        type: string
+      last_active:
+        description: Connection status
+        type: string
+      name:
+        description: Basic information
+        type: string
+      note:
+        description: Display configuration
+        type: string
+      online:
+        description: Runtime status (computed from active connections, not persisted)
+        type: boolean
+      public_note:
+        type: string
+      purchase_date:
+        description: 购买日期
+        type: string
+      renewal_type:
+        description: 续费周期：monthly 或 yearly
+        type: string
+      traffic_limit:
+        description: 流量限制 (GB), 0表示无限
+        type: integer
+      traffic_used:
+        description: 已用流量 (GB)
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  models.MonitorAlertRule:
+    properties:
+      condition:
+        description: |-
+          Condition expression (using antonmedv/expr)
+          Examples:
+          - Host: "cpu_usage > 80 && load_5 > 10"
+          - Service: "uptime_percentage < 99.9 && failed_checks > 10"
+        type: string
+      created_at:
+        type: string
+      duration:
+        description: Trigger configuration
+        type: integer
+      enabled:
+        type: boolean
+      id:
+        type: string
+      last_triggered:
+        description: Runtime statistics (not persisted)
+        type: string
+      name:
+        description: Basic information
+        type: string
+      notify_channels:
+        description: 'Notification channels (JSON array: ["email", "webhook", "sms"])'
+        type: string
+      notify_config:
+        description: |-
+          Notification configuration (JSON map)
+          Example: {"email": ["admin@example.com"], "webhook": "https://hooks.example.com"}
+        type: string
+      severity:
+        $ref: '#/definitions/models.AlertSeverity'
+      target_id:
+        description: HostNode ID or ServiceMonitor ID
+        type: string
+      trigger_count:
+        type: integer
+      type:
+        allOf:
+        - $ref: '#/definitions/models.AlertType'
+        description: host/service
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
 info:
   contact:
     email: support@example.com
@@ -410,6 +602,506 @@ info:
   title: Tiga DevOps Platform API
   version: "1.0"
 paths:
+  /api/auth/login/password:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with username and password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "204":
+          description: No Content - Login successful (cookie set)
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: User login
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate user session and clear auth cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: User logout
+      tags:
+      - auth
+  /api/auth/providers:
+    get:
+      description: Get list of available OAuth authentication providers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get OAuth providers
+      tags:
+      - auth
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using refresh token (from cookie or JSON
+        body)
+      parameters:
+      - description: Refresh token (optional if cookie is set)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/handlers.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /api/auth/user:
+    get:
+      description: Get information about the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /api/system/config:
+    get:
+      consumes:
+      - application/json
+      description: Get public system configuration (no auth required)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PublicConfigResponse'
+      summary: Get public system configuration
+      tags:
+      - system
+    put:
+      consumes:
+      - application/json
+      description: Update system configuration settings
+      parameters:
+      - description: System configuration
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UpdateSystemConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update system configuration (admin only)
+      tags:
+      - system
+  /api/system/config/full:
+    get:
+      consumes:
+      - application/json
+      description: Get full system configuration including all settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get full system configuration (admin only)
+      tags:
+      - system
+  /api/v1/alert-events:
+    get:
+      description: List all alert events with filtering
+      parameters:
+      - description: Filter by rule ID
+        in: query
+        name: rule_id
+        type: integer
+      - description: Filter by status (firing/acknowledged/resolved)
+        in: query
+        name: status
+        type: string
+      - description: Filter by severity
+        in: query
+        name: severity
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List alert events
+      tags:
+      - Monitor Alerts
+  /api/v1/alert-events/{id}/acknowledge:
+    post:
+      consumes:
+      - application/json
+      description: Mark an alert event as acknowledged
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Acknowledgment note
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Acknowledge alert event
+      tags:
+      - Monitor Alerts
+  /api/v1/alert-events/{id}/resolve:
+    post:
+      consumes:
+      - application/json
+      description: Mark an alert event as resolved
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resolution note
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Resolve alert event
+      tags:
+      - Monitor Alerts
+  /api/v1/alert-rules:
+    get:
+      description: List all alert rules with filtering
+      parameters:
+      - description: Rule type (host/service)
+        in: query
+        name: type
+        type: string
+      - description: Filter by enabled status
+        in: query
+        name: enabled
+        type: boolean
+      - description: Filter by severity
+        in: query
+        name: severity
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List alert rules
+      tags:
+      - Monitor Alerts
+    post:
+      consumes:
+      - application/json
+      description: Create a new monitor alert rule
+      parameters:
+      - description: Alert rule
+        in: body
+        name: rule
+        required: true
+        schema:
+          $ref: '#/definitions/models.MonitorAlertRule'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create alert rule
+      tags:
+      - Monitor Alerts
+  /api/v1/alert-rules/{id}:
+    delete:
+      description: Delete an alert rule and its events
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete alert rule
+      tags:
+      - Monitor Alerts
+    get:
+      description: Get an alert rule by ID
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get alert rule
+      tags:
+      - Monitor Alerts
+    put:
+      consumes:
+      - application/json
+      description: Update an existing alert rule
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Alert rule
+        in: body
+        name: rule
+        required: true
+        schema:
+          $ref: '#/definitions/models.MonitorAlertRule'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update alert rule
+      tags:
+      - Monitor Alerts
   /api/v1/alerts/events:
     get:
       description: Get a paginated list of alert events
@@ -1119,57 +1811,6 @@ paths:
       summary: Change password
       tags:
       - auth
-  /api/v1/auth/login:
-    post:
-      consumes:
-      - application/json
-      description: Authenticate user with username and password
-      parameters:
-      - description: Login credentials
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: User login
-      tags:
-      - auth
-  /api/v1/auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: Invalidate user session
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: User logout
-      tags:
-      - auth
   /api/v1/auth/oauth/login:
     post:
       consumes:
@@ -1242,36 +1883,6 @@ paths:
       summary: Get user profile
       tags:
       - auth
-  /api/v1/auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Get a new access token using refresh token
-      parameters:
-      - description: Refresh token
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.RefreshTokenRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
-      summary: Refresh access token
-      tags:
-      - auth
   /api/v1/auth/sessions:
     get:
       description: Get all active sessions for the current user
@@ -1322,7 +1933,7 @@ paths:
       - auth
   /api/v1/dbs:
     get:
-      description: Get a paginated list of instances
+      description: Get a paginated list of database instances
       parameters:
       - description: Filter by service type
         in: query
@@ -1367,13 +1978,13 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List instances
+      summary: List database instances
       tags:
       - dbs
     post:
       consumes:
       - application/json
-      description: Create a new service instance
+      description: Create a new database service instance
       parameters:
       - description: Instance creation request
         in: body
@@ -1398,12 +2009,12 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Create instance
+      summary: Create database instance
       tags:
       - dbs
   /api/v1/dbs/{instance_id}:
     delete:
-      description: Soft delete an instance
+      description: Soft delete a database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1425,11 +2036,11 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Delete instance
+      summary: Delete database instance
       tags:
       - dbs
     get:
-      description: Get instance details by ID
+      description: Get database instance details by ID
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1453,13 +2064,13 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get instance
+      summary: Get database instance
       tags:
       - dbs
     patch:
       consumes:
       - application/json
-      description: Update instance details
+      description: Update database instance details
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1489,12 +2100,12 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update instance
+      summary: Update database instance
       tags:
       - dbs
   /api/v1/dbs/{instance_id}/health:
     get:
-      description: Get health status for a specific instance
+      description: Get health status for a specific database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1527,13 +2138,13 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get instance health
+      summary: Get database instance health
       tags:
       - dbs
     patch:
       consumes:
       - application/json
-      description: Update instance health status
+      description: Update database instance health status
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1559,12 +2170,12 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update instance health
+      summary: Update database instance health
       tags:
       - dbs
   /api/v1/dbs/{instance_id}/metrics:
     get:
-      description: Get metrics for a specific instance
+      description: Get metrics for a specific database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1597,12 +2208,12 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get instance metrics
+      summary: Get database instance metrics
       tags:
       - dbs
   /api/v1/dbs/{instance_id}/metrics/latest:
     get:
-      description: Get the most recent value for all metrics of an instance
+      description: Get the most recent value for all metrics of a database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1627,7 +2238,7 @@ paths:
       - metrics
   /api/v1/dbs/{instance_id}/metrics/names:
     get:
-      description: Get all available metric names for an instance
+      description: Get all available metric names for a database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1654,7 +2265,7 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Update instance operational status
+      description: Update database instance operational status
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1680,14 +2291,14 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Update instance status
+      summary: Update database instance status
       tags:
       - dbs
   /api/v1/dbs/{instance_id}/tags:
     delete:
       consumes:
       - application/json
-      description: Remove tags from an instance
+      description: Remove tags from a database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1719,7 +2330,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add tags to an instance
+      description: Add tags to a database instance
       parameters:
       - description: Instance ID (UUID)
         in: path
@@ -1750,7 +2361,7 @@ paths:
       - dbs
   /api/v1/dbs/statistics:
     get:
-      description: Get overall instance statistics
+      description: Get overall database instance statistics
       produces:
       - application/json
       responses:
@@ -1764,9 +2375,183 @@ paths:
             $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Get instance statistics
+      summary: Get database instance statistics
       tags:
       - dbs
+  /api/v1/hosts:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Group name filter
+        in: query
+        name: group_name
+        type: string
+      - description: Search keyword
+        in: query
+        name: search
+        type: string
+      - description: Sort field
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List hosts
+      tags:
+      - hosts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Host information
+        in: body
+        name: host
+        required: true
+        schema:
+          $ref: '#/definitions/models.HostNode'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new host node
+      tags:
+      - hosts
+  /api/v1/hosts/{id}:
+    delete:
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete host
+      tags:
+      - hosts
+    get:
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get host details
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Host information
+        in: body
+        name: host
+        required: true
+        schema:
+          $ref: '#/definitions/models.HostNode'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update host
+      tags:
+      - hosts
+  /api/v1/hosts/{id}/state/current:
+    get:
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get current state
+      tags:
+      - hosts
+  /api/v1/hosts/{id}/state/history:
+    get:
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Start time (RFC3339)
+        in: query
+        name: start
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end
+        required: true
+        type: string
+      - description: Interval (auto/1m/5m/1h/1d)
+        in: query
+        name: interval
+        type: string
+      - description: Metrics (comma-separated)
+        in: query
+        name: metrics
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get historical states
+      tags:
+      - hosts
   /api/v1/metrics:
     get:
       description: Query metrics with time range and filters
@@ -2385,6 +3170,65 @@ paths:
       summary: Revoke role
       tags:
       - users
+  /api/v1/vms/host-groups:
+    get:
+      description: Get a list of all unique group names used by host nodes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: 失败
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List all host groups
+      tags:
+      - VMs
+  /api/v1/vms/hosts/{id}/agent-install-command:
+    get:
+      description: Returns the command to install agent on the host
+      parameters:
+      - description: Host ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get agent installation command
+      tags:
+      - hosts
+  /api/v1/vms/hosts/{id}/regenerate-secret-key:
+    post:
+      description: Regenerates the secret key for a host and disconnects current agent
+      parameters:
+      - description: Host ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Regenerate host secret key
+      tags:
+      - hosts
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
@@ -2394,7 +3238,7 @@ securityDefinitions:
 swagger: "2.0"
 tags:
 - description: Instance management operations
-  name: dbs
+  name: instances
 - description: MinIO object storage operations
   name: minio
 - description: Alert rules and events management

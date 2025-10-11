@@ -22,7 +22,17 @@ security:
   # You can also set it manually here (at least 32 characters recommended)
   jwt_secret: ""
   bcrypt_cost: 10
-  encryption_key: your-32-byte-encryption-key-here!!  # Must be 32 bytes
+  encryption_key: ""  # 留空将由程序自动生成(32字节)
+
+database_management:
+  # 32字节数据库凭据密钥，留空则程序自动生成
+  credential_key: ""
+  # Query execution timeout in seconds for SQL/Redis console
+  query_timeout_seconds: 30
+  # Maximum query result payload in bytes (default 10MB)
+  max_result_bytes: 10485760
+  # Retain database audit logs for N days before cleanup
+  audit_retention_days: 90
 
 logging:
   level: info  # debug, info, warning, error
