@@ -243,14 +243,12 @@ func TestAuditContract_FilterByDateRange(t *testing.T) {
 	yesterday := now.AddDate(0, 0, -1)
 
 	log1 := models.DatabaseAuditLog{
-		BaseModel: models.BaseModel{
-			CreatedAt: yesterday,
-		},
 		Operator:   "admin",
 		Action:     "old.action",
 		TargetType: "instance",
 		Success:    true,
 	}
+	log1.CreatedAt = yesterday
 	err := db.Create(&log1).Error
 	require.NoError(t, err)
 

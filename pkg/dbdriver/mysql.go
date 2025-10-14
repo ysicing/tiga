@@ -32,7 +32,7 @@ func (d *MySQLDriver) Connect(ctx context.Context, cfg ConnectionConfig) error {
 		username = "root"
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&multiStatements=false&charset=utf8mb4",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&multiStatements=false&charset=utf8mb4&timeout=10s&readTimeout=30s&writeTimeout=30s",
 		username,
 		cfg.Password,
 		cfg.Host,

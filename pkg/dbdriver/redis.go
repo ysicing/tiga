@@ -177,7 +177,7 @@ func (d *RedisDriver) DeleteUser(ctx context.Context, username string, _ map[str
 		return fmt.Errorf("username is required")
 	}
 
-	if err := d.client.ACLDelUser(ctx, username).Err(); err != nil {
+	if err := d.client.Do(ctx, "ACL", "DELUSER", username).Err(); err != nil {
 		return fmt.Errorf("failed to delete redis user: %w", err)
 	}
 	return nil

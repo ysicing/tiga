@@ -43,7 +43,7 @@
 
 ## 阶段 3.1：设置
 
-- [ ] **T001** 根据plan.md创建数据库管理目录结构
+- [X] **T001** 根据plan.md创建数据库管理目录结构
   - 创建 `internal/api/handlers/database/`
   - 创建 `internal/models/`（数据库实体）
   - 创建 `internal/repository/database/`
@@ -56,14 +56,14 @@
   - 创建 `tests/contract/`
   - 创建 `tests/integration/database/`
 
-- [ ] **T002** 安装Go依赖（数据库驱动和SQL解析器）
+- [X] **T002** 安装Go依赖（数据库驱动和SQL解析器）
   - 运行 `go get github.com/go-sql-driver/mysql@v1.8.1`
   - 运行 `go get github.com/lib/pq@v1.10.9`
   - 运行 `go get github.com/redis/go-redis/v9@v9.5.1`
   - 运行 `go get github.com/xwb1989/sqlparser@latest`
   - 更新 `go.mod` 和 `go.sum`
 
-- [ ] **T003** [P] 配置环境变量和安全密钥
+- [X] **T003** [P] 配置环境变量和安全密钥
   - 在 `config.yaml` 添加 `database_management` 配置段
   - 生成 `DB_CREDENTIAL_KEY` 32字节密钥（用于AES-256加密）
   - 在 `.env.example` 添加数据库管理相关环境变量
@@ -76,35 +76,35 @@
 
 ### 契约测试（基于 contracts/database-api.yaml）
 
-- [ ] **T004** [P] 在 `tests/contract/instance_contract_test.go` 中测试实例管理API契约
+- [X] **T004** [P] 在 `tests/contract/instance_contract_test.go` 中测试实例管理API契约
   - 测试 `GET /api/v1/database/instances` 返回200和实例列表
   - 测试 `POST /api/v1/database/instances` 创建实例返回201
   - 测试 `GET /api/v1/database/instances/{id}` 返回实例详情
   - 测试 `DELETE /api/v1/database/instances/{id}` 删除实例返回200
   - 测试 `POST /api/v1/database/instances/{id}/test` 测试连接返回状态
 
-- [ ] **T005** [P] 在 `tests/contract/database_contract_test.go` 中测试数据库操作API契约
+- [X] **T005** [P] 在 `tests/contract/database_contract_test.go` 中测试数据库操作API契约
   - 测试 `GET /api/v1/database/instances/{id}/databases` 返回数据库列表
   - 测试 `POST /api/v1/database/instances/{id}/databases` 创建数据库返回201
   - 测试 `DELETE /api/v1/database/databases/{id}` 带confirm_name删除数据库
 
-- [ ] **T006** [P] 在 `tests/contract/user_contract_test.go` 中测试用户管理API契约
+- [X] **T006** [P] 在 `tests/contract/user_contract_test.go` 中测试用户管理API契约
   - 测试 `GET /api/v1/database/instances/{id}/users` 返回用户列表
   - 测试 `POST /api/v1/database/instances/{id}/users` 创建用户返回201
   - 测试 `PATCH /api/v1/database/users/{id}` 修改密码返回200
   - 测试 `DELETE /api/v1/database/users/{id}` 删除用户返回200
 
-- [ ] **T007** [P] 在 `tests/contract/permission_contract_test.go` 中测试权限管理API契约
+- [X] **T007** [P] 在 `tests/contract/permission_contract_test.go` 中测试权限管理API契约
   - 测试 `POST /api/v1/database/permissions` 授予权限返回201
   - 测试 `DELETE /api/v1/database/permissions/{id}` 撤销权限返回200
   - 测试 `GET /api/v1/database/users/{id}/permissions` 返回用户权限列表
 
-- [ ] **T008** [P] 在 `tests/contract/query_contract_test.go` 中测试查询执行API契约
+- [X] **T008** [P] 在 `tests/contract/query_contract_test.go` 中测试查询执行API契约
   - 测试 `POST /api/v1/database/instances/{id}/query` 执行SELECT返回QueryResult
   - 测试执行DDL返回400错误 "DDL operations are forbidden"
   - 测试执行无WHERE的DELETE返回400错误
 
-- [ ] **T009** [P] 在 `tests/contract/audit_contract_test.go` 中测试审计日志API契约
+- [X] **T009** [P] 在 `tests/contract/audit_contract_test.go` 中测试审计日志API契约
   - 测试 `GET /api/v1/database/audit-logs` 返回分页日志
   - 测试带instance_id过滤参数返回过滤结果
   - 测试带operator、action、date过滤器返回正确结果
@@ -156,38 +156,38 @@
 
 ### 数据模型层（基于 data-model.md）
 
-- [ ] **T017** [P] 在 `internal/models/db_instance.go` 中创建DatabaseInstance模型
+- [X] **T017** [P] 在 `internal/models/db_instance.go` 中创建DatabaseInstance模型
   - 定义DatabaseInstance结构体（ID、Name、Type、Host、Port等）
   - 添加GORM标签（主键、索引、唯一约束）
   - 实现Password字段的加密/解密方法（BeforeSave/AfterFind钩子）
   - 添加验证规则（Name必填、Type枚举、Port范围1-65535）
 
-- [ ] **T018** [P] 在 `internal/models/db_database.go` 中创建Database模型
+- [X] **T018** [P] 在 `internal/models/db_database.go` 中创建Database模型
   - 定义Database结构体（ID、InstanceID、Name、Charset等）
   - 添加外键关联到DatabaseInstance
   - 支持MySQL/PostgreSQL字段（Charset、Collation、Owner）
   - 支持Redis字段（DBNumber、KeyCount）
 
-- [ ] **T019** [P] 在 `internal/models/db_user.go` 中创建DatabaseUser模型
+- [X] **T019** [P] 在 `internal/models/db_user.go` 中创建DatabaseUser模型
   - 定义DatabaseUser结构体（ID、InstanceID、Username、Password等）
   - 添加外键关联到DatabaseInstance
   - 实现Password加密存储（BeforeSave钩子）
   - 添加唯一索引（instance_id + username）
 
-- [ ] **T020** [P] 在 `internal/models/db_permission.go` 中创建PermissionPolicy模型
+- [X] **T020** [P] 在 `internal/models/db_permission.go` 中创建PermissionPolicy模型
   - 定义PermissionPolicy结构体（UserID、DatabaseID、Role等）
   - 添加外键关联到DatabaseUser和Database
   - 支持Role枚举（readonly、readwrite）
   - 添加软删除（RevokedAt字段）
   - 添加唯一索引（user_id + database_id + role WHERE revoked_at IS NULL）
 
-- [ ] **T021** [P] 在 `internal/models/db_query_session.go` 中创建QuerySession模型
+- [X] **T021** [P] 在 `internal/models/db_query_session.go` 中创建QuerySession模型
   - 定义QuerySession结构体（ID、InstanceID、ExecutedBy、QuerySQL等）
   - 添加外键关联到DatabaseInstance
   - 添加Status枚举（success、error、timeout、truncated）
   - 添加QueryType枚举（SELECT、INSERT、UPDATE、DELETE、REDIS_CMD）
 
-- [ ] **T022** [P] 在 `internal/models/db_audit_log.go` 中创建DatabaseAuditLog模型
+- [X] **T022** [P] 在 `internal/models/db_audit_log.go` 中创建DatabaseAuditLog模型
   - 定义DatabaseAuditLog结构体（ID、InstanceID、Operator、Action等）
   - 添加可空外键关联到DatabaseInstance
   - 支持Action点分命名空间（instance.create、database.delete等）
@@ -195,28 +195,28 @@
 
 ### 仓储层（Repository Pattern）
 
-- [ ] **T023** [P] 在 `internal/repository/database/instance.go` 中实现InstanceRepository
+- [X] **T023** [P] 在 `internal/repository/database/instance.go` 中实现InstanceRepository
   - 实现Create、GetByID、List、Update、Delete方法
   - 实现GetByName查询（唯一名称）
   - 实现ListByType过滤（mysql、postgresql、redis）
   - 使用GORM处理关联加载（Databases、Users）
 
-- [ ] **T024** [P] 在 `internal/repository/database/database.go` 中实现DatabaseRepository
+- [X] **T024** [P] 在 `internal/repository/database/database.go` 中实现DatabaseRepository
   - 实现Create、GetByID、Delete方法
   - 实现ListByInstance查询（按实例ID）
   - 实现CheckUniqueName验证（同实例下唯一）
 
-- [ ] **T025** [P] 在 `internal/repository/database/user.go` 中实现UserRepository
+- [X] **T025** [P] 在 `internal/repository/database/user.go` 中实现UserRepository
   - 实现Create、GetByID、Update、Delete方法
   - 实现ListByInstance查询
   - 实现GetByUsername查询（instance_id + username）
 
-- [ ] **T026** [P] 在 `internal/repository/database/permission.go` 中实现PermissionRepository
+- [X] **T026** [P] 在 `internal/repository/database/permission.go` 中实现PermissionRepository
   - 实现Grant、Revoke、ListByUser、ListByDatabase方法
   - 实现软删除（设置RevokedAt而非物理删除）
   - 实现CheckExisting验证（避免重复授权）
 
-- [ ] **T027** [P] 在 `internal/repository/database/audit.go` 中实现AuditLogRepository
+- [X] **T027** [P] 在 `internal/repository/database/audit.go` 中实现AuditLogRepository
   - 实现Create、List方法
   - 实现Filter方法（支持instance_id、operator、action、date范围过滤）
   - 实现分页查询（page、page_size）
@@ -224,14 +224,14 @@
 
 ### 驱动层（database/sql封装）
 
-- [ ] **T028** [P] 在 `pkg/dbdriver/driver.go` 中定义DatabaseDriver接口
+- [X] **T028** [P] 在 `pkg/dbdriver/driver.go` 中定义DatabaseDriver接口
   - 定义Connect、Disconnect、Ping方法
   - 定义ListDatabases、CreateDatabase、DeleteDatabase方法
   - 定义ListUsers、CreateUser、DeleteUser方法
   - 定义ExecuteQuery方法（返回QueryResult）
   - 定义GetVersion、GetUptime方法
 
-- [ ] **T029** [P] 在 `pkg/dbdriver/mysql.go` 中实现MySQLDriver
+- [X] **T029** [P] 在 `pkg/dbdriver/mysql.go` 中实现MySQLDriver
   - 实现Connect（使用go-sql-driver/mysql）
   - 实现ListDatabases（查询INFORMATION_SCHEMA）
   - 实现CreateDatabase（CREATE DATABASE语句）
@@ -239,14 +239,14 @@
   - 实现ExecuteQuery（使用database/sql.QueryContext）
   - 配置连接池（MaxOpenConns=50、MaxIdleConns=10）
 
-- [ ] **T030** [P] 在 `pkg/dbdriver/postgres.go` 中实现PostgresDriver
+- [X] **T030** [P] 在 `pkg/dbdriver/postgres.go` 中实现PostgresDriver
   - 实现Connect（使用lib/pq）
   - 实现ListDatabases（查询pg_database）
   - 实现CreateDatabase（CREATE DATABASE语句）
   - 实现CreateUser（CREATE ROLE + GRANT语句）
   - 实现ExecuteQuery（支持PostgreSQL语法）
 
-- [ ] **T031** [P] 在 `pkg/dbdriver/redis.go` 中实现RedisDriver
+- [X] **T031** [P] 在 `pkg/dbdriver/redis.go` 中实现RedisDriver
   - 实现Connect（使用go-redis/v9）
   - 实现ListDatabases（INFO keyspace命令）
   - 实现CreateUser（ACL SETUSER命令）

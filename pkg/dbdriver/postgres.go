@@ -37,7 +37,7 @@ func (d *PostgresDriver) Connect(ctx context.Context, cfg ConnectionConfig) erro
 		sslmode = "disable"
 	}
 
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s connect_timeout=10",
 		cfg.Host,
 		cfg.Port,
 		username,
