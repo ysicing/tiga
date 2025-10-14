@@ -10,9 +10,9 @@ func TestSecurityFilter_ValidateSQL(t *testing.T) {
 	filter := NewSecurityFilter()
 
 	tests := []struct {
-		name       string
-		query      string
-		wantErr    bool
+		name        string
+		query       string
+		wantErr     bool
 		errContains string // 检查错误消息包含的关键词
 	}{
 		// Safe queries

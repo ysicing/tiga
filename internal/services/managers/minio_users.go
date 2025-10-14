@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/minio/madmin-go/v3"
+	"github.com/minio/madmin-go/v4"
 )
 
 // MinIOUserInfo represents MinIO user information

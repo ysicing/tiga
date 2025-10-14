@@ -9,9 +9,24 @@ import (
 	"io"
 )
 
+// Service is an alias for EncryptionService for compatibility
+type Service = EncryptionService
+
 // EncryptionService handles application-layer encryption/decryption
 type EncryptionService struct {
 	key []byte // 32 bytes for AES-256
+}
+
+// NewService creates a new encryption service with a key string (must be 32 bytes)
+// This is a compatibility wrapper for NewEncryptionService
+func NewService(key string) (*Service, error) {
+	return NewEncryptionService([]byte(key))
+}
+
+// SetDefaultService sets the default encryption service
+// This is a compatibility wrapper for setting defaultService
+func SetDefaultService(service *Service) {
+	defaultService = service
 }
 
 // NewEncryptionService creates a new encryption service with a key

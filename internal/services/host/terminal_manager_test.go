@@ -267,9 +267,9 @@ func TestBytesEqual(t *testing.T) {
 // TestClassifyStreamError tests error classification
 func TestClassifyStreamError(t *testing.T) {
 	tests := []struct {
-		name           string
-		err            error
-		expectedType   string
+		name         string
+		err          error
+		expectedType string
 	}{
 		{
 			name:         "no error",
@@ -344,9 +344,9 @@ func TestClassifyStreamError(t *testing.T) {
 // TestIsRecoverableError tests error recoverability check
 func TestIsRecoverableError(t *testing.T) {
 	tests := []struct {
-		name         string
-		err          error
-		recoverable  bool
+		name        string
+		err         error
+		recoverable bool
 	}{
 		{
 			name:        "nil error",

@@ -82,28 +82,28 @@ func (m *MinIOManager) ListPolicies(ctx context.Context) ([]MinioPolicyInfo, err
 
 // GetPolicy retrieves a specific policy
 func (m *MinIOManager) GetPolicy(ctx context.Context, policyName string) (*MinioPolicyInfo, error) {
-	adminClient, err := m.getAdminClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get admin client: %w", err)
-	}
+    adminClient, err := m.getAdminClient()
+    if err != nil {
+        return nil, fmt.Errorf("failed to get admin client: %w", err)
+    }
 
-	// Get policy
-	policyBytes, err := adminClient.InfoCannedPolicy(ctx, policyName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get policy: %w", err)
-	}
+    // Get policy
+    policyInfoResp, err := adminClient.InfoCannedPolicy(ctx, policyName)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get policy: %w", err)
+    }
 
-	var policyDoc map[string]interface{}
-	if err := json.Unmarshal(policyBytes, &policyDoc); err != nil {
-		return nil, fmt.Errorf("failed to parse policy: %w", err)
-	}
+    var policyDoc map[string]interface{}
+    if err := json.Unmarshal(policyInfoResp.Policy, &policyDoc); err != nil {
+        return nil, fmt.Errorf("failed to parse policy: %w", err)
+    }
 
-	policyInfo := &MinioPolicyInfo{
-		Name:   policyName,
-		Policy: policyDoc,
-	}
+    policyInfo := &MinioPolicyInfo{
+        Name:   policyName,
+        Policy: policyDoc,
+    }
 
-	return policyInfo, nil
+    return policyInfo, nil
 }
 
 // UpdatePolicy updates an existing policy

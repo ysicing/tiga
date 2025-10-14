@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/ysicing/tiga/internal/services/alert"
 	dbrepo "github.com/ysicing/tiga/internal/repository/database"
+	"github.com/ysicing/tiga/internal/services/alert"
 )
 
 // AlertTask runs alert processing
@@ -33,8 +33,8 @@ func (t *AlertTask) Name() string {
 
 // DatabaseAuditCleanupTask cleans up old database audit logs
 type DatabaseAuditCleanupTask struct {
-	auditRepo       *dbrepo.AuditLogRepository
-	retentionDays   int
+	auditRepo     *dbrepo.AuditLogRepository
+	retentionDays int
 }
 
 // NewDatabaseAuditCleanupTask creates a new audit cleanup task
