@@ -72,7 +72,7 @@ export default function InstanceDetailPage() {
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/instances')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dbs')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -99,7 +99,7 @@ export default function InstanceDetailPage() {
           <Button variant="outline" size="icon">
             {instance.status === 'running' ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
-          <Button variant="outline" size="icon" onClick={() => navigate(`/instances/${id}/edit`)}>
+          <Button variant="outline" size="icon" onClick={() => navigate(`/dbs/${id}/edit`)}>
             <Settings className="h-4 w-4" />
           </Button>
           <Button variant="destructive" size="icon">

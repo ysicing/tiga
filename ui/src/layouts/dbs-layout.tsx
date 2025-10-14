@@ -1,12 +1,12 @@
 import { Outlet } from 'react-router-dom'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { SiteHeader } from '@/components/site-header'
-import { MiddlewareSidebar } from '@/components/middleware-sidebar'
+import { DbsSidebar } from '@/components/dbs-sidebar'
 
-export function MiddlewareLayout() {
+export function DbsLayout() {
   return (
     <SidebarProvider>
-      <MiddlewareSidebar />
+      <DbsSidebar />
       <div className="flex flex-1 flex-col">
         <SiteHeader />
         <main className="flex-1 overflow-auto">

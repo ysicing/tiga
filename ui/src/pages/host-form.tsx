@@ -120,7 +120,7 @@ export default function InstanceFormPage() {
         await devopsAPI.instances.create(data);
       }
 
-      navigate('/instances');
+      navigate('/dbs');
     } catch (error) {
       console.error('Failed to save instance:', error);
       // TODO: Show error toast
@@ -132,7 +132,7 @@ export default function InstanceFormPage() {
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/instances')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/dbs')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h2 className="text-3xl font-bold tracking-tight">
@@ -319,7 +319,7 @@ export default function InstanceFormPage() {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate('/instances')}>
+          <Button type="button" variant="outline" onClick={() => navigate('/dbs')}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>

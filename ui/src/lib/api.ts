@@ -1463,7 +1463,7 @@ export const useResourceHistory = (
 
 // DevOps Instance API
 export const fetchInstances = async (): Promise<InstanceListResponse> => {
-  return fetchAPI<InstanceListResponse>('/instances')
+  return fetchAPI<InstanceListResponse>('/dbs')
 }
 
 export const useInstances = (options?: { staleTime?: number }) => {
@@ -1474,4 +1474,3 @@ export const useInstances = (options?: { staleTime?: number }) => {
     refetchInterval: 30000, // Auto refresh every 30 seconds
   })
 }
-

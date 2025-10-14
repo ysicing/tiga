@@ -3,9 +3,9 @@ package models
 import (
 	"testing"
 
+	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 

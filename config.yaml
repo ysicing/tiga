@@ -10,3 +10,9 @@ database:
 security:
     jwt_secret: 8zy1VHontLu4loSrU7qRIlFjtGHbITBnRc8rbRbpsxs=
     encryption_key: _dDUyaopkjKcd6CKQHuy6x1w67kJhccs-zyqxrwFO8M=
+
+database_management:
+    credential_key: XzF5iI7ce3QHpdcCjG+XNb7LV1H+gNjUDk+q1ovqupo=
+    query_timeout_seconds: 30
+    max_result_bytes: 10485760
+    audit_retention_days: 90

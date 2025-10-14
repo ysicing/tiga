@@ -308,16 +308,16 @@ export const devopsAPI = {
 
   // Instances
   instances: {
-    list: (params?: Record<string, any>) => apiClient.get('/instances', params),
-    get: (id: string) => apiClient.get(`/instances/${id}`),
-    create: (data: Record<string, any>) => apiClient.post('/instances', data),
-    update: (id: string, data: Record<string, any>) => apiClient.patch(`/instances/${id}`, data),
-    delete: (id: string) => apiClient.delete(`/instances/${id}`),
+    list: (params?: Record<string, any>) => apiClient.get('/dbs', params),
+    get: (id: string) => apiClient.get(`/dbs/${id}`),
+    create: (data: Record<string, any>) => apiClient.post('/dbs', data),
+    update: (id: string, data: Record<string, any>) => apiClient.patch(`/dbs/${id}`, data),
+    delete: (id: string) => apiClient.delete(`/dbs/${id}`),
     updateStatus: (id: string, status: string) =>
-      apiClient.patch(`/instances/${id}/status`, { status }),
+      apiClient.patch(`/dbs/${id}/status`, { status }),
     updateHealth: (id: string, health: string, message?: string) =>
-      apiClient.patch(`/instances/${id}/health`, { health, health_message: message }),
-    statistics: () => apiClient.get('/instances/statistics'),
+      apiClient.patch(`/dbs/${id}/health`, { health, health_message: message }),
+    statistics: () => apiClient.get('/dbs/statistics'),
   },
 
   // Metrics
@@ -450,6 +450,8 @@ export const devopsAPI = {
         apiClient.get(`/vms/hosts/${id}/state/history`, params),
       getActivities: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/hosts/${id}/activities`, params),
+      regenerateSecretKey: (id: string) => apiClient.post(`/vms/hosts/${id}/regenerate-key`),
+      getAgentInstallCommand: (id: string) => apiClient.get(`/vms/hosts/${id}/agent-command`),
     },
 
     // Service monitors

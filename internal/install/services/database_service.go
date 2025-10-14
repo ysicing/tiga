@@ -8,14 +8,14 @@ import (
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/install/models"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/glebarez/go-sqlite"
 
 	mainmodels "github.com/ysicing/tiga/internal/models"
 )

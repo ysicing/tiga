@@ -154,7 +154,7 @@ func determineAction(method, path string) string {
 func extractResource(path string) (string, *uuid.UUID) {
 	// This is a simplified implementation
 	// In practice, you would parse the path to extract resource info
-	// Example: /api/v1/instances/uuid -> resourceType: instance, resourceID: uuid
+	// Example: /api/v1/dbs/uuid -> resourceType: dbs, resourceID: uuid
 
 	parts := splitPath(path)
 	if len(parts) >= 4 {

@@ -159,7 +159,7 @@ export default function InstanceListPage() {
           <Button variant="outline" size="icon">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button onClick={() => navigate('/instances/new')}>
+          <Button onClick={() => navigate('/dbs/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add Instance
           </Button>
@@ -218,7 +218,7 @@ export default function InstanceListPage() {
                 <TableRow
                   key={instance.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/instances/${instance.id}`)}
+                  onClick={() => navigate(`/dbs/${instance.id}`)}
                 >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -248,19 +248,19 @@ export default function InstanceListPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/instances/${instance.id}`);
+                          navigate(`/dbs/${instance.id}`);
                         }}>
                           View Details
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/instances/${instance.id}/edit`);
+                          navigate(`/dbs/${instance.id}/edit`);
                         }}>
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/instances/${instance.id}/metrics`);
+                          navigate(`/dbs/${instance.id}/metrics`);
                         }}>
                           View Metrics
                         </DropdownMenuItem>

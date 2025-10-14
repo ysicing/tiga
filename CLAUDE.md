@@ -316,3 +316,125 @@ ui/src/
 - Phase 2：服务探测（探测规则、任务调度、结果聚合）
 - Phase 3：WebSSH（SSH代理、终端UI、会话管理）
 - Phase 4：高级功能（分组管理、自定义告警、Prometheus集成）
+
+## 新增功能：数据库管理子系统（已完成）
+
+**功能分支**：`003-nosql-sql`
+**参考规格**：`.claude/specs/003-nosql-sql/`
+**完成度**：96% (54/56 任务)
+
+### 核心特性
+- **多数据库支持**：MySQL 8.0+、PostgreSQL 15+、Redis 7+ 统一管理
+- **安全优先**：AES-256-GCM 密码加密、SQL 安全过滤、命令黑名单、全操作审计
+- **权限管理**：统一权限模型（readonly/readwrite）自动映射到不同数据库系统
+- **查询控制台**：支持 SQL/Redis 命令执行，30秒超时，10MB结果限制
+- **连接管理**：连接池（50 open/10 idle）、连接缓存、健康检查
+
+### 技术栈
+- **数据库驱动**：go-sql-driver/mysql v1.8.1、lib/pq v1.10.9、go-redis/v9 v9.5.1
+- **安全**：pkg/crypto（AES-256-GCM）、xwb1989/sqlparser（SQL 解析）
+- **测试**：testcontainers-go（集成测试）、testify（断言库）
+- **前端**：Monaco Editor（SQL 编辑器）、react-window（虚拟滚动）
+
+### 数据模型
+- `DatabaseInstance`：数据库实例（加密密码存储）
+- `Database`：数据库元数据（支持 MySQL/PostgreSQL/Redis）
+- `DatabaseUser`：数据库用户（加密密码）
+- `PermissionPolicy`：权限策略（软删除支持）
+- `QuerySession`：查询会话记录（性能指标）
+- `DatabaseAuditLog`：审计日志（operator、action、details、client_ip）
+
+### API端点
+- `/api/v1/database/instances`：实例管理CRUD、连接测试
+- `/api/v1/database/instances/{id}/databases`：数据库操作
+- `/api/v1/database/instances/{id}/users`：用户管理
+- `/api/v1/database/permissions`：权限授予和撤销
+- `/api/v1/database/instances/{id}/query`：查询执行（安全过滤）
+- `/api/v1/database/audit-logs`：审计日志查询（分页、过滤）
+
+### 安全特性
+**SQL 安全过滤**：
+- 阻止 DDL 操作（DROP、TRUNCATE、ALTER、CREATE INDEX 等）
+- 阻止无 WHERE 的 UPDATE/DELETE
+- 阻止危险函数（LOAD_FILE、INTO OUTFILE、DUMPFILE）
+- 性能目标：<2ms 验证时间
+
+**Redis 命令过滤**：
+- 黑名单：FLUSHDB、FLUSHALL、SHUTDOWN、CONFIG、SAVE、BGSAVE
+- 大小写不敏感匹配
+- 性能目标：<100μs 验证时间
+
+**权限映射**：
+- **MySQL/PostgreSQL**：
+  - readonly → SELECT 权限
+  - readwrite → SELECT, INSERT, UPDATE, DELETE 权限
+- **Redis ACL**：
+  - readonly → +@read -@write -@dangerous
+  - readwrite → +@read +@write -@dangerous
+
+### 性能优化
+- **连接池**：MaxOpenConns=50、MaxIdleConns=10
+- **连接缓存**：实例级缓存避免重复建连
+- **查询限制**：
+  - 超时：30秒（可配置）
+  - 结果大小：10MB（超出自动截断并提示）
+- **审计清理**：定时任务每天 2AM 删除 90 天前日志
+
+### 测试覆盖
+- **契约测试**（6个文件）：API 规范验证
+- **集成测试**（7个文件）：真实数据库环境测试（testcontainers）
+- **单元测试**（3个文件）：核心逻辑验证（security_filter、credential、acl_mapping）
+- **总计**：135+ 测试用例
+
+### 关键文件
+```
+internal/
+├── models/                # 数据模型（6个）
+│   └── db_*.go
+├── repository/database/   # 仓储层（5个）
+├── services/database/     # 服务层（8个）
+│   ├── security_filter.go     # SQL/Redis 安全过滤
+│   ├── manager.go             # 实例管理器（连接缓存）
+│   ├── query_executor.go      # 查询执行器（超时控制）
+│   └── audit_logger.go        # 审计日志记录
+└── api/handlers/database/ # API 处理器（6个）
+
+pkg/
+├── dbdriver/              # 数据库驱动（4个）
+│   ├── driver.go          # 接口定义
+│   ├── mysql.go, postgres.go, redis.go
+└── crypto/                # 加密服务
+    └── encryption.go      # AES-256-GCM 实现
+
+tests/
+├── contract/              # 契约测试（6个）
+├── integration/database/  # 集成测试（7个）
+└── unit/                  # 单元测试（3个）
+```
+
+### 使用示例
+```bash
+# 运行数据库管理相关测试
+go test -v ./tests/contract/database_*.go
+go test -v ./tests/integration/database/... -timeout 5m
+go test -v ./tests/unit/...
+
+# 启动应用（包含数据库管理功能）
+task dev
+
+# 访问 Swagger 文档
+# http://localhost:12306/swagger/index.html
+```
+
+### 前端页面
+- **实例列表**：显示所有数据库实例，支持创建、编辑、删除、连接测试
+- **数据库列表**：查看和管理实例下的数据库
+- **用户管理**：创建用户、修改密码、删除用户
+- **权限管理**：授予和撤销数据库权限（readonly/readwrite）
+- **查询控制台**：Monaco Editor 编辑器，执行 SQL/Redis 命令
+- **审计日志**：查询和筛选所有数据库操作日志
+
+### 待完成任务
+- API 文档生成（运行 `./scripts/generate-swagger.sh`）
+- 代码质量检查（运行 `task lint`）
+- 手动验证（参考 `.claude/specs/003-nosql-sql/quickstart.md`）

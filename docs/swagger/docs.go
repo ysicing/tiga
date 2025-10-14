@@ -24,6 +24,758 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/auth/login/password": {
+            "post": {
+                "description": "Authenticate user with username and password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "204": {
+                        "description": "No Content - Login successful (cookie set)"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Invalidate user session and clear auth cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User logout",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/providers": {
+            "get": {
+                "description": "Get list of available OAuth authentication providers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get OAuth providers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "description": "Get a new access token using refresh token (from cookie or JSON body)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token (optional if cookie is set)",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/user": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get information about the currently authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/config": {
+            "get": {
+                "description": "Get public system configuration (no auth required)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Get public system configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PublicConfigResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Update system configuration settings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Update system configuration (admin only)",
+                "parameters": [
+                    {
+                        "description": "System configuration",
+                        "name": "config",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UpdateSystemConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/system/config/full": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get full system configuration including all settings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Get full system configuration (admin only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-events": {
+            "get": {
+                "description": "List all alert events with filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "List alert events",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by rule ID",
+                        "name": "rule_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (firing/acknowledged/resolved)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by severity",
+                        "name": "severity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-events/{id}/acknowledge": {
+            "post": {
+                "description": "Mark an alert event as acknowledged",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "Acknowledge alert event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Acknowledgment note",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-events/{id}/resolve": {
+            "post": {
+                "description": "Mark an alert event as resolved",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "Resolve alert event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Resolution note",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-rules": {
+            "get": {
+                "description": "List all alert rules with filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "List alert rules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule type (host/service)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by enabled status",
+                        "name": "enabled",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by severity",
+                        "name": "severity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new monitor alert rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "Create alert rule",
+                "parameters": [
+                    {
+                        "description": "Alert rule",
+                        "name": "rule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MonitorAlertRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alert-rules/{id}": {
+            "get": {
+                "description": "Get an alert rule by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "Get alert rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update an existing alert rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "Update alert rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Alert rule",
+                        "name": "rule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MonitorAlertRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete an alert rule and its events",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Monitor Alerts"
+                ],
+                "summary": "Delete alert rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/alerts/events": {
             "get": {
                 "security": [
@@ -1141,86 +1893,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/login": {
-            "post": {
-                "description": "Authenticate user with username and password",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "User login",
-                "parameters": [
-                    {
-                        "description": "Login credentials",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/logout": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Invalidate user session",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "User logout",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SuccessResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/auth/oauth/login": {
             "post": {
                 "description": "Complete OAuth login flow",
@@ -1333,52 +2005,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/refresh": {
-            "post": {
-                "description": "Get a new access token using refresh token",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Refresh access token",
-                "parameters": [
-                    {
-                        "description": "Refresh token",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.RefreshTokenRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/auth/sessions": {
             "get": {
                 "security": [
@@ -1456,21 +2082,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances": {
+        "/api/v1/dbs": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get a paginated list of instances",
+                "description": "Get a paginated list of database instances",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "List instances",
+                "summary": "List database instances",
                 "parameters": [
                     {
                         "type": "string",
@@ -1538,7 +2164,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new service instance",
+                "description": "Create a new database service instance",
                 "consumes": [
                     "application/json"
                 ],
@@ -1546,9 +2172,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Create instance",
+                "summary": "Create database instance",
                 "parameters": [
                     {
                         "description": "Instance creation request",
@@ -1582,21 +2208,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/statistics": {
+        "/api/v1/dbs/statistics": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get overall instance statistics",
+                "description": "Get overall database instance statistics",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Get instance statistics",
+                "summary": "Get database instance statistics",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1613,21 +2239,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}": {
+        "/api/v1/dbs/{instance_id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get instance details by ID",
+                "description": "Get database instance details by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Get instance",
+                "summary": "Get database instance",
                 "parameters": [
                     {
                         "type": "string",
@@ -1664,14 +2290,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Soft delete an instance",
+                "description": "Soft delete a database instance",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Delete instance",
+                "summary": "Delete database instance",
                 "parameters": [
                     {
                         "type": "string",
@@ -1705,7 +2331,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update instance details",
+                "description": "Update database instance details",
                 "consumes": [
                     "application/json"
                 ],
@@ -1713,9 +2339,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Update instance",
+                "summary": "Update database instance",
                 "parameters": [
                     {
                         "type": "string",
@@ -1756,21 +2382,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/health": {
+        "/api/v1/dbs/{instance_id}/health": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get health status for a specific instance",
+                "description": "Get health status for a specific database instance",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Get instance health",
+                "summary": "Get database instance health",
                 "parameters": [
                     {
                         "type": "string",
@@ -1825,7 +2451,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update instance health status",
+                "description": "Update database instance health status",
                 "consumes": [
                     "application/json"
                 ],
@@ -1833,9 +2459,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Update instance health",
+                "summary": "Update database instance health",
                 "parameters": [
                     {
                         "type": "string",
@@ -1870,21 +2496,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics": {
+        "/api/v1/dbs/{instance_id}/metrics": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get metrics for a specific instance",
+                "description": "Get metrics for a specific database instance",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Get instance metrics",
+                "summary": "Get database instance metrics",
                 "parameters": [
                     {
                         "type": "string",
@@ -1934,14 +2560,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics/latest": {
+        "/api/v1/dbs/{instance_id}/metrics/latest": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get the most recent value for all metrics of an instance",
+                "description": "Get the most recent value for all metrics of a database instance",
                 "produces": [
                     "application/json"
                 ],
@@ -1974,14 +2600,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/metrics/names": {
+        "/api/v1/dbs/{instance_id}/metrics/names": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all available metric names for an instance",
+                "description": "Get all available metric names for a database instance",
                 "produces": [
                     "application/json"
                 ],
@@ -2014,14 +2640,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/status": {
+        "/api/v1/dbs/{instance_id}/status": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update instance operational status",
+                "description": "Update database instance operational status",
                 "consumes": [
                     "application/json"
                 ],
@@ -2029,9 +2655,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
-                "summary": "Update instance status",
+                "summary": "Update database instance status",
                 "parameters": [
                     {
                         "type": "string",
@@ -2066,14 +2692,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/instances/{instance_id}/tags": {
+        "/api/v1/dbs/{instance_id}/tags": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Add tags to an instance",
+                "description": "Add tags to a database instance",
                 "consumes": [
                     "application/json"
                 ],
@@ -2081,7 +2707,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Add tags",
                 "parameters": [
@@ -2123,7 +2749,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Remove tags from an instance",
+                "description": "Remove tags from a database instance",
                 "consumes": [
                     "application/json"
                 ],
@@ -2131,7 +2757,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "instances"
+                    "dbs"
                 ],
                 "summary": "Remove tags",
                 "parameters": [
@@ -2163,6 +2789,269 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/handlers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/hosts": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "List hosts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group name filter",
+                        "name": "group_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search keyword",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort field",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Create a new host node",
+                "parameters": [
+                    {
+                        "description": "Host information",
+                        "name": "host",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.HostNode"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/hosts/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get host details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update host",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Host information",
+                        "name": "host",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.HostNode"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Delete host",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/hosts/{id}/state/current": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get current state",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/hosts/{id}/state/history": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get historical states",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start time (RFC3339)",
+                        "name": "start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time (RFC3339)",
+                        "name": "end",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Interval (auto/1m/5m/1h/1d)",
+                        "name": "interval",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Metrics (comma-separated)",
+                        "name": "metrics",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3128,6 +4017,94 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/vms/host-groups": {
+            "get": {
+                "description": "Get a list of all unique group names used by host nodes",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VMs"
+                ],
+                "summary": "List all host groups",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "失败",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vms/hosts/{id}/agent-install-command": {
+            "get": {
+                "description": "Returns the command to install agent on the host",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get agent installation command",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vms/hosts/{id}/regenerate-secret-key": {
+            "post": {
+                "description": "Regenerates the secret key for a host and disconnects current agent",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Regenerate host secret key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3456,6 +4433,23 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.PublicConfigResponse": {
+            "type": "object",
+            "properties": {
+                "app_name": {
+                    "type": "string"
+                },
+                "app_subtitle": {
+                    "type": "string"
+                },
+                "enable_analytics": {
+                    "type": "boolean"
+                },
+                "language": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.RefreshTokenRequest": {
             "type": "object",
             "required": [
@@ -3628,6 +4622,23 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.UpdateSystemConfigRequest": {
+            "type": "object",
+            "properties": {
+                "app_name": {
+                    "type": "string"
+                },
+                "app_subtitle": {
+                    "type": "string"
+                },
+                "enable_analytics": {
+                    "type": "boolean"
+                },
+                "language": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.UpdateUserRequest": {
             "type": "object",
             "required": [
@@ -3690,6 +4701,238 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "models.AlertSeverity": {
+            "type": "string",
+            "enum": [
+                "info",
+                "warning",
+                "critical"
+            ],
+            "x-enum-varnames": [
+                "AlertSeverityInfo",
+                "AlertSeverityWarning",
+                "AlertSeverityCritical"
+            ]
+        },
+        "models.AlertType": {
+            "type": "string",
+            "enum": [
+                "host",
+                "service"
+            ],
+            "x-enum-varnames": [
+                "AlertTypeHost",
+                "AlertTypeService"
+            ]
+        },
+        "models.HostInfo": {
+            "type": "object",
+            "properties": {
+                "agent_version": {
+                    "description": "Agent information",
+                    "type": "string"
+                },
+                "arch": {
+                    "description": "Architecture (amd64/arm64)",
+                    "type": "string"
+                },
+                "boot_time": {
+                    "description": "System boot time (Unix timestamp)",
+                    "type": "integer"
+                },
+                "cpu_cores": {
+                    "description": "Number of CPU cores",
+                    "type": "integer"
+                },
+                "cpu_model": {
+                    "description": "Hardware information",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "disk_total": {
+                    "description": "Total disk space in bytes",
+                    "type": "integer"
+                },
+                "gpu_model": {
+                    "description": "GPU information (optional)",
+                    "type": "string"
+                },
+                "host_node_id": {
+                    "description": "One-to-one with HostNode",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mem_total": {
+                    "description": "Total memory in bytes",
+                    "type": "integer"
+                },
+                "platform": {
+                    "description": "System information",
+                    "type": "string"
+                },
+                "platform_version": {
+                    "description": "OS version (e.g., \"Ubuntu 22.04\")",
+                    "type": "string"
+                },
+                "ssh_enabled": {
+                    "description": "SSH configuration (reported by Agent)",
+                    "type": "boolean"
+                },
+                "swap_total": {
+                    "description": "Total swap space in bytes",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "virtualization": {
+                    "description": "Virtualization type (kvm/docker/none)",
+                    "type": "string"
+                }
+            }
+        },
+        "models.HostNode": {
+            "type": "object",
+            "properties": {
+                "auto_renew": {
+                    "description": "是否自动续费",
+                    "type": "boolean"
+                },
+                "cost": {
+                    "description": "Billing and expiry information",
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "display_index": {
+                    "type": "integer"
+                },
+                "expiry_date": {
+                    "description": "到期时间",
+                    "type": "string"
+                },
+                "group_name": {
+                    "description": "Grouping",
+                    "type": "string"
+                },
+                "hide_for_guest": {
+                    "type": "boolean"
+                },
+                "host_info": {
+                    "description": "Relationships",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.HostInfo"
+                        }
+                    ]
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_active": {
+                    "description": "Connection status",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Basic information",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "Display configuration",
+                    "type": "string"
+                },
+                "online": {
+                    "description": "Runtime status (computed from active connections, not persisted)",
+                    "type": "boolean"
+                },
+                "public_note": {
+                    "type": "string"
+                },
+                "purchase_date": {
+                    "description": "购买日期",
+                    "type": "string"
+                },
+                "renewal_type": {
+                    "description": "续费周期：monthly 或 yearly",
+                    "type": "string"
+                },
+                "traffic_limit": {
+                    "description": "流量限制 (GB), 0表示无限",
+                    "type": "integer"
+                },
+                "traffic_used": {
+                    "description": "已用流量 (GB)",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MonitorAlertRule": {
+            "type": "object",
+            "properties": {
+                "condition": {
+                    "description": "Condition expression (using antonmedv/expr)\nExamples:\n- Host: \"cpu_usage \u003e 80 \u0026\u0026 load_5 \u003e 10\"\n- Service: \"uptime_percentage \u003c 99.9 \u0026\u0026 failed_checks \u003e 10\"",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "Trigger configuration",
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_triggered": {
+                    "description": "Runtime statistics (not persisted)",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Basic information",
+                    "type": "string"
+                },
+                "notify_channels": {
+                    "description": "Notification channels (JSON array: [\"email\", \"webhook\", \"sms\"])",
+                    "type": "string"
+                },
+                "notify_config": {
+                    "description": "Notification configuration (JSON map)\nExample: {\"email\": [\"admin@example.com\"], \"webhook\": \"https://hooks.example.com\"}",
+                    "type": "string"
+                },
+                "severity": {
+                    "$ref": "#/definitions/models.AlertSeverity"
+                },
+                "target_id": {
+                    "description": "HostNode ID or ServiceMonitor ID",
+                    "type": "string"
+                },
+                "trigger_count": {
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "host/service",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.AlertType"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -3739,7 +4982,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:12306",
+	Host:             "localhost:8080",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Tiga DevOps Platform API",

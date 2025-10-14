@@ -14,13 +14,15 @@ interface WebSSHTerminalProps {
 }
 
 // Connection states
-enum ConnectionState {
-  CONNECTING = 'connecting',
-  CONNECTED = 'connected',
-  DISCONNECTED = 'disconnected',
-  RECONNECTING = 'reconnecting',
-  FAILED = 'failed',
-}
+const ConnectionState = {
+  CONNECTING: 'connecting',
+  CONNECTED: 'connected',
+  DISCONNECTED: 'disconnected',
+  RECONNECTING: 'reconnecting',
+  FAILED: 'failed',
+} as const
+
+type ConnectionStateType = typeof ConnectionState[keyof typeof ConnectionState]
 
 // Reconnection configuration
 const RECONNECT_CONFIG = {
@@ -53,7 +55,7 @@ export function WebSSHTerminal({
   const reconnectAttemptsRef = useRef(0);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [connectionState, setConnectionState] = useState<ConnectionState>(
+  const [connectionState, setConnectionState] = useState<ConnectionStateType>(
     ConnectionState.CONNECTING
   );
   const [reconnectDelay, setReconnectDelay] = useState(0);

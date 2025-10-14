@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/models"
@@ -553,4 +553,3 @@ func TestCreateSession_BoundaryConditions(t *testing.T) {
 		mgr.CloseSession(ctx, session.SessionID, "test cleanup")
 	})
 }
-

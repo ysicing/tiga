@@ -38,11 +38,11 @@ const SUBSYSTEMS = [
     color: 'bg-indigo-500',
   },
   {
-    id: 'middleware',
-    name: 'subsystem.middleware',
-    description: 'subsystem.middleware.description',
+    id: 'dbs',
+    name: 'subsystem.dbs',
+    description: 'subsystem.dbs.description',
     icon: IconDatabase,
-    path: '/middleware',
+    path: '/dbs',
     color: 'bg-green-500',
   },
   {

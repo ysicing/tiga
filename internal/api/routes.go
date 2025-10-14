@@ -5,12 +5,15 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
+	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
 	"github.com/ysicing/tiga/internal/api/handlers/instances"
 	"github.com/ysicing/tiga/internal/api/handlers/minio"
 	"github.com/ysicing/tiga/internal/api/middleware"
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/repository"
+	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	"github.com/ysicing/tiga/internal/services"
+	dbservices "github.com/ysicing/tiga/internal/services/database"
 	"github.com/ysicing/tiga/pkg/auth"
 	"github.com/ysicing/tiga/pkg/cluster"
 	"github.com/ysicing/tiga/pkg/handlers/resources"
@@ -32,11 +35,18 @@ func SetupRoutes(
 	configPath string,
 	jwtManager *authservices.JWTManager,
 	jwtSecret string,
+	dbManagementCfg config.DatabaseManagementConfig,
 	hostService *hostservices.HostService,
 	stateCollector *hostservices.StateCollector,
 	terminalManager *hostservices.TerminalManager,
 	probeScheduler *monitorservices.ServiceProbeScheduler,
 ) {
+	// Global middleware to inject DB into context for all routes
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Next()
+	})
+
 	// ==================== Install Routes (Only if not installed) ====================
 	// Check if system is installed
 	configService := config.NewInstallConfigService(configPath)
@@ -68,12 +78,37 @@ func SetupRoutes(
 	serviceRepo := repository.NewServiceRepository(db)
 	monitorAlertRepo := repository.NewMonitorAlertRepository(db)
 
+	// Database management repositories
+	dbInstanceRepo := dbrepo.NewInstanceRepository(db)
+	dbDatabaseRepo := dbrepo.NewDatabaseRepository(db)
+	dbUserRepo := dbrepo.NewUserRepository(db)
+	dbPermissionRepo := dbrepo.NewPermissionRepository(db)
+	dbAuditLogRepo := dbrepo.NewAuditLogRepository(db)
+	dbQuerySessionRepo := dbrepo.NewQuerySessionRepository(db)
+
 	// Initialize session and login services using the shared jwtManager
 	sessionService := authservices.NewSessionService(db)
 	loginService := authservices.NewLoginService(db, jwtManager, sessionService)
 
 	// Initialize services
 	instanceService := services.NewInstanceService(instanceRepo)
+
+	// Database management services
+	dbManager := dbservices.NewDatabaseManager(dbInstanceRepo)
+	dbSecurityFilter := dbservices.NewSecurityFilter()
+	dbDatabaseService := dbservices.NewDatabaseService(dbManager, dbDatabaseRepo)
+	dbUserService := dbservices.NewUserService(dbManager, dbUserRepo)
+	dbPermissionService := dbservices.NewPermissionService(dbManager, dbUserRepo, dbDatabaseRepo, dbPermissionRepo)
+	dbAuditLogger := dbservices.NewAuditLogger(dbAuditLogRepo)
+	dbQueryExecutor := dbservices.NewQueryExecutorWithConfig(
+		dbManager,
+		dbQuerySessionRepo,
+		dbSecurityFilter,
+		&dbservices.QueryExecutorConfig{
+			Timeout:        dbManagementCfg.QueryTimeout(),
+			MaxResultBytes: dbManagementCfg.ResultSizeLimit(),
+		},
+	)
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
 	// stateCollector, hostService, terminalManager, and probeScheduler are passed as parameters
@@ -95,6 +130,14 @@ func SetupRoutes(
 	metricsHandler := instances.NewMetricsHandler(instanceService)
 	alertHandler := handlers.NewAlertHandler(alertRepo)
 	auditHandler := handlers.NewAuditLogHandler(auditRepo)
+
+	// Database management handlers
+	dbInstanceHandler := databasehandlers.NewInstanceHandler(dbManager, dbAuditLogger)
+	dbDatabaseHandler := databasehandlers.NewDatabaseHandler(dbDatabaseService, dbAuditLogger)
+	dbUserHandler := databasehandlers.NewUserHandler(dbUserService, dbAuditLogger)
+	dbPermissionHandler := databasehandlers.NewPermissionHandler(dbPermissionService, dbAuditLogger)
+	dbQueryHandler := databasehandlers.NewQueryHandler(dbQueryExecutor, dbAuditLogger)
+	dbAuditHandler := databasehandlers.NewAuditHandler(dbAuditLogRepo)
 
 	// Host monitoring handlers
 	hostHandler := handlers.NewHostHandler(hostService)
@@ -254,19 +297,66 @@ func SetupRoutes(
 				resources.RegisterRoutes(clusterGroup)
 			}
 
-			// ==================== Instance Management Subsystem ====================
-			instancesGroup := protected.Group("/instances")
-			{
-				// Instance CRUD
-				instancesGroup.GET("", instanceHandler.ListInstances)
-				instancesGroup.POST("", instanceHandler.CreateInstance)
-				instancesGroup.GET("/:instance_id", instanceHandler.GetInstance)
-				instancesGroup.PUT("/:instance_id", instanceHandler.UpdateInstance)
-				instancesGroup.DELETE("/:instance_id", instanceHandler.DeleteInstance)
+			// ==================== Database Instance Management Subsystem ====================
+			registerDatabaseRoutes := func(group *gin.RouterGroup) {
+				// Database instance CRUD
+				group.GET("", instanceHandler.ListInstances)
+				group.POST("", instanceHandler.CreateInstance)
+				group.GET("/:instance_id", instanceHandler.GetInstance)
+				group.PUT("/:instance_id", instanceHandler.UpdateInstance)
+				group.DELETE("/:instance_id", instanceHandler.DeleteInstance)
 
 				// Instance health and metrics
-				instancesGroup.GET("/:instance_id/health", healthHandler.GetInstanceHealth)
-				instancesGroup.GET("/:instance_id/metrics", metricsHandler.GetInstanceMetrics)
+				group.GET("/:instance_id/health", healthHandler.GetInstanceHealth)
+				group.GET("/:instance_id/metrics", metricsHandler.GetInstanceMetrics)
+			}
+
+			// Primary database routes
+			registerDatabaseRoutes(protected.Group("/dbs"))
+			// Legacy routes for backward compatibility
+			registerDatabaseRoutes(protected.Group("/instances"))
+
+			// ==================== New Database Management Subsystem ====================
+			databaseGroup := protected.Group("/database")
+			databaseGroup.Use(middleware.RequireAdmin())
+			{
+				instancesGroup := databaseGroup.Group("/instances")
+				{
+					instancesGroup.GET("", dbInstanceHandler.ListInstances)
+					instancesGroup.POST("", dbInstanceHandler.CreateInstance)
+					instancesGroup.GET("/:id", dbInstanceHandler.GetInstance)
+					instancesGroup.DELETE("/:id", dbInstanceHandler.DeleteInstance)
+					instancesGroup.POST("/:id/test", dbInstanceHandler.TestConnection)
+				}
+
+				databasesGroup := databaseGroup.Group("/instances/:id/databases")
+				{
+					databasesGroup.GET("", dbDatabaseHandler.ListDatabases)
+					databasesGroup.POST("", dbDatabaseHandler.CreateDatabase)
+				}
+				databaseGroup.DELETE("/databases/:id", dbDatabaseHandler.DeleteDatabase)
+
+				usersGroup := databaseGroup.Group("/instances/:id/users")
+				{
+					usersGroup.GET("", dbUserHandler.ListUsers)
+					usersGroup.POST("", dbUserHandler.CreateUser)
+				}
+				databaseGroup.PATCH("/users/:id", dbUserHandler.UpdatePassword)
+				databaseGroup.DELETE("/users/:id", dbUserHandler.DeleteUser)
+
+				permissionsGroup := databaseGroup.Group("/permissions")
+				{
+					permissionsGroup.POST("", dbPermissionHandler.GrantPermission)
+					permissionsGroup.DELETE("/:id", dbPermissionHandler.RevokePermission)
+				}
+				databaseGroup.GET("/users/:id/permissions", dbPermissionHandler.GetUserPermissions)
+
+				queriesGroup := databaseGroup.Group("/instances/:id")
+				{
+					queriesGroup.POST("/query", dbQueryHandler.ExecuteQuery)
+				}
+
+				databaseGroup.GET("/audit-logs", dbAuditHandler.ListAuditLogs)
 			}
 
 			// ==================== MinIO Subsystem ====================

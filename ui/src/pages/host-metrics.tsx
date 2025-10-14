@@ -136,7 +136,7 @@ export default function InstanceMetricsPage() {
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/instances/${id}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/dbs/${id}`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>

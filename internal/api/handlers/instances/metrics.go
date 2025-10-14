@@ -24,10 +24,10 @@ type GetInstanceMetricsRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
-// GetInstanceMetrics retrieves metrics for an instance
-// @Summary Get instance metrics
-// @Description Get metrics for a specific instance
-// @Tags instances
+// GetInstanceMetrics retrieves metrics for a database instance
+// @Summary Get database instance metrics
+// @Description Get metrics for a specific database instance
+// @Tags dbs
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
@@ -35,7 +35,7 @@ type GetInstanceMetricsRequest struct {
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/instances/{instance_id}/metrics [get]
+// @Router /api/v1/dbs/{instance_id}/metrics [get]
 func (h *MetricsHandler) GetInstanceMetrics(c *gin.Context) {
 	var req GetInstanceMetricsRequest
 	if !handlers.BindURI(c, &req) {

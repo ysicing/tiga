@@ -13,7 +13,7 @@ import {
   IconPlus
 } from '@tabler/icons-react'
 
-interface MiddlewareOverviewProps {
+interface DbsOverviewProps {
   type: 'mysql' | 'postgresql' | 'redis'
 }
 
@@ -43,7 +43,7 @@ const getTypeTitle = (type: string) => {
   }
 }
 
-export function MiddlewareOverview({ type }: MiddlewareOverviewProps) {
+export function DbsOverview({ type }: DbsOverviewProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
 
@@ -61,7 +61,7 @@ export function MiddlewareOverview({ type }: MiddlewareOverviewProps) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{typeTitle} {t('middleware.instances', '实例')}</h1>
+          <h1 className="text-2xl font-bold">{typeTitle} {t('dbs.instances', '实例')}</h1>
         </div>
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
@@ -76,7 +76,7 @@ export function MiddlewareOverview({ type }: MiddlewareOverviewProps) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{typeTitle} {t('middleware.instances', '实例')}</h1>
+          <h1 className="text-2xl font-bold">{typeTitle} {t('dbs.instances', '实例')}</h1>
         </div>
         <Alert variant="destructive">
           <IconAlertCircle className="h-4 w-4" />
@@ -93,16 +93,16 @@ export function MiddlewareOverview({ type }: MiddlewareOverviewProps) {
   }
 
   const handleCreateInstance = () => {
-    navigate(`/devops/instances/new?type=${type}`)
+    navigate(`/dbs/new?type=${type}`)
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{typeTitle} {t('middleware.instances', '实例')}</h1>
+        <h1 className="text-2xl font-bold">{typeTitle} {t('dbs.instances', '实例')}</h1>
         <Button onClick={handleCreateInstance}>
           <IconPlus className="h-4 w-4 mr-2" />
-          {t('middleware.createInstance', '创建实例')}
+          {t('dbs.createInstance', '创建实例')}
         </Button>
       </div>
 
@@ -112,14 +112,17 @@ export function MiddlewareOverview({ type }: MiddlewareOverviewProps) {
           <CardContent className="text-center py-12">
             <Icon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground mb-2">
-              {t('middleware.noInstancesOfType', `暂无 ${typeTitle} 实例`)}
+              {t('dbs.noInstancesOfType', {
+                type: typeTitle,
+                defaultValue: `暂无 ${typeTitle} 实例`,
+              })}
             </p>
             <Button
               className="mt-4"
               onClick={handleCreateInstance}
             >
               <IconPlus className="h-4 w-4 mr-2" />
-              {t('middleware.createFirstInstance', '创建第一个实例')}
+              {t('dbs.createFirstInstance', '创建第一个实例')}
             </Button>
           </CardContent>
         </Card>
