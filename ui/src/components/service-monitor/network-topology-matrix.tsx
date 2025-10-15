@@ -1,70 +1,83 @@
-import { useMemo } from 'react';
+import { useMemo } from 'react'
+import type {
+  NetworkTopologyEdge,
+  NetworkTopologyResponse,
+} from '@/services/service-monitor'
+
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import type { NetworkTopologyResponse, NetworkTopologyEdge } from '@/services/service-monitor';
+} from '@/components/ui/tooltip'
 
 interface NetworkTopologyMatrixProps {
-  data: NetworkTopologyResponse | null;
-  className?: string;
+  data: NetworkTopologyResponse | null
+  className?: string
 }
 
 function getLatencyColor(latency: number): string {
-  if (latency === 0) return 'bg-gray-100 dark:bg-gray-800'; // No data
-  if (latency < 50) return 'bg-green-100 dark:bg-green-900'; // Excellent
-  if (latency < 100) return 'bg-yellow-100 dark:bg-yellow-900'; // Good
-  if (latency < 200) return 'bg-orange-100 dark:bg-orange-900'; // Fair
-  return 'bg-red-100 dark:bg-red-900'; // Poor
+  if (latency === 0) return 'bg-gray-100 dark:bg-gray-800' // No data
+  if (latency < 50) return 'bg-green-100 dark:bg-green-900' // Excellent
+  if (latency < 100) return 'bg-yellow-100 dark:bg-yellow-900' // Good
+  if (latency < 200) return 'bg-orange-100 dark:bg-orange-900' // Fair
+  return 'bg-red-100 dark:bg-red-900' // Poor
 }
 
 function getLatencyColorClass(latency: number): string {
-  if (latency === 0) return 'text-gray-600 dark:text-gray-400';
-  if (latency < 50) return 'text-green-600 dark:text-green-400';
-  if (latency < 100) return 'text-yellow-600 dark:text-yellow-400';
-  if (latency < 200) return 'text-orange-600 dark:text-orange-400';
-  return 'text-red-600 dark:text-red-400';
+  if (latency === 0) return 'text-gray-600 dark:text-gray-400'
+  if (latency < 50) return 'text-green-600 dark:text-green-400'
+  if (latency < 100) return 'text-yellow-600 dark:text-yellow-400'
+  if (latency < 200) return 'text-orange-600 dark:text-orange-400'
+  return 'text-red-600 dark:text-red-400'
 }
 
 function formatLatency(latency: number): string {
-  if (latency === 0) return '-';
-  if (latency < 1) return '<1ms';
-  return `${Math.round(latency)}ms`;
+  if (latency === 0) return '-'
+  if (latency < 1) return '<1ms'
+  return `${Math.round(latency)}ms`
 }
 
-export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrixProps) {
+export function NetworkTopologyMatrix({
+  data,
+  className,
+}: NetworkTopologyMatrixProps) {
   const matrixData = useMemo(() => {
     if (!data || !data.nodes || data.nodes.length === 0) {
-      return null;
+      return null
     }
 
     // Separate hosts and services
-    const hosts = data.nodes.filter(n => n.type === 'host');
-    const services = data.nodes.filter(n => n.type === 'service');
+    const hosts = data.nodes.filter((n) => n.type === 'host')
+    const services = data.nodes.filter((n) => n.type === 'service')
 
     // Build matrix data structure
-    const matrix: Array<Array<NetworkTopologyEdge | null>> = [];
+    const matrix: Array<Array<NetworkTopologyEdge | null>> = []
 
     for (const host of hosts) {
-      const row: Array<NetworkTopologyEdge | null> = [];
+      const row: Array<NetworkTopologyEdge | null> = []
       for (const service of services) {
-        const edge = data.matrix?.[host.id]?.[service.id] || null;
-        row.push(edge);
+        const edge = data.matrix?.[host.id]?.[service.id] || null
+        row.push(edge)
       }
-      matrix.push(row);
+      matrix.push(row)
     }
 
     return {
       hosts,
       services,
       matrix,
-    };
-  }, [data]);
+    }
+  }, [data])
 
   if (!matrixData) {
     return (
@@ -74,15 +87,13 @@ export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrix
           <CardDescription>显示节点间的网络连接状态和延迟</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-gray-500">
-            暂无网络拓扑数据
-          </div>
+          <div className="text-center py-8 text-gray-500">暂无网络拓扑数据</div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  const { hosts, services, matrix } = matrixData;
+  const { hosts, services, matrix } = matrixData
 
   return (
     <Card className={className}>
@@ -107,7 +118,10 @@ export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrix
                       className="px-2 py-2 text-center font-medium min-w-[100px]"
                     >
                       <div className="flex flex-col items-center gap-1">
-                        <span className="text-xs truncate max-w-[100px]" title={service.name}>
+                        <span
+                          className="text-xs truncate max-w-[100px]"
+                          title={service.name}
+                        >
                           {service.name}
                         </span>
                         <Badge
@@ -142,16 +156,19 @@ export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrix
                       </div>
                     </td>
                     {services.map((service, colIndex) => {
-                      const edge = matrix[rowIndex][colIndex];
+                      const edge = matrix[rowIndex][colIndex]
 
                       if (!edge) {
                         return (
-                          <td key={service.id} className="px-2 py-2 text-center">
+                          <td
+                            key={service.id}
+                            className="px-2 py-2 text-center"
+                          >
                             <div className="w-full h-12 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded">
                               <span className="text-xs text-gray-400">N/A</span>
                             </div>
                           </td>
-                        );
+                        )
                       }
 
                       return (
@@ -204,18 +221,23 @@ export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrix
                                     {edge.packet_loss.toFixed(2)}%
                                   </p>
                                   <p className="text-gray-300">探测次数:</p>
-                                  <p className="text-white">{edge.probe_count}</p>
+                                  <p className="text-white">
+                                    {edge.probe_count}
+                                  </p>
                                 </div>
                                 {edge.last_probe_time && (
                                   <p className="text-xs text-gray-400 pt-1">
-                                    最后探测: {new Date(edge.last_probe_time).toLocaleString()}
+                                    最后探测:{' '}
+                                    {new Date(
+                                      edge.last_probe_time
+                                    ).toLocaleString()}
                                   </p>
                                 )}
                               </div>
                             </TooltipContent>
                           </Tooltip>
                         </td>
-                      );
+                      )
                     })}
                   </tr>
                 ))}
@@ -229,19 +251,27 @@ export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrix
           <span className="text-gray-600 dark:text-gray-400">延迟图例:</span>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-green-100 dark:bg-green-900" />
-            <span className="text-gray-700 dark:text-gray-300">优秀 (&lt;50ms)</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              优秀 (&lt;50ms)
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-yellow-100 dark:bg-yellow-900" />
-            <span className="text-gray-700 dark:text-gray-300">良好 (50-100ms)</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              良好 (50-100ms)
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-orange-100 dark:bg-orange-900" />
-            <span className="text-gray-700 dark:text-gray-300">一般 (100-200ms)</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              一般 (100-200ms)
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-red-100 dark:bg-red-900" />
-            <span className="text-gray-700 dark:text-gray-300">较差 (&gt;200ms)</span>
+            <span className="text-gray-700 dark:text-gray-300">
+              较差 (&gt;200ms)
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-gray-100 dark:bg-gray-800" />
@@ -250,5 +280,5 @@ export function NetworkTopologyMatrix({ data, className }: NetworkTopologyMatrix
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

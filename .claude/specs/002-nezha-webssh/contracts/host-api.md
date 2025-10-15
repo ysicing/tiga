@@ -34,7 +34,7 @@
     "uuid": "550e8400-e29b-41d4-a716-446655440000",
     "name": "prod-server-01",
     "secret_key": "encrypted_secret_key_here",
-    "agent_install_cmd": "curl -fsSL https://tiga.example.com/agent/install.sh | bash -s -- --server https://tiga.example.com --uuid 550e8400-e29b-41d4-a716-446655440000 --key encrypted_secret_key_here",
+    "agent_install_cmd": "curl -fsSL https://tiga.example.com/agent/install.sh | bash -s -- --server tiga.example.com:12307 --uuid 550e8400-e29b-41d4-a716-446655440000 --key encrypted_secret_key_here",
     "note": "生产环境Web服务器",
     "public_note": "公开备注信息",
     "display_index": 100,

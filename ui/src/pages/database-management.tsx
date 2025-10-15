@@ -1,24 +1,33 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react'
+import Editor from '@monaco-editor/react'
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Database,
+  Download,
+  Key,
+  MoreHorizontal,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  User,
+} from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import { devopsAPI } from '@/lib/api-client'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+} from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -27,7 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,113 +44,109 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
-  Database,
-  Play,
-  Trash2,
-  Plus,
-  MoreHorizontal,
-  RefreshCw,
-  ArrowLeft,
-  Search,
-  User,
-  Key,
-  Download,
-  Copy,
-  Check,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { devopsAPI } from '@/lib/api-client';
-import Editor from '@monaco-editor/react';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface DatabaseInfo {
-  name: string;
-  charset?: string;
-  collation?: string;
-  size?: string;
-  table_count?: number;
+  name: string
+  charset?: string
+  collation?: string
+  size?: string
+  table_count?: number
 }
 
 interface UserInfo {
-  username: string;
-  host: string;
-  privileges?: string[];
+  username: string
+  host: string
+  privileges?: string[]
 }
 
 interface QueryResult {
-  columns: string[];
-  rows: any[][];
-  affected_rows?: number;
-  execution_time?: number;
-  error?: string;
+  columns: string[]
+  rows: any[][]
+  affected_rows?: number
+  execution_time?: number
+  error?: string
 }
 
 export default function DatabaseManagementPage() {
-  const { instanceId } = useParams<{ instanceId: string }>();
-  const navigate = useNavigate();
+  const { instanceId } = useParams<{ instanceId: string }>()
+  const navigate = useNavigate()
 
   // State
-  const [databases, setDatabases] = useState<DatabaseInfo[]>([]);
-  const [users, setUsers] = useState<UserInfo[]>([]);
-  const [selectedDatabase, setSelectedDatabase] = useState<string>('');
-  const [sqlQuery, setSqlQuery] = useState<string>('SELECT * FROM information_schema.tables LIMIT 10;');
-  const [queryResult, setQueryResult] = useState<QueryResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [executing, setExecuting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [copiedQuery, setCopiedQuery] = useState(false);
+  const [databases, setDatabases] = useState<DatabaseInfo[]>([])
+  const [users, setUsers] = useState<UserInfo[]>([])
+  const [selectedDatabase, setSelectedDatabase] = useState<string>('')
+  const [sqlQuery, setSqlQuery] = useState<string>(
+    'SELECT * FROM information_schema.tables LIMIT 10;'
+  )
+  const [queryResult, setQueryResult] = useState<QueryResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [executing, setExecuting] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [copiedQuery, setCopiedQuery] = useState(false)
 
   // Dialog states
-  const [createDbOpen, setCreateDbOpen] = useState(false);
-  const [createUserOpen, setCreateUserOpen] = useState(false);
-  const [newDbName, setNewDbName] = useState('');
-  const [newDbCharset, setNewDbCharset] = useState('utf8mb4');
-  const [newDbCollation, setNewDbCollation] = useState('utf8mb4_unicode_ci');
-  const [newUsername, setNewUsername] = useState('');
-  const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserHost, setNewUserHost] = useState('%');
+  const [createDbOpen, setCreateDbOpen] = useState(false)
+  const [createUserOpen, setCreateUserOpen] = useState(false)
+  const [newDbName, setNewDbName] = useState('')
+  const [newDbCharset, setNewDbCharset] = useState('utf8mb4')
+  const [newDbCollation, setNewDbCollation] = useState('utf8mb4_unicode_ci')
+  const [newUsername, setNewUsername] = useState('')
+  const [newUserPassword, setNewUserPassword] = useState('')
+  const [newUserHost, setNewUserHost] = useState('%')
 
   useEffect(() => {
     if (instanceId) {
-      loadDatabases();
-      loadUsers();
+      loadDatabases()
+      loadUsers()
     }
-  }, [instanceId]);
+  }, [instanceId])
 
   const loadDatabases = async () => {
-    if (!instanceId) return;
-    setLoading(true);
+    if (!instanceId) return
+    setLoading(true)
     try {
-      const response = await devopsAPI.database.listDatabases(instanceId) as any;
-      setDatabases(response.databases || []);
+      const response = (await devopsAPI.database.listDatabases(
+        instanceId
+      )) as any
+      setDatabases(response.databases || [])
       if (response.databases?.length > 0 && !selectedDatabase) {
-        setSelectedDatabase(response.databases[0].name);
+        setSelectedDatabase(response.databases[0].name)
       }
     } catch (error: any) {
       toast.error('Failed to load databases', {
         description: error.message,
-      });
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadUsers = async () => {
-    if (!instanceId) return;
+    if (!instanceId) return
     try {
-      const response = await devopsAPI.database.listUsers(instanceId) as any;
-      setUsers(response.users || []);
+      const response = (await devopsAPI.database.listUsers(instanceId)) as any
+      setUsers(response.users || [])
     } catch (error: any) {
       toast.error('Failed to load users', {
         description: error.message,
-      });
+      })
     }
-  };
+  }
 
   const handleCreateDatabase = async () => {
-    if (!instanceId || !newDbName) return;
+    if (!instanceId || !newDbName) return
 
     try {
       await devopsAPI.database.createDatabase(
@@ -149,41 +154,41 @@ export default function DatabaseManagementPage() {
         newDbName,
         newDbCharset,
         newDbCollation
-      );
-      toast.success('Database created successfully');
-      setNewDbName('');
-      setCreateDbOpen(false);
-      loadDatabases();
+      )
+      toast.success('Database created successfully')
+      setNewDbName('')
+      setCreateDbOpen(false)
+      loadDatabases()
     } catch (error: any) {
       toast.error('Failed to create database', {
         description: error.message,
-      });
+      })
     }
-  };
+  }
 
   const handleDeleteDatabase = async (dbName: string) => {
-    if (!instanceId) return;
+    if (!instanceId) return
 
     if (!confirm(`Are you sure you want to delete database "${dbName}"?`)) {
-      return;
+      return
     }
 
     try {
-      await devopsAPI.database.deleteDatabase(instanceId, dbName);
-      toast.success('Database deleted successfully');
+      await devopsAPI.database.deleteDatabase(instanceId, dbName)
+      toast.success('Database deleted successfully')
       if (selectedDatabase === dbName) {
-        setSelectedDatabase('');
+        setSelectedDatabase('')
       }
-      loadDatabases();
+      loadDatabases()
     } catch (error: any) {
       toast.error('Failed to delete database', {
         description: error.message,
-      });
+      })
     }
-  };
+  }
 
   const handleCreateUser = async () => {
-    if (!instanceId || !newUsername || !newUserPassword) return;
+    if (!instanceId || !newUsername || !newUserPassword) return
 
     try {
       await devopsAPI.database.createUser(
@@ -191,113 +196,117 @@ export default function DatabaseManagementPage() {
         newUsername,
         newUserPassword,
         newUserHost
-      );
-      toast.success('User created successfully');
-      setNewUsername('');
-      setNewUserPassword('');
-      setNewUserHost('%');
-      setCreateUserOpen(false);
-      loadUsers();
+      )
+      toast.success('User created successfully')
+      setNewUsername('')
+      setNewUserPassword('')
+      setNewUserHost('%')
+      setCreateUserOpen(false)
+      loadUsers()
     } catch (error: any) {
       toast.error('Failed to create user', {
         description: error.message,
-      });
+      })
     }
-  };
+  }
 
   const handleDeleteUser = async (username: string) => {
-    if (!instanceId) return;
+    if (!instanceId) return
 
     if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
-      return;
+      return
     }
 
     try {
-      await devopsAPI.database.deleteUser(instanceId, username);
-      toast.success('User deleted successfully');
-      loadUsers();
+      await devopsAPI.database.deleteUser(instanceId, username)
+      toast.success('User deleted successfully')
+      loadUsers()
     } catch (error: any) {
       toast.error('Failed to delete user', {
         description: error.message,
-      });
+      })
     }
-  };
+  }
 
   const handleExecuteQuery = async () => {
     if (!instanceId || !selectedDatabase || !sqlQuery.trim()) {
-      toast.error('Please select a database and enter a query');
-      return;
+      toast.error('Please select a database and enter a query')
+      return
     }
 
-    setExecuting(true);
-    setQueryResult(null);
+    setExecuting(true)
+    setQueryResult(null)
 
     try {
-      const response = await devopsAPI.database.executeQuery(
+      const response = (await devopsAPI.database.executeQuery(
         instanceId,
         selectedDatabase,
         sqlQuery
-      ) as any;
-      setQueryResult(response);
+      )) as any
+      setQueryResult(response)
 
       if (response.error) {
         toast.error('Query execution failed', {
           description: response.error,
-        });
+        })
       } else {
         toast.success('Query executed successfully', {
           description: `Execution time: ${response.execution_time?.toFixed(2)}ms`,
-        });
+        })
       }
     } catch (error: any) {
       toast.error('Failed to execute query', {
         description: error.message,
-      });
+      })
       setQueryResult({
         columns: [],
         rows: [],
         error: error.message,
-      });
+      })
     } finally {
-      setExecuting(false);
+      setExecuting(false)
     }
-  };
+  }
 
   const handleCopyQuery = () => {
-    navigator.clipboard.writeText(sqlQuery);
-    setCopiedQuery(true);
-    setTimeout(() => setCopiedQuery(false), 2000);
-    toast.success('Query copied to clipboard');
-  };
+    navigator.clipboard.writeText(sqlQuery)
+    setCopiedQuery(true)
+    setTimeout(() => setCopiedQuery(false), 2000)
+    toast.success('Query copied to clipboard')
+  }
 
   const handleExportResults = () => {
-    if (!queryResult || queryResult.rows.length === 0) return;
+    if (!queryResult || queryResult.rows.length === 0) return
 
     // Convert to CSV
     const csv = [
       queryResult.columns.join(','),
-      ...queryResult.rows.map(row => row.map(cell =>
-        typeof cell === 'string' && cell.includes(',') ? `"${cell}"` : cell
-      ).join(','))
-    ].join('\n');
+      ...queryResult.rows.map((row) =>
+        row
+          .map((cell) =>
+            typeof cell === 'string' && cell.includes(',') ? `"${cell}"` : cell
+          )
+          .join(',')
+      ),
+    ].join('\n')
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `query-result-${new Date().toISOString()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Results exported');
-  };
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `query-result-${new Date().toISOString()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Results exported')
+  }
 
   const filteredDatabases = databases.filter((db) =>
     db.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  )
 
   const filteredUsers = users.filter((user) =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  )
 
   // SQL Example queries
   const exampleQueries = [
@@ -317,7 +326,7 @@ export default function DatabaseManagementPage() {
       name: 'Current User',
       query: 'SELECT USER(), CURRENT_USER();',
     },
-  ];
+  ]
 
   return (
     <div className="space-y-6 p-6">
@@ -334,8 +343,8 @@ export default function DatabaseManagementPage() {
         </div>
         <Button
           onClick={() => {
-            loadDatabases();
-            loadUsers();
+            loadDatabases()
+            loadUsers()
           }}
           variant="outline"
           size="icon"
@@ -457,13 +466,11 @@ export default function DatabaseManagementPage() {
                   )}
                 </CardTitle>
                 <CardDescription>
-                  {queryResult.error ? (
-                    queryResult.error
-                  ) : queryResult.affected_rows !== undefined ? (
-                    `${queryResult.affected_rows} row(s) affected`
-                  ) : (
-                    `${queryResult.rows.length} row(s) returned in ${queryResult.execution_time?.toFixed(2)}ms`
-                  )}
+                  {queryResult.error
+                    ? queryResult.error
+                    : queryResult.affected_rows !== undefined
+                      ? `${queryResult.affected_rows} row(s) affected`
+                      : `${queryResult.rows.length} row(s) returned in ${queryResult.execution_time?.toFixed(2)}ms`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -483,7 +490,9 @@ export default function DatabaseManagementPage() {
                             {row.map((cell, cellIndex) => (
                               <TableCell key={cellIndex}>
                                 {cell === null ? (
-                                  <span className="text-muted-foreground italic">NULL</span>
+                                  <span className="text-muted-foreground italic">
+                                    NULL
+                                  </span>
                                 ) : (
                                   String(cell)
                                 )}
@@ -512,7 +521,9 @@ export default function DatabaseManagementPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Databases</CardTitle>
-                  <CardDescription>Manage databases on this instance</CardDescription>
+                  <CardDescription>
+                    Manage databases on this instance
+                  </CardDescription>
                 </div>
                 <Dialog open={createDbOpen} onOpenChange={setCreateDbOpen}>
                   <DialogTrigger asChild>
@@ -558,10 +569,16 @@ export default function DatabaseManagementPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setCreateDbOpen(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCreateDbOpen(false)}
+                      >
                         Cancel
                       </Button>
-                      <Button onClick={handleCreateDatabase} disabled={!newDbName}>
+                      <Button
+                        onClick={handleCreateDatabase}
+                        disabled={!newDbName}
+                      >
                         Create
                       </Button>
                     </DialogFooter>
@@ -614,8 +631,8 @@ export default function DatabaseManagementPage() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => {
-                                  setSelectedDatabase(db.name);
-                                  navigate(`#query`);
+                                  setSelectedDatabase(db.name)
+                                  navigate(`#query`)
                                 }}
                               >
                                 <Play className="h-4 w-4 mr-2" />
@@ -635,7 +652,10 @@ export default function DatabaseManagementPage() {
                     ))}
                     {filteredDatabases.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <TableCell
+                          colSpan={5}
+                          className="text-center py-8 text-muted-foreground"
+                        >
                           No databases found
                         </TableCell>
                       </TableRow>
@@ -654,7 +674,9 @@ export default function DatabaseManagementPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Database Users</CardTitle>
-                  <CardDescription>Manage database user accounts</CardDescription>
+                  <CardDescription>
+                    Manage database user accounts
+                  </CardDescription>
                 </div>
                 <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
                   <DialogTrigger asChild>
@@ -701,7 +723,10 @@ export default function DatabaseManagementPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setCreateUserOpen(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setCreateUserOpen(false)}
+                      >
                         Cancel
                       </Button>
                       <Button
@@ -760,7 +785,9 @@ export default function DatabaseManagementPage() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">No privileges</span>
+                            <span className="text-muted-foreground">
+                              No privileges
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -791,7 +818,10 @@ export default function DatabaseManagementPage() {
                     ))}
                     {filteredUsers.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        <TableCell
+                          colSpan={4}
+                          className="text-center py-8 text-muted-foreground"
+                        >
                           No users found
                         </TableCell>
                       </TableRow>
@@ -804,5 +834,5 @@ export default function DatabaseManagementPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

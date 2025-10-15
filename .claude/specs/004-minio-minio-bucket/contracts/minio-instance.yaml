@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: MinIO Instance Management API
+  version: 1.0.0
+  description: API for managing MinIO instances
+
+paths:
+  /api/v1/minio/instances:
+    get:
+      summary: List all MinIO instances
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MinIOInstance'
+    post:
+      summary: Create a new MinIO instance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInstanceRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/MinIOInstance'
+
+  /api/v1/minio/instances/{id}:
+    get:
+      summary: Get instance details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+
+    put:
+      summary: Update instance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateInstanceRequest'
+      responses:
+        '200':
+          description: Updated
+
+    delete:
+      summary: Delete instance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+
+  /api/v1/minio/instances/{id}/test:
+    post:
+      summary: Test instance connection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Connection successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, failed]
+                  message:
+                    type: string
+                  version:
+                    type: string
+
+components:
+  schemas:
+    MinIOInstance:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        endpoint:
+          type: string
+        use_ssl:
+          type: boolean
+        status:
+          type: string
+          enum: [online, offline, error]
+        version:
+          type: string
+        total_size:
+          type: integer
+        used_size:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    CreateInstanceRequest:
+      type: object
+      required:
+        - name
+        - endpoint
+        - access_key
+        - secret_key
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        endpoint:
+          type: string
+          example: "minio.example.com:9000"
+        use_ssl:
+          type: boolean
+          default: true
+        access_key:
+          type: string
+        secret_key:
+          type: string
+
+    UpdateInstanceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        endpoint:
+          type: string
+        use_ssl:
+          type: boolean
+        access_key:
+          type: string
+        secret_key:
+          type: string

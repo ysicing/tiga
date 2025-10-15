@@ -1,6 +1,6 @@
-import { useEffect, useState, ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { ReactNode, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
 
 interface InitCheckResponse {
   initialized: boolean

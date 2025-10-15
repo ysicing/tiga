@@ -1,13 +1,20 @@
-import { useMemo } from 'react';
-import { format } from 'date-fns';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ServiceHistoryInfo } from '@/services/service-monitor';
+import { useMemo } from 'react'
+import { ServiceHistoryInfo } from '@/services/service-monitor'
+import { format } from 'date-fns'
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 
 interface HttpProbeHeatmapProps {
-  data: ServiceHistoryInfo[];
-  className?: string;
-  title?: string;
-  description?: string;
+  data: ServiceHistoryInfo[]
+  className?: string
+  title?: string
+  description?: string
 }
 
 export function HttpProbeHeatmap({
@@ -18,24 +25,24 @@ export function HttpProbeHeatmap({
 }: HttpProbeHeatmapProps) {
   const heatmapData = useMemo(() => {
     if (!data || data.length === 0) {
-      return [];
+      return []
     }
 
     // Process each service
     return data.map((service) => {
       const blocks = service.timestamps.map((ts, index) => {
-        const delay = service.avg_delays[index];
+        const delay = service.avg_delays[index]
 
         // Determine color based on delay
-        let colorClass = '';
+        let colorClass = ''
         if (delay < 100) {
-          colorClass = 'bg-green-500'; // Fast: < 100ms
+          colorClass = 'bg-green-500' // Fast: < 100ms
         } else if (delay < 300) {
-          colorClass = 'bg-yellow-500'; // Normal: 100-300ms
+          colorClass = 'bg-yellow-500' // Normal: 100-300ms
         } else if (delay < 1000) {
-          colorClass = 'bg-orange-500'; // Slow: 300-1000ms
+          colorClass = 'bg-orange-500' // Slow: 300-1000ms
         } else {
-          colorClass = 'bg-red-500'; // Very slow: > 1000ms
+          colorClass = 'bg-red-500' // Very slow: > 1000ms
         }
 
         return {
@@ -43,22 +50,24 @@ export function HttpProbeHeatmap({
           delay,
           time: format(new Date(ts), 'HH:mm'),
           colorClass,
-        };
-      });
+        }
+      })
 
       // Calculate average delay
-      const avgDelay = service.avg_delays.length > 0
-        ? service.avg_delays.reduce((a, b) => a + b, 0) / service.avg_delays.length
-        : 0;
+      const avgDelay =
+        service.avg_delays.length > 0
+          ? service.avg_delays.reduce((a, b) => a + b, 0) /
+            service.avg_delays.length
+          : 0
 
       return {
         service_monitor_id: service.service_monitor_id,
         service_name: service.service_monitor_name,
         blocks,
         avgDelay,
-      };
-    });
-  }, [data]);
+      }
+    })
+  }, [data])
 
   if (!data || data.length === 0) {
     return (
@@ -73,7 +82,7 @@ export function HttpProbeHeatmap({
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
@@ -131,5 +140,5 @@ export function HttpProbeHeatmap({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

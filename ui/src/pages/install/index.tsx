@@ -1,22 +1,24 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { InstallProvider, useInstall } from '@/contexts/install-context'
+import { installApi } from '@/services/install-api'
 import { Languages } from 'lucide-react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { InstallProvider, useInstall } from '@/contexts/install-context'
+
 import { ProgressIndicator } from './components/progress-indicator'
-import { DatabaseStep } from './steps/database-step'
 import { AdminStep } from './steps/admin-step'
-import { SettingsStep } from './steps/settings-step'
 import { ConfirmStep } from './steps/confirm-step'
-import { installApi } from '@/services/install-api'
+import { DatabaseStep } from './steps/database-step'
+import { SettingsStep } from './steps/settings-step'
 
 function InstallContent() {
   const { state } = useInstall()
@@ -77,9 +79,7 @@ function InstallContent() {
         <CardHeader>
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold">{t('install.title')}</h1>
-            <p className="text-muted-foreground mt-2">
-              {t('install.welcome')}
-            </p>
+            <p className="text-muted-foreground mt-2">{t('install.welcome')}</p>
           </div>
 
           <ProgressIndicator currentStep={state.currentStep} totalSteps={4} />

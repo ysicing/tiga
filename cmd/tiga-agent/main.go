@@ -2,16 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/ysicing/tiga/cmd/tiga-agent/collector"
@@ -142,7 +145,7 @@ func runAgentWithReconnect(ctx context.Context, config *Config) {
 func parseFlags() *Config {
 	config := &Config{}
 
-	flag.StringVar(&config.ServerAddr, "server", "localhost:12307", "Server gRPC address")
+	flag.StringVar(&config.ServerAddr, "server", "localhost:12307", "Server gRPC address (host:port format)")
 	flag.StringVar(&config.UUID, "uuid", "", "Host UUID")
 	flag.StringVar(&config.SecretKey, "key", "", "Secret key for authentication")
 	flag.StringVar(&config.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
@@ -163,6 +166,18 @@ func parseFlags() *Config {
 
 	if config.SecretKey == "" {
 		logrus.Fatal("Secret key is required (use --key flag)")
+	}
+
+	// Strip protocol prefix from server address if present (common mistake)
+	if len(config.ServerAddr) > 0 {
+		// Remove http:// or https:// prefix
+		if len(config.ServerAddr) > 7 && config.ServerAddr[:7] == "http://" {
+			config.ServerAddr = config.ServerAddr[7:]
+			logrus.Warnf("Removed 'http://' prefix from server address, using: %s", config.ServerAddr)
+		} else if len(config.ServerAddr) > 8 && config.ServerAddr[:8] == "https://" {
+			config.ServerAddr = config.ServerAddr[8:]
+			logrus.Warnf("Removed 'https://' prefix from server address, using: %s", config.ServerAddr)
+		}
 	}
 
 	// Validate report interval
@@ -193,11 +208,29 @@ func setupLogger(level string) {
 }
 
 func connectToServer(ctx context.Context, config *Config) (*grpc.ClientConn, error) {
-	// TODO: Add TLS support
-	// For now, use insecure connection for development
-	dialOpts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithBlock(), // Block until connection established or timeout
+	// Auto-detect TLS based on port
+	useTLS := shouldUseTLS(config.ServerAddr)
+
+	var dialOpts []grpc.DialOption
+
+	if useTLS {
+		// Use TLS credentials (skip server certificate verification for self-signed certs)
+		tlsConfig := &tls.Config{
+			InsecureSkipVerify: true, // Allow self-signed certificates
+		}
+		creds := credentials.NewTLS(tlsConfig)
+		dialOpts = []grpc.DialOption{
+			grpc.WithTransportCredentials(creds),
+			grpc.WithBlock(), // Block until connection established or timeout
+		}
+		logrus.Infof("Using TLS connection (detected port 443/8443)")
+	} else {
+		// Use insecure connection for development
+		dialOpts = []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithBlock(), // Block until connection established or timeout
+		}
+		logrus.Info("Using insecure connection (non-TLS port)")
 	}
 
 	// Use shorter timeout for reconnection attempts
@@ -210,6 +243,19 @@ func connectToServer(ctx context.Context, config *Config) (*grpc.ClientConn, err
 	}
 
 	return conn, nil
+}
+
+// shouldUseTLS determines if TLS should be used based on the port
+func shouldUseTLS(serverAddr string) bool {
+	// Extract port from address (format: host:port)
+	parts := strings.Split(serverAddr, ":")
+	if len(parts) < 2 {
+		return false
+	}
+
+	port := parts[len(parts)-1]
+	// Auto-enable TLS for standard HTTPS/gRPC-TLS ports
+	return port == "443" || port == "8443"
 }
 
 // registerAgent registers the agent with the server and sends host info

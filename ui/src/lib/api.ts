@@ -130,7 +130,9 @@ export const scaleDeployment = async (
   name: string,
   replicas: number
 ): Promise<{ message: string; deployment: unknown; replicas: number }> => {
-  const endpoint = buildK8sResourceUrl(`/deployments/${namespace}/${name}/scale`)
+  const endpoint = buildK8sResourceUrl(
+    `/deployments/${namespace}/${name}/scale`
+  )
   const response = await apiClient.put<{
     message: string
     deployment: unknown
@@ -226,7 +228,9 @@ export const updateResource = async <T extends ResourceType>(
   namespace: string | undefined,
   body: ResourceTypeMap[T]
 ): Promise<void> => {
-  const endpoint = buildK8sResourceUrl(`/${resource}/${namespace || '_all'}/${name}`)
+  const endpoint = buildK8sResourceUrl(
+    `/${resource}/${namespace || '_all'}/${name}`
+  )
   await apiClient.put(`${endpoint}`, body)
 }
 
@@ -244,7 +248,9 @@ export const deleteResource = async <T extends ResourceType>(
   name: string,
   namespace: string | undefined
 ): Promise<void> => {
-  const endpoint = buildK8sResourceUrl(`/${resource}/${namespace || '_all'}/${name}`)
+  const endpoint = buildK8sResourceUrl(
+    `/${resource}/${namespace || '_all'}/${name}`
+  )
   await apiClient.delete(`${endpoint}`)
 }
 

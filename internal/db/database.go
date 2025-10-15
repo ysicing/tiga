@@ -170,6 +170,13 @@ func (d *Database) AutoMigrate() error {
 		&models.MonitorAlertEvent{},
 		&models.AgentConnection{},
 
+		// MinIO subsystem
+		&models.MinIOInstance{},
+		&models.MinIOUser{},
+		&models.BucketPermission{},
+		&models.MinIOShareLink{},
+		&models.MinIOAuditLog{},
+
 		// Database management
 		&models.DatabaseInstance{},
 		&models.Database{},

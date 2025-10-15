@@ -224,12 +224,18 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	// Initialize host monitoring services (shared between gRPC and HTTP)
 	serverURL := fmt.Sprintf("http://localhost:%d", a.config.Server.Port)
+	grpcPort := a.config.Server.GRPCPort
+	if grpcPort == 0 {
+		grpcPort = 12307 // Default gRPC port
+	}
+	grpcAddr := fmt.Sprintf("localhost:%d", grpcPort)
+
 	a.hostRepo = repository.NewHostRepository(a.db.DB)
 	a.stateCollector = host.NewStateCollector(a.hostRepo)
 	a.agentManager = host.NewAgentManager(a.hostRepo, a.stateCollector, a.db.DB)
 	a.stateCollector.SetAgentManager(a.agentManager) // Complete the circular reference
 	a.terminalManager = host.NewTerminalManager()
-	a.hostService = host.NewHostService(a.hostRepo, a.agentManager, a.stateCollector, serverURL)
+	a.hostService = host.NewHostService(a.hostRepo, a.agentManager, a.stateCollector, serverURL, grpcAddr)
 
 	logrus.Info("Host monitoring services initialized")
 

@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from 'react'
+import { MoreHorizontal, Plus, RefreshCw, Search, Shield } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import { devopsAPI } from '@/lib/api-client'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,67 +19,80 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Shield, Search, Plus, RefreshCw, MoreHorizontal } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { devopsAPI } from '@/lib/api-client';
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface RoleData {
-  id: string;
-  name: string;
-  description: string;
-  permissions: string[];
-  user_count?: number;
-  created_at: string;
+  id: string
+  name: string
+  description: string
+  permissions: string[]
+  user_count?: number
+  created_at: string
 }
 
 export default function RolesPage() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [roles, setRoles] = useState<RoleData[]>([]);
+  const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [roles, setRoles] = useState<RoleData[]>([])
 
   const fetchRoles = async () => {
-    setIsRefreshing(true);
+    setIsRefreshing(true)
     try {
-      const response: any = await devopsAPI.roles.list();
-      setRoles(response.data || []);
+      const response: any = await devopsAPI.roles.list()
+      setRoles(response.data || [])
     } catch (error) {
-      console.error('Failed to fetch roles:', error);
+      console.error('Failed to fetch roles:', error)
     } finally {
-      setIsRefreshing(false);
+      setIsRefreshing(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchRoles();
-  }, []);
+    fetchRoles()
+  }, [])
 
   const filteredRoles = roles.filter((role) => {
     return (
       role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       role.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+    )
+  })
 
   const handleDelete = async (roleId: string) => {
     if (window.confirm('Are you sure you want to delete this role?')) {
       try {
-        await devopsAPI.roles.delete(roleId);
-        fetchRoles();
+        await devopsAPI.roles.delete(roleId)
+        fetchRoles()
       } catch (error) {
-        console.error('Failed to delete role:', error);
+        console.error('Failed to delete role:', error)
       }
     }
-  };
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Roles</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={fetchRoles} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={fetchRoles}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
           </Button>
           <Button onClick={() => navigate('/roles/new')}>
             <Plus className="mr-2 h-4 w-4" />
@@ -105,7 +119,11 @@ export default function RolesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {roles.filter((r) => ['admin', 'operator', 'viewer'].includes(r.name.toLowerCase())).length}
+              {
+                roles.filter((r) =>
+                  ['admin', 'operator', 'viewer'].includes(r.name.toLowerCase())
+                ).length
+              }
             </div>
             <p className="text-xs text-muted-foreground">Built-in roles</p>
           </CardContent>
@@ -117,7 +135,14 @@ export default function RolesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {roles.filter((r) => !['admin', 'operator', 'viewer'].includes(r.name.toLowerCase())).length}
+              {
+                roles.filter(
+                  (r) =>
+                    !['admin', 'operator', 'viewer'].includes(
+                      r.name.toLowerCase()
+                    )
+                ).length
+              }
             </div>
             <p className="text-xs text-muted-foreground">User-defined roles</p>
           </CardContent>
@@ -127,7 +152,9 @@ export default function RolesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Manage Roles</CardTitle>
-          <CardDescription>View and manage role-based access control</CardDescription>
+          <CardDescription>
+            View and manage role-based access control
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
@@ -155,23 +182,34 @@ export default function RolesPage() {
             </TableHeader>
             <TableBody>
               {filteredRoles.map((role) => (
-                <TableRow key={role.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow
+                  key={role.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4" />
                       {role.name}
-                      {['admin', 'operator', 'viewer'].includes(role.name.toLowerCase()) && (
+                      {['admin', 'operator', 'viewer'].includes(
+                        role.name.toLowerCase()
+                      ) && (
                         <Badge variant="outline" className="text-xs">
                           System
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-md truncate">{role.description}</TableCell>
+                  <TableCell className="max-w-md truncate">
+                    {role.description}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap max-w-md">
                       {role.permissions?.slice(0, 3).map((perm) => (
-                        <Badge key={perm} variant="secondary" className="text-xs">
+                        <Badge
+                          key={perm}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {perm}
                         </Badge>
                       ))}
@@ -198,17 +236,23 @@ export default function RolesPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate(`/roles/${role.id}`)}>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/roles/${role.id}`)}
+                        >
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/roles/${role.id}/edit`)}>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/roles/${role.id}/edit`)}
+                        >
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDelete(role.id)}
                           className="text-destructive"
-                          disabled={['admin', 'operator', 'viewer'].includes(role.name.toLowerCase())}
+                          disabled={['admin', 'operator', 'viewer'].includes(
+                            role.name.toLowerCase()
+                          )}
                         >
                           Delete
                         </DropdownMenuItem>
@@ -228,5 +272,5 @@ export default function RolesPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

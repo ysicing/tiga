@@ -1,58 +1,54 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
+import {
+  InstallGuard,
+  PreventReinstallGuard,
+} from './components/guards/install-guard'
 import { ProtectedRoute } from './components/protected-route'
-import { InstallGuard, PreventReinstallGuard } from './components/guards/install-guard'
+import { DbsLayout } from './layouts/dbs-layout'
+// Layouts
+import { DevOpsLayout } from './layouts/devops-layout'
+import { DockerLayout } from './layouts/docker-layout'
+import { K8sLayout } from './layouts/k8s-layout'
+import { MinIOLayout } from './layouts/minio-layout'
+import { VMsLayout } from './layouts/vms-layout'
+import { WebServerLayout } from './layouts/webserver-layout'
+// DevOps Platform Pages
+import AlertsPage from './pages/alerts'
 import { CRListPage } from './pages/cr-list-page'
+import DatabaseManagementPage from './pages/database-management'
+import { InstanceDetail } from './pages/database/instance-detail'
+import { InstanceForm } from './pages/database/instance-form'
+import { DatabaseInstanceList } from './pages/database/instance-list'
+// Database Pages
+import { DbsOverview } from './pages/dbs-overview'
+// Docker Pages
+import { DockerOverview } from './pages/docker-overview'
+import { AlertEventsPage } from './pages/hosts/alert-events-page'
+import AlertRulesPage from './pages/hosts/alert-rules-page'
+import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-page'
+import { HostEditPage } from './pages/hosts/host-edit-page'
+// VMs/Host Management Pages
+import { HostListPage } from './pages/hosts/host-list-page'
+import { HostSSHPage } from './pages/hosts/host-ssh-page'
+import ServiceMonitorDetailPage from './pages/hosts/service-monitor-detail'
+import ServiceMonitorListPage from './pages/hosts/service-monitor-list'
+import { ServiceMonitorPage } from './pages/hosts/service-monitor-page'
+import InstallPage from './pages/install'
 import { LoginPage } from './pages/login'
+import MinIOManagementPage from './pages/minio-management'
+import MinioFilesPage from './pages/minio/files-page'
+import MinioInstancesPage from './pages/minio/instances-page'
+import MinioUsersPage from './pages/minio/users-page'
 import { Overview } from './pages/overview'
 import { OverviewDashboard } from './pages/overview-dashboard-new'
 import { ResourceDetail } from './pages/resource-detail'
 import { ResourceList } from './pages/resource-list'
-import { SettingsPage } from './pages/settings'
-import InstallPage from './pages/install'
-
-// Layouts
-import { DevOpsLayout } from './layouts/devops-layout'
-import { K8sLayout } from './layouts/k8s-layout'
-import { MinIOLayout } from './layouts/minio-layout'
-import { DbsLayout } from './layouts/dbs-layout'
-import { DockerLayout } from './layouts/docker-layout'
-import { VMsLayout } from './layouts/vms-layout'
-import { StorageLayout } from './layouts/storage-layout'
-import { WebServerLayout } from './layouts/webserver-layout'
-
-// VMs/Host Management Pages
-import { HostListPage } from './pages/hosts/host-list-page'
-import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-page'
-import { HostEditPage } from './pages/hosts/host-edit-page'
-import { HostSSHPage } from './pages/hosts/host-ssh-page'
-import { ServiceMonitorPage } from './pages/hosts/service-monitor-page'
-import ServiceMonitorListPage from './pages/hosts/service-monitor-list'
-import ServiceMonitorDetailPage from './pages/hosts/service-monitor-detail'
-import { AlertEventsPage } from './pages/hosts/alert-events-page'
-import AlertRulesPage from './pages/hosts/alert-rules-page'
-
-// DevOps Platform Pages
-import AlertsPage from './pages/alerts'
-import UsersPage from './pages/users'
-import UserFormPage from './pages/user-form'
-import RolesPage from './pages/roles'
 import RoleFormPage from './pages/role-form'
-import MinIOManagementPage from './pages/minio-management'
-import DatabaseManagementPage from './pages/database-management'
-
-// Database Pages
-import { DbsOverview } from './pages/dbs-overview'
-import { DatabaseInstanceList } from './pages/database/instance-list'
-import { InstanceDetail } from './pages/database/instance-detail'
-import { InstanceForm } from './pages/database/instance-form'
-
-// Docker Pages
-import { DockerOverview } from './pages/docker-overview'
-
-// Storage Pages
-import { StorageOverview } from './pages/storage-overview'
-
+import RolesPage from './pages/roles'
+import { SettingsPage } from './pages/settings'
+import UserFormPage from './pages/user-form'
+import UsersPage from './pages/users'
 // WebServer Pages
 import { WebServerOverview } from './pages/webserver-overview'
 
@@ -227,6 +223,10 @@ export const router = createBrowserRouter([
         element: <DatabaseInstanceList />,
       },
       {
+        path: 'new',
+        element: <InstanceForm />,
+      },
+      {
         path: 'instances/new',
         element: <InstanceForm />,
       },
@@ -248,9 +248,9 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // MinIO 子系统
+  // MinIO 子系统 - 统一路由结构
   {
-    path: '/minio/:instanceId',
+    path: '/minio',
     element: (
       <InstallGuard>
         <ProtectedRoute>
@@ -261,26 +261,30 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="overview" replace />,
+        element: <Navigate to="instances" replace />,
       },
       {
-        path: 'overview',
+        path: 'instances',
+        element: <MinioInstancesPage />,
+      },
+      {
+        path: ':instanceId/overview',
         element: <MinIOManagementPage />,
       },
       {
-        path: 'buckets',
-        element: <div>MinIO Buckets 管理页面(待实现)</div>,
+        path: ':instanceId/files',
+        element: <MinioFilesPage />,
       },
       {
-        path: 'users',
-        element: <div>MinIO Users 管理页面(待实现)</div>,
+        path: ':instanceId/users',
+        element: <MinioUsersPage />,
       },
       {
-        path: 'policies',
+        path: ':instanceId/policies',
         element: <div>MinIO Policies 管理页面(待实现)</div>,
       },
       {
-        path: 'metrics',
+        path: ':instanceId/metrics',
         element: <div>MinIO Metrics 监控页面(待实现)</div>,
       },
     ],
@@ -382,38 +386,14 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // Storage 子系统 - MinIO 对象存储
+  // Storage 子系统 - MinIO 对象存储（重定向到 /minio）
   {
     path: '/storage',
-    element: (
-      <InstallGuard>
-        <ProtectedRoute>
-          <StorageLayout />
-        </ProtectedRoute>
-      </InstallGuard>
-    ),
-    children: [
-      {
-        index: true,
-        element: <StorageOverview />,
-      },
-      {
-        path: 'buckets',
-        element: <div>Storage Buckets 管理页面(待实现)</div>,
-      },
-      {
-        path: 'users',
-        element: <div>Storage Users 管理页面(待实现)</div>,
-      },
-      {
-        path: 'policies',
-        element: <div>Storage Policies 管理页面(待实现)</div>,
-      },
-      {
-        path: 'metrics',
-        element: <div>Storage Metrics 监控页面(待实现)</div>,
-      },
-    ],
+    element: <Navigate to="/minio/instances" replace />,
+  },
+  {
+    path: '/storage/*',
+    element: <Navigate to="/minio/instances" replace />,
   },
   // WebServer 子系统 - Caddy Web 服务器
   {

@@ -1,7 +1,8 @@
 import { Outlet } from 'react-router-dom'
+
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { SiteHeader } from '@/components/site-header'
 import { DockerSidebar } from '@/components/docker-sidebar'
+import { SiteHeader } from '@/components/site-header'
 
 export function DockerLayout() {
   return (

@@ -1,8 +1,16 @@
 import { useDatabaseUsers } from '@/services/database-api'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { IconAlertCircle } from '@tabler/icons-react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 export function UserList({ instanceId }: { instanceId: number }) {
   const { data, isLoading } = useDatabaseUsers(instanceId)
@@ -43,7 +51,11 @@ export function UserList({ instanceId }: { instanceId: number }) {
   )
 }
 
-export function PermissionList({ instanceId: _instanceId }: { instanceId: number }) {
+export function PermissionList({
+  instanceId: _instanceId,
+}: {
+  instanceId: number
+}) {
   return (
     <Alert>
       <IconAlertCircle className="h-4 w-4" />

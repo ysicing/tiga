@@ -1,22 +1,30 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react'
+import {
+  AlertRule,
+  AlertRuleService,
+  AlertSeverity,
+  AlertType,
+} from '@/services/alert-rule'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertCircle,
+  AlertTriangle,
+  Edit,
+  Info,
+  Plus,
+  Trash2,
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+} from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -24,36 +32,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import {
-  Plus,
-  Edit,
-  Trash2,
-  AlertCircle,
-  AlertTriangle,
-  Info,
-} from 'lucide-react';
-import { AlertRuleService, AlertRule, AlertType, AlertSeverity } from '@/services/alert-rule';
-import { toast } from 'sonner';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
 
 const AlertRulesPage: React.FC = () => {
-  const queryClient = useQueryClient();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+  const queryClient = useQueryClient()
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingRule, setEditingRule] = useState<AlertRule | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,56 +71,56 @@ const AlertRulesPage: React.FC = () => {
     duration: 300,
     enabled: true,
     notify_channels: '',
-  });
+  })
 
   // Fetch alert rules
   const { data: rulesData, isLoading } = useQuery({
     queryKey: ['alert-rules'],
     queryFn: () => AlertRuleService.listRules({ page: 1, page_size: 100 }),
-  });
+  })
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: Partial<AlertRule>) => AlertRuleService.createRule(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alert-rules'] });
-      setIsCreateDialogOpen(false);
-      resetForm();
-      toast.success('告警规则创建成功');
+      queryClient.invalidateQueries({ queryKey: ['alert-rules'] })
+      setIsCreateDialogOpen(false)
+      resetForm()
+      toast.success('告警规则创建成功')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || '创建告警规则失败');
+      toast.error(error.response?.data?.message || '创建告警规则失败')
     },
-  });
+  })
 
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<AlertRule> }) =>
       AlertRuleService.updateRule(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alert-rules'] });
-      setIsEditDialogOpen(false);
-      setEditingRule(null);
-      toast.success('告警规则更新成功');
+      queryClient.invalidateQueries({ queryKey: ['alert-rules'] })
+      setIsEditDialogOpen(false)
+      setEditingRule(null)
+      toast.success('告警规则更新成功')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || '更新告警规则失败');
+      toast.error(error.response?.data?.message || '更新告警规则失败')
     },
-  });
+  })
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => AlertRuleService.deleteRule(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alert-rules'] });
-      setIsDeleteDialogOpen(false);
-      setDeletingRuleId(null);
-      toast.success('告警规则删除成功');
+      queryClient.invalidateQueries({ queryKey: ['alert-rules'] })
+      setIsDeleteDialogOpen(false)
+      setDeletingRuleId(null)
+      toast.success('告警规则删除成功')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || '删除告警规则失败');
+      toast.error(error.response?.data?.message || '删除告警规则失败')
     },
-  });
+  })
 
   const resetForm = () => {
     setFormData({
@@ -126,15 +132,15 @@ const AlertRulesPage: React.FC = () => {
       duration: 300,
       enabled: true,
       notify_channels: '',
-    });
-  };
+    })
+  }
 
   const handleCreate = () => {
-    createMutation.mutate(formData);
-  };
+    createMutation.mutate(formData)
+  }
 
   const handleEdit = (rule: AlertRule) => {
-    setEditingRule(rule);
+    setEditingRule(rule)
     setFormData({
       name: rule.name,
       type: rule.type,
@@ -144,59 +150,65 @@ const AlertRulesPage: React.FC = () => {
       duration: rule.duration,
       enabled: rule.enabled,
       notify_channels: rule.notify_channels || '',
-    });
-    setIsEditDialogOpen(true);
-  };
+    })
+    setIsEditDialogOpen(true)
+  }
 
   const handleUpdate = () => {
     if (editingRule) {
       updateMutation.mutate({
         id: editingRule.id,
         data: formData,
-      });
+      })
     }
-  };
+  }
 
   const handleDelete = (id: string) => {
-    setDeletingRuleId(id);
-    setIsDeleteDialogOpen(true);
-  };
+    setDeletingRuleId(id)
+    setIsDeleteDialogOpen(true)
+  }
 
   const confirmDelete = () => {
     if (deletingRuleId) {
-      deleteMutation.mutate(deletingRuleId);
+      deleteMutation.mutate(deletingRuleId)
     }
-  };
+  }
 
   const getSeverityBadge = (severity: AlertSeverity) => {
     switch (severity) {
       case 'critical':
-        return <Badge variant="destructive" className="flex items-center gap-1">
-          <AlertCircle className="h-3 w-3" />
-          严重
-        </Badge>;
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            严重
+          </Badge>
+        )
       case 'warning':
-        return <Badge className="bg-yellow-500 flex items-center gap-1">
-          <AlertTriangle className="h-3 w-3" />
-          警告
-        </Badge>;
+        return (
+          <Badge className="bg-yellow-500 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            警告
+          </Badge>
+        )
       case 'info':
-        return <Badge variant="outline" className="flex items-center gap-1">
-          <Info className="h-3 w-3" />
-          信息
-        </Badge>;
+        return (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            信息
+          </Badge>
+        )
       default:
-        return <Badge variant="outline">{severity}</Badge>;
+        return <Badge variant="outline">{severity}</Badge>
     }
-  };
+  }
 
   const getTypeBadge = (type: AlertType) => {
     return type === 'host' ? (
       <Badge variant="secondary">主机</Badge>
     ) : (
       <Badge variant="default">服务</Badge>
-    );
-  };
+    )
+  }
 
   if (isLoading) {
     return (
@@ -206,10 +218,10 @@ const AlertRulesPage: React.FC = () => {
           <p className="mt-2 text-muted-foreground">加载中...</p>
         </div>
       </div>
-    );
+    )
   }
 
-  const rules = rulesData?.items || [];
+  const rules = rulesData?.items || []
 
   return (
     <div className="space-y-6">
@@ -229,9 +241,7 @@ const AlertRulesPage: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>告警规则列表</CardTitle>
-          <CardDescription>
-            共 {rules.length} 条规则
-          </CardDescription>
+          <CardDescription>共 {rules.length} 条规则</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -313,7 +323,9 @@ const AlertRulesPage: React.FC = () => {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="例如: 服务可用率低于95%"
               />
             </div>
@@ -362,7 +374,9 @@ const AlertRulesPage: React.FC = () => {
               <Input
                 id="target_id"
                 value={formData.target_id}
-                onChange={(e) => setFormData({ ...formData, target_id: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, target_id: e.target.value })
+                }
                 placeholder="主机或服务的UUID"
               />
             </div>
@@ -372,7 +386,9 @@ const AlertRulesPage: React.FC = () => {
               <Textarea
                 id="condition"
                 value={formData.condition}
-                onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, condition: e.target.value })
+                }
                 placeholder="uptime_percentage < 95.0"
                 rows={3}
               />
@@ -388,7 +404,10 @@ const AlertRulesPage: React.FC = () => {
                 type="number"
                 value={formData.duration}
                 onChange={(e) =>
-                  setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })
+                  setFormData({
+                    ...formData,
+                    duration: parseInt(e.target.value) || 0,
+                  })
                 }
                 placeholder="300"
               />
@@ -409,8 +428,8 @@ const AlertRulesPage: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => {
-                setIsCreateDialogOpen(false);
-                resetForm();
+                setIsCreateDialogOpen(false)
+                resetForm()
               }}
             >
               取消
@@ -427,9 +446,7 @@ const AlertRulesPage: React.FC = () => {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>编辑告警规则</DialogTitle>
-            <DialogDescription>
-              修改现有告警规则的配置
-            </DialogDescription>
+            <DialogDescription>修改现有告警规则的配置</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -437,7 +454,9 @@ const AlertRulesPage: React.FC = () => {
               <Input
                 id="edit-name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
               />
             </div>
 
@@ -485,7 +504,9 @@ const AlertRulesPage: React.FC = () => {
               <Textarea
                 id="edit-condition"
                 value={formData.condition}
-                onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, condition: e.target.value })
+                }
                 rows={3}
               />
             </div>
@@ -497,7 +518,10 @@ const AlertRulesPage: React.FC = () => {
                 type="number"
                 value={formData.duration}
                 onChange={(e) =>
-                  setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })
+                  setFormData({
+                    ...formData,
+                    duration: parseInt(e.target.value) || 0,
+                  })
                 }
               />
             </div>
@@ -517,8 +541,8 @@ const AlertRulesPage: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => {
-                setIsEditDialogOpen(false);
-                setEditingRule(null);
+                setIsEditDialogOpen(false)
+                setEditingRule(null)
               }}
             >
               取消
@@ -543,8 +567,8 @@ const AlertRulesPage: React.FC = () => {
             <Button
               variant="outline"
               onClick={() => {
-                setIsDeleteDialogOpen(false);
-                setDeletingRuleId(null);
+                setIsDeleteDialogOpen(false)
+                setDeletingRuleId(null)
               }}
             >
               取消
@@ -560,7 +584,7 @@ const AlertRulesPage: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}
 
-export default AlertRulesPage;
+export default AlertRulesPage

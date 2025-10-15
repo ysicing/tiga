@@ -1,11 +1,13 @@
-import { Link, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import Logo from '@/assets/logo.png'
 import {
-  IconServer2,
-  IconLayoutDashboard,
   IconActivity,
   IconAlertTriangle,
+  IconLayoutDashboard,
+  IconServer2,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { Link, useLocation } from 'react-router-dom'
+
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +20,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import Logo from '@/assets/logo.png'
 
 const menuItems = [
   {
@@ -48,7 +49,9 @@ export function VMsSidebar() {
     if (path === '/vms/hosts' && location.pathname.startsWith('/vms/hosts')) {
       return true
     }
-    return location.pathname === path || location.pathname.startsWith(path + '/')
+    return (
+      location.pathname === path || location.pathname.startsWith(path + '/')
+    )
   }
 
   const handleMenuItemClick = () => {

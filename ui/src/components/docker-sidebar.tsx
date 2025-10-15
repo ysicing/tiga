@@ -1,12 +1,14 @@
-import { Link, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import Logo from '@/assets/logo.png'
 import {
+  IconBox,
   IconContainer,
   IconLayoutDashboard,
-  IconBox,
   IconNetwork,
   IconStack,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { Link, useLocation } from 'react-router-dom'
+
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +21,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import Logo from '@/assets/logo.png'
 
 const menuItems = [
   {
@@ -95,7 +96,9 @@ export function DockerSidebar() {
 
         {/* Docker 菜单 */}
         <SidebarGroup>
-          <SidebarGroupLabel>{t('docker.title', 'Docker 管理')}</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {t('docker.title', 'Docker 管理')}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {

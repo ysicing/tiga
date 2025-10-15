@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  useCreateDatabase,
+  useDatabases,
+  useDeleteDatabase,
+} from '@/services/database-api'
+import { IconAlertCircle, IconPlus, IconTrash } from '@tabler/icons-react'
+import { toast } from 'sonner'
+
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -18,11 +19,15 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { IconPlus, IconTrash, IconAlertCircle } from '@tabler/icons-react'
-import { useDatabases, useCreateDatabase, useDeleteDatabase } from '@/services/database-api'
-import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface DatabaseListProps {
   instanceId: number
@@ -121,12 +126,24 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
             {databases.map((db) => (
               <TableRow key={db.id}>
                 <TableCell className="font-medium">{db.name}</TableCell>
-                {instanceType !== 'redis' && <TableCell>{db.charset}</TableCell>}
-                {instanceType === 'mysql' && <TableCell>{db.collation}</TableCell>}
-                {instanceType === 'postgresql' && <TableCell>{db.owner}</TableCell>}
-                {instanceType === 'redis' && <TableCell>{db.db_number}</TableCell>}
-                {instanceType === 'redis' && <TableCell>{db.key_count || 0}</TableCell>}
-                <TableCell>{new Date(db.created_at).toLocaleString()}</TableCell>
+                {instanceType !== 'redis' && (
+                  <TableCell>{db.charset}</TableCell>
+                )}
+                {instanceType === 'mysql' && (
+                  <TableCell>{db.collation}</TableCell>
+                )}
+                {instanceType === 'postgresql' && (
+                  <TableCell>{db.owner}</TableCell>
+                )}
+                {instanceType === 'redis' && (
+                  <TableCell>{db.db_number}</TableCell>
+                )}
+                {instanceType === 'redis' && (
+                  <TableCell>{db.key_count || 0}</TableCell>
+                )}
+                <TableCell>
+                  {new Date(db.created_at).toLocaleString()}
+                </TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"
@@ -151,9 +168,7 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle>新建数据库</DialogTitle>
-              <DialogDescription>
-                创建一个新的数据库
-              </DialogDescription>
+              <DialogDescription>创建一个新的数据库</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -161,7 +176,9 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -171,7 +188,9 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
                   <Input
                     id="charset"
                     value={formData.charset}
-                    onChange={(e) => setFormData({ ...formData, charset: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, charset: e.target.value })
+                    }
                   />
                 </div>
               )}
@@ -181,7 +200,9 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
                   <Input
                     id="collation"
                     value={formData.collation}
-                    onChange={(e) => setFormData({ ...formData, collation: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, collation: e.target.value })
+                    }
                   />
                 </div>
               )}
@@ -191,13 +212,19 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
                   <Input
                     id="owner"
                     value={formData.owner}
-                    onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, owner: e.target.value })
+                    }
                   />
                 </div>
               )}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateOpen(false)}
+              >
                 取消
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
@@ -239,7 +266,9 @@ export function DatabaseList({ instanceId, instanceType }: DatabaseListProps) {
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={deleteMutation.isPending || confirmName !== selectedDb?.name}
+              disabled={
+                deleteMutation.isPending || confirmName !== selectedDb?.name
+              }
             >
               {deleteMutation.isPending ? '删除中...' : '删除'}
             </Button>

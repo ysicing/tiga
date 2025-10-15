@@ -1,61 +1,67 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Host } from '@/stores/host-store';
-import { formatBytes, formatUptime } from '@/lib/utils';
+import { Host } from '@/stores/host-store'
 import {
-  Server,
+  Activity,
+  Calendar,
+  Circle,
   Cpu,
   HardDrive,
   Network,
-  Activity,
-  Circle,
-  Calendar
-} from 'lucide-react';
+  Server,
+} from 'lucide-react'
+
+import { formatBytes, formatUptime } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 
 interface HostCardProps {
-  host: Host;
-  onClick?: () => void;
-  compact?: boolean;
+  host: Host
+  onClick?: () => void
+  compact?: boolean
 }
 
 // Calculate days until expiry
 function getDaysUntilExpiry(expiryDate?: string): number | null {
-  if (!expiryDate) return null;
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-  const diffTime = expiry.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  if (!expiryDate) return null
+  const expiry = new Date(expiryDate)
+  const now = new Date()
+  const diffTime = expiry.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays
 }
 
 // Get expiry status with color
 function getExpiryStatus(days: number | null): { text: string; color: string } {
-  if (days === null) return { text: '未设置', color: 'text-muted-foreground' };
-  if (days < 0) return { text: `已过期 ${Math.abs(days)} 天`, color: 'text-red-600 font-semibold' };
-  if (days === 0) return { text: '今天到期', color: 'text-red-600 font-semibold' };
-  if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' };
-  if (days <= 30) return { text: `${days} 天后到期`, color: 'text-orange-600' };
-  return { text: `${days} 天后到期`, color: 'text-muted-foreground' };
+  if (days === null) return { text: '未设置', color: 'text-muted-foreground' }
+  if (days < 0)
+    return {
+      text: `已过期 ${Math.abs(days)} 天`,
+      color: 'text-red-600 font-semibold',
+    }
+  if (days === 0)
+    return { text: '今天到期', color: 'text-red-600 font-semibold' }
+  if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' }
+  if (days <= 30) return { text: `${days} 天后到期`, color: 'text-orange-600' }
+  return { text: `${days} 天后到期`, color: 'text-muted-foreground' }
 }
 
 export function HostCard({ host, onClick, compact = false }: HostCardProps) {
-  const state = host.current_state;
-  const info = host.host_info;
-  const daysUntilExpiry = getDaysUntilExpiry(host.expiry_date);
-  const expiryStatus = getExpiryStatus(daysUntilExpiry);
+  const state = host.current_state
+  const info = host.host_info
+  const daysUntilExpiry = getDaysUntilExpiry(host.expiry_date)
+  const expiryStatus = getExpiryStatus(daysUntilExpiry)
 
   const getStatusColor = () => {
-    if (!host.online) return 'bg-red-500';
-    if (state && state.cpu_usage > 80) return 'bg-yellow-500';
-    return 'bg-green-500';
-  };
+    if (!host.online) return 'bg-red-500'
+    if (state && state.cpu_usage > 80) return 'bg-yellow-500'
+    return 'bg-green-500'
+  }
 
   const getUsageColor = (usage: number) => {
-    if (usage >= 90) return 'bg-red-500';
-    if (usage >= 70) return 'bg-yellow-500';
-    return 'bg-blue-500';
-  };
+    if (usage >= 90) return 'bg-red-500'
+    if (usage >= 70) return 'bg-yellow-500'
+    return 'bg-blue-500'
+  }
 
   return (
     <Card
@@ -66,9 +72,11 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
     >
       <CardHeader className={compact ? 'p-4 pb-2' : undefined}>
         <div className="flex items-center justify-between">
-          <CardTitle className={`flex items-center gap-2 ${
-            compact ? 'text-base' : 'text-lg'
-          }`}>
+          <CardTitle
+            className={`flex items-center gap-2 ${
+              compact ? 'text-base' : 'text-lg'
+            }`}
+          >
             <Server className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
             {host.name}
           </CardTitle>
@@ -87,7 +95,9 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
       <CardContent className={compact ? 'p-4 pt-0' : undefined}>
         {!host.online ? (
           <div className="text-sm text-muted-foreground">
-            主机离线 {host.last_active && `(最后在线: ${new Date(host.last_active).toLocaleString()})`}
+            主机离线{' '}
+            {host.last_active &&
+              `(最后在线: ${new Date(host.last_active).toLocaleString()})`}
           </div>
         ) : state ? (
           <div className="space-y-3">
@@ -98,7 +108,9 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
                   <Cpu className="h-4 w-4" />
                   <span>CPU</span>
                 </div>
-                <span className="font-medium">{state.cpu_usage.toFixed(1)}%</span>
+                <span className="font-medium">
+                  {state.cpu_usage.toFixed(1)}%
+                </span>
               </div>
               <Progress
                 value={state.cpu_usage}
@@ -114,7 +126,8 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
                   <span>内存</span>
                 </div>
                 <span className="font-medium">
-                  {formatBytes(state.mem_used)} / {info ? formatBytes(info.mem_total) : 'N/A'}
+                  {formatBytes(state.mem_used)} /{' '}
+                  {info ? formatBytes(info.mem_total) : 'N/A'}
                 </span>
               </div>
               <Progress
@@ -131,7 +144,8 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
                   <span>磁盘</span>
                 </div>
                 <span className="font-medium">
-                  {formatBytes(state.disk_used)} / {info ? formatBytes(info.disk_total) : 'N/A'}
+                  {formatBytes(state.disk_used)} /{' '}
+                  {info ? formatBytes(info.disk_total) : 'N/A'}
                 </span>
               </div>
               <Progress
@@ -148,8 +162,8 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
                   <span>网络</span>
                 </div>
                 <span className="text-xs">
-                  ↓ {formatBytes(state.net_in_speed)}/s |
-                  ↑ {formatBytes(state.net_out_speed)}/s
+                  ↓ {formatBytes(state.net_in_speed)}/s | ↑{' '}
+                  {formatBytes(state.net_out_speed)}/s
                 </span>
               </div>
             )}
@@ -162,19 +176,19 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
             )}
           </div>
         ) : (
-          <div className="text-sm text-muted-foreground">
-            等待监控数据...
-          </div>
+          <div className="text-sm text-muted-foreground">等待监控数据...</div>
         )}
 
         {/* Expiry Information */}
         {!compact && host.expiry_date && (
-          <div className={`flex items-center gap-2 text-xs mt-3 pt-3 border-t ${expiryStatus.color}`}>
+          <div
+            className={`flex items-center gap-2 text-xs mt-3 pt-3 border-t ${expiryStatus.color}`}
+          >
             <Calendar className="h-3 w-3" />
             <span>{expiryStatus.text}</span>
           </div>
         )}
       </CardContent>
     </Card>
-  );
+  )
 }

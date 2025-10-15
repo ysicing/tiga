@@ -1,57 +1,62 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import { devopsAPI } from '@/lib/api-client'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { devopsAPI } from '@/lib/api-client';
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 
 type HostFormData = {
-  name: string;
-  note?: string;
-  public_note?: string;
-  display_index: number;
-  hide_for_guest: boolean;
+  name: string
+  note?: string
+  public_note?: string
+  display_index: number
+  hide_for_guest: boolean
 
   // Billing information
-  cost: number;
-  renewal_type: 'monthly' | 'yearly';
-  purchase_date?: string;
-  expiry_date?: string;
-  auto_renew: boolean;
-  traffic_limit: number;
+  cost: number
+  renewal_type: 'monthly' | 'yearly'
+  purchase_date?: string
+  expiry_date?: string
+  auto_renew: boolean
+  traffic_limit: number
 
   // Group (simple string grouping)
-  group_name?: string;
-};
+  group_name?: string
+}
 
 export function HostEditPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
   // Fetch host data from API
-  const { data: hostResponse, isLoading, isError } = useQuery({
+  const {
+    data: hostResponse,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['host', id],
     queryFn: async () => {
-      if (!id) throw new Error('No host ID provided');
-      return devopsAPI.vms.hosts.get(id);
+      if (!id) throw new Error('No host ID provided')
+      return devopsAPI.vms.hosts.get(id)
     },
     enabled: !!id,
-  });
+  })
 
-  const host = (hostResponse as any)?.data;
+  const host = (hostResponse as any)?.data
 
   const [formData, setFormData] = useState<HostFormData>({
     name: '',
@@ -65,7 +70,7 @@ export function HostEditPage() {
     expiry_date: '',
     auto_renew: false,
     traffic_limit: 0,
-  });
+  })
 
   useEffect(() => {
     if (host) {
@@ -77,40 +82,42 @@ export function HostEditPage() {
         hide_for_guest: host.hide_for_guest || false,
         cost: host.cost || 0,
         renewal_type: host.renewal_type || 'monthly',
-        purchase_date: host.purchase_date ? host.purchase_date.split('T')[0] : '',
+        purchase_date: host.purchase_date
+          ? host.purchase_date.split('T')[0]
+          : '',
         expiry_date: host.expiry_date ? host.expiry_date.split('T')[0] : '',
         auto_renew: host.auto_renew || false,
         traffic_limit: host.traffic_limit || 0,
         group_name: host.group_name || '',
-      });
+      })
     }
-  }, [host]);
+  }, [host])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!id) return;
+    if (!id) return
 
     try {
-      const data: any = await devopsAPI.vms.hosts.update(id, formData);
+      const data: any = await devopsAPI.vms.hosts.update(id, formData)
       if (data.code === 0) {
-        toast.success('主机更新成功');
-        navigate(`/vms/hosts/${id}`);
+        toast.success('主机更新成功')
+        navigate(`/vms/hosts/${id}`)
       } else {
-        toast.error(data.message || '更新失败');
+        toast.error(data.message || '更新失败')
       }
     } catch (error) {
-      console.error('Failed to update host:', error);
-      toast.error('更新主机失败');
+      console.error('Failed to update host:', error)
+      toast.error('更新主机失败')
     }
-  };
+  }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    );
+    )
   }
 
   if (isError || !host) {
@@ -123,14 +130,18 @@ export function HostEditPage() {
           返回列表
         </Button>
       </div>
-    );
+    )
   }
 
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/vms/hosts/${id}`)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate(`/vms/hosts/${id}`)}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -151,7 +162,9 @@ export function HostEditPage() {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 required
               />
             </div>
@@ -161,7 +174,9 @@ export function HostEditPage() {
               <Textarea
                 id="note"
                 value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, note: e.target.value })
+                }
                 placeholder="管理员可见的备注信息"
                 rows={2}
               />
@@ -172,7 +187,9 @@ export function HostEditPage() {
               <Textarea
                 id="public_note"
                 value={formData.public_note}
-                onChange={(e) => setFormData({ ...formData, public_note: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, public_note: e.target.value })
+                }
                 placeholder="访客可见的备注信息"
                 rows={2}
               />
@@ -184,7 +201,12 @@ export function HostEditPage() {
                 id="display_index"
                 type="number"
                 value={formData.display_index}
-                onChange={(e) => setFormData({ ...formData, display_index: parseInt(e.target.value) })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    display_index: parseInt(e.target.value),
+                  })
+                }
               />
               <p className="text-xs text-muted-foreground">
                 数值越小，显示越靠前
@@ -199,17 +221,25 @@ export function HostEditPage() {
                   type="number"
                   step="0.01"
                   value={formData.cost}
-                  onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      cost: parseFloat(e.target.value) || 0,
+                    })
+                  }
                 />
                 <p className="text-xs text-muted-foreground">
-                  根据续费周期，此费用为{formData.renewal_type === 'monthly' ? '月' : '年'}费用
+                  根据续费周期，此费用为
+                  {formData.renewal_type === 'monthly' ? '月' : '年'}费用
                 </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="renewal_type">续费周期</Label>
                 <Select
                   value={formData.renewal_type}
-                  onValueChange={(value: 'monthly' | 'yearly') => setFormData({ ...formData, renewal_type: value })}
+                  onValueChange={(value: 'monthly' | 'yearly') =>
+                    setFormData({ ...formData, renewal_type: value })
+                  }
                 >
                   <SelectTrigger id="renewal_type">
                     <SelectValue />
@@ -229,7 +259,9 @@ export function HostEditPage() {
                   id="purchase_date"
                   type="date"
                   value={formData.purchase_date}
-                  onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, purchase_date: e.target.value })
+                  }
                 />
               </div>
               <div className="grid gap-2">
@@ -238,7 +270,9 @@ export function HostEditPage() {
                   id="expiry_date"
                   type="date"
                   value={formData.expiry_date}
-                  onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expiry_date: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -250,7 +284,12 @@ export function HostEditPage() {
                   id="traffic_limit"
                   type="number"
                   value={formData.traffic_limit}
-                  onChange={(e) => setFormData({ ...formData, traffic_limit: parseInt(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      traffic_limit: parseInt(e.target.value) || 0,
+                    })
+                  }
                   placeholder="0 表示无限"
                 />
               </div>
@@ -259,7 +298,9 @@ export function HostEditPage() {
                 <Input
                   id="group_name"
                   value={formData.group_name || ''}
-                  onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, group_name: e.target.value })
+                  }
                   placeholder="例如：生产环境、测试环境"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -278,7 +319,9 @@ export function HostEditPage() {
               <Switch
                 id="auto_renew"
                 checked={formData.auto_renew}
-                onCheckedChange={(checked) => setFormData({ ...formData, auto_renew: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, auto_renew: checked })
+                }
               />
             </div>
 
@@ -292,7 +335,9 @@ export function HostEditPage() {
               <Switch
                 id="hide_for_guest"
                 checked={formData.hide_for_guest}
-                onCheckedChange={(checked) => setFormData({ ...formData, hide_for_guest: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, hide_for_guest: checked })
+                }
               />
             </div>
 
@@ -309,7 +354,6 @@ export function HostEditPage() {
           </form>
         </CardContent>
       </Card>
-
     </div>
-  );
+  )
 }

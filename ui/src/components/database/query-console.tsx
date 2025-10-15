@@ -1,11 +1,17 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { IconPlayerPlay, IconAlertCircle, IconCheck } from '@tabler/icons-react'
 import { useExecuteQuery } from '@/services/database-api'
+import { IconAlertCircle, IconCheck, IconPlayerPlay } from '@tabler/icons-react'
 import { toast } from 'sonner'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -21,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
 
 interface QueryConsoleProps {
   instanceId: number
@@ -59,11 +66,12 @@ export function QueryConsole({ instanceId, instanceType }: QueryConsoleProps) {
     }
   }
 
-  const placeholder = instanceType === 'redis'
-    ? 'GET key\nSET key value\nKEYS *'
-    : instanceType === 'mysql'
-    ? 'SELECT * FROM users LIMIT 10;\n\n-- DDL 操作已禁用'
-    : 'SELECT * FROM users LIMIT 10;\n\n-- DDL operations are forbidden'
+  const placeholder =
+    instanceType === 'redis'
+      ? 'GET key\nSET key value\nKEYS *'
+      : instanceType === 'mysql'
+        ? 'SELECT * FROM users LIMIT 10;\n\n-- DDL 操作已禁用'
+        : 'SELECT * FROM users LIMIT 10;\n\n-- DDL operations are forbidden'
 
   return (
     <div className="space-y-4">
@@ -71,7 +79,8 @@ export function QueryConsole({ instanceId, instanceType }: QueryConsoleProps) {
         <CardHeader>
           <CardTitle>SQL 查询控制台</CardTitle>
           <CardDescription>
-            执行 {instanceType.toUpperCase()} 查询。注意：DDL 操作和无 WHERE 条件的 UPDATE/DELETE 已被禁止。
+            执行 {instanceType.toUpperCase()} 查询。注意：DDL 操作和无 WHERE
+            条件的 UPDATE/DELETE 已被禁止。
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -84,7 +93,9 @@ export function QueryConsole({ instanceId, instanceType }: QueryConsoleProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mysql">mysql</SelectItem>
-                  <SelectItem value="information_schema">information_schema</SelectItem>
+                  <SelectItem value="information_schema">
+                    information_schema
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -150,7 +161,9 @@ export function QueryConsole({ instanceId, instanceType }: QueryConsoleProps) {
                         {result.rows.map((row: any, idx: number) => (
                           <TableRow key={idx}>
                             {result.columns?.map((col: string) => (
-                              <TableCell key={col}>{String(row[col] ?? '')}</TableCell>
+                              <TableCell key={col}>
+                                {String(row[col] ?? '')}
+                              </TableCell>
                             ))}
                           </TableRow>
                         ))}

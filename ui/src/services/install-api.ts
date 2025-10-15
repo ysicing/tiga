@@ -1,11 +1,11 @@
 import type {
-  DatabaseConfig,
   AdminAccount,
-  SystemSettings,
   CheckDBResponse,
-  ValidateResponse,
+  DatabaseConfig,
   FinalizeResponse,
   StatusResponse,
+  SystemSettings,
+  ValidateResponse,
 } from '@/lib/schemas/install-schemas'
 
 // T036: Install API Service
@@ -29,7 +29,9 @@ export const installApi = {
    * POST /api/install/check-db
    * Test database connection and check for existing data
    */
-  async checkDatabase(config: DatabaseConfig & { confirm_reinstall?: boolean }): Promise<CheckDBResponse> {
+  async checkDatabase(
+    config: DatabaseConfig & { confirm_reinstall?: boolean }
+  ): Promise<CheckDBResponse> {
     const response = await fetch(`${API_BASE}/check-db`, {
       method: 'POST',
       headers: {
@@ -50,7 +52,9 @@ export const installApi = {
    * POST /api/install/validate-admin
    * Validate admin account information
    */
-  async validateAdmin(admin: Omit<AdminAccount, 'confirm_password'>): Promise<ValidateResponse> {
+  async validateAdmin(
+    admin: Omit<AdminAccount, 'confirm_password'>
+  ): Promise<ValidateResponse> {
     const response = await fetch(`${API_BASE}/validate-admin`, {
       method: 'POST',
       headers: {

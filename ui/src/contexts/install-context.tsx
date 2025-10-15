@@ -1,9 +1,16 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from 'react'
+
 import type {
-  DatabaseConfig,
   AdminAccount,
-  SystemSettings,
   CheckDBResponse,
+  DatabaseConfig,
+  SystemSettings,
 } from '@/lib/schemas/install-schemas'
 
 // T035: InstallContext 状态管理
@@ -102,7 +109,10 @@ export function InstallProvider({ children }: { children: ReactNode }) {
   }
 
   const goToPreviousStep = () => {
-    setState((prev) => ({ ...prev, currentStep: Math.max(0, prev.currentStep - 1) }))
+    setState((prev) => ({
+      ...prev,
+      currentStep: Math.max(0, prev.currentStep - 1),
+    }))
   }
 
   const value: InstallContextValue = {
@@ -118,7 +128,9 @@ export function InstallProvider({ children }: { children: ReactNode }) {
     goToPreviousStep,
   }
 
-  return <InstallContext.Provider value={value}>{children}</InstallContext.Provider>
+  return (
+    <InstallContext.Provider value={value}>{children}</InstallContext.Provider>
+  )
 }
 
 export function useInstall() {

@@ -1,12 +1,15 @@
-import { Link, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import Logo from '@/assets/logo.png'
 import {
-  IconDatabase,
-  IconUsers,
-  IconFileText,
   IconActivity,
+  IconFile,
+  IconFileText,
   IconLayoutDashboard,
+  IconServer,
+  IconUsers,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { Link, useLocation } from 'react-router-dom'
+
 import {
   Sidebar,
   SidebarContent,
@@ -19,10 +22,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import Logo from '@/assets/logo.png'
 
 interface MinIOSidebarProps {
-  instanceId: string
+  instanceId?: string
 }
 
 export function MinIOSidebar({ instanceId }: MinIOSidebarProps) {
@@ -30,28 +32,45 @@ export function MinIOSidebar({ instanceId }: MinIOSidebarProps) {
   const location = useLocation()
   const { isMobile, setOpenMobile } = useSidebar()
 
-  const menuItems = [
+  // 实例管理菜单（总是显示）
+  const managementItems = [
     {
-      title: 'minio.buckets',
-      icon: IconDatabase,
-      path: `/minio/${instanceId}/buckets`,
-    },
-    {
-      title: 'minio.users',
-      icon: IconUsers,
-      path: `/minio/${instanceId}/users`,
-    },
-    {
-      title: 'minio.policies',
-      icon: IconFileText,
-      path: `/minio/${instanceId}/policies`,
-    },
-    {
-      title: 'minio.metrics',
-      icon: IconActivity,
-      path: `/minio/${instanceId}/metrics`,
+      title: t('minio.instances'),
+      icon: IconServer,
+      path: '/minio/instances',
     },
   ]
+
+  // 实例详情菜单（仅当有 instanceId 时显示）
+  const instanceMenuItems = instanceId
+    ? [
+        {
+          title: t('minio.overview'),
+          icon: IconLayoutDashboard,
+          path: `/minio/${instanceId}/overview`,
+        },
+        {
+          title: t('minio.files'),
+          icon: IconFile,
+          path: `/minio/${instanceId}/files`,
+        },
+        {
+          title: t('minio.users'),
+          icon: IconUsers,
+          path: `/minio/${instanceId}/users`,
+        },
+        {
+          title: t('minio.policies'),
+          icon: IconFileText,
+          path: `/minio/${instanceId}/policies`,
+        },
+        {
+          title: t('minio.metrics'),
+          icon: IconActivity,
+          path: `/minio/${instanceId}/metrics`,
+        },
+      ]
+    : []
 
   const isActive = (path: string) => location.pathname === path
 
@@ -91,23 +110,23 @@ export function MinIOSidebar({ instanceId }: MinIOSidebarProps) {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* MinIO 菜单 */}
+        {/* MinIO 实例管理 */}
         <SidebarGroup>
-          <SidebarGroupLabel>MinIO 管理</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('minio.management')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {managementItems.map((item) => {
                 const IconComponent = item.icon
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive(item.path)}
-                      tooltip={t(item.title)}
+                      tooltip={item.title}
                     >
                       <Link to={item.path} onClick={handleMenuItemClick}>
                         <IconComponent className="h-4 w-4" />
-                        <span>{t(item.title)}</span>
+                        <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -116,6 +135,36 @@ export function MinIOSidebar({ instanceId }: MinIOSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* 实例详情菜单 */}
+        {instanceId && (
+          <SidebarGroup>
+            <SidebarGroupLabel>
+              {t('minio.instancePrefix')}: {instanceId.slice(0, 8)}...
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {instanceMenuItems.map((item) => {
+                  const IconComponent = item.icon
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive(item.path)}
+                        tooltip={item.title}
+                      >
+                        <Link to={item.path} onClick={handleMenuItemClick}>
+                          <IconComponent className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   )

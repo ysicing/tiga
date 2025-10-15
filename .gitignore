@@ -33,6 +33,7 @@ kubeconfig
 static/*
 !static/*.go
 bin
+tiga
 
 deploy-dev
 

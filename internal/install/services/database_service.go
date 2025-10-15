@@ -45,7 +45,7 @@ func (s *DatabaseService) TestConnection(config models.DatabaseConfig) error {
 	case "postgresql":
 		sqlDB, err = sql.Open("postgres", dsn)
 	case "sqlite":
-		sqlDB, err = sql.Open("sqlite3", dsn)
+		sqlDB, err = sql.Open("sqlite", dsn)
 	default:
 		return fmt.Errorf("unsupported database type: %s", config.Type)
 	}

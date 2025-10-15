@@ -1,24 +1,33 @@
-import { Outlet, useParams } from 'react-router-dom'
-import { SidebarProvider } from '@/components/ui/sidebar'
-import { SiteHeader } from '@/components/site-header'
-import { MinIOSidebar } from '@/components/minio-sidebar'
 import { ClusterProvider } from '@/contexts/cluster-context'
-import { GlobalSearchProvider, useGlobalSearch } from '@/components/global-search-provider'
+import { Outlet, useParams } from 'react-router-dom'
+
+import { SidebarProvider } from '@/components/ui/sidebar'
 import { GlobalSearch } from '@/components/global-search'
+import {
+  GlobalSearchProvider,
+  useGlobalSearch,
+} from '@/components/global-search-provider'
+import { MinIOSidebar } from '@/components/minio-sidebar'
+import { SiteHeader } from '@/components/site-header'
 
 function GlobalSearchWrapper() {
   const { isOpen, closeSearch, openSearch } = useGlobalSearch()
-  return <GlobalSearch open={isOpen} onOpenChange={(open) => open ? openSearch() : closeSearch()} />
+  return (
+    <GlobalSearch
+      open={isOpen}
+      onOpenChange={(open) => (open ? openSearch() : closeSearch())}
+    />
+  )
 }
 
 export function MinIOLayout() {
-  const { instanceId } = useParams<{ instanceId: string }>()
+  const { instanceId } = useParams<{ instanceId?: string }>()
 
   return (
     <ClusterProvider>
       <GlobalSearchProvider>
         <SidebarProvider>
-          <MinIOSidebar instanceId={instanceId!} />
+          <MinIOSidebar instanceId={instanceId} />
           <div className="flex flex-1 flex-col">
             <SiteHeader showSearch={true} />
             <main className="flex-1 overflow-auto">

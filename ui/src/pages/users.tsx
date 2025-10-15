@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from 'react'
+import { MoreHorizontal, Plus, RefreshCw, Search, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import { devopsAPI } from '@/lib/api-client'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,20 +19,26 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { User, Search, Plus, RefreshCw, MoreHorizontal } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { devopsAPI } from '@/lib/api-client';
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface UserData {
-  id: string;
-  username: string;
-  email: string;
-  full_name: string;
-  status: string;
-  roles: string[];
-  last_login?: string;
-  created_at: string;
+  id: string
+  username: string
+  email: string
+  full_name: string
+  status: string
+  roles: string[]
+  last_login?: string
+  created_at: string
 }
 
 const getStatusBadge = (status: string) => {
@@ -39,58 +46,65 @@ const getStatusBadge = (status: string) => {
     active: 'default',
     inactive: 'secondary',
     suspended: 'destructive',
-  };
-  return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
-};
+  }
+  return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>
+}
 
 export default function UsersPage() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [users, setUsers] = useState<UserData[]>([]);
+  const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [users, setUsers] = useState<UserData[]>([])
 
   const fetchUsers = async () => {
-    setIsRefreshing(true);
+    setIsRefreshing(true)
     try {
-      const response: any = await devopsAPI.users.list();
-      setUsers(response.data || []);
+      const response: any = await devopsAPI.users.list()
+      setUsers(response.data || [])
     } catch (error) {
-      console.error('Failed to fetch users:', error);
+      console.error('Failed to fetch users:', error)
     } finally {
-      setIsRefreshing(false);
+      setIsRefreshing(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers()
+  }, [])
 
   const filteredUsers = users.filter((user) => {
     return (
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+    )
+  })
 
   const handleDelete = async (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await devopsAPI.users.delete(userId);
-        fetchUsers();
+        await devopsAPI.users.delete(userId)
+        fetchUsers()
       } catch (error) {
-        console.error('Failed to delete user:', error);
+        console.error('Failed to delete user:', error)
       }
     }
-  };
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Users</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={fetchUsers} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={fetchUsers}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
           </Button>
           <Button onClick={() => navigate('/users/new')}>
             <Plus className="mr-2 h-4 w-4" />
@@ -107,7 +121,9 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{users.length}</div>
-            <p className="text-xs text-muted-foreground">Active user accounts</p>
+            <p className="text-xs text-muted-foreground">
+              Active user accounts
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -124,14 +140,18 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive Users</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Inactive Users
+            </CardTitle>
             <User className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {users.filter((u) => u.status !== 'active').length}
             </div>
-            <p className="text-xs text-muted-foreground">Inactive or suspended</p>
+            <p className="text-xs text-muted-foreground">
+              Inactive or suspended
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -168,7 +188,10 @@ export default function UsersPage() {
             </TableHeader>
             <TableBody>
               {filteredUsers.map((user) => (
-                <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50">
+                <TableRow
+                  key={user.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />
@@ -188,7 +211,9 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>{getStatusBadge(user.status)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+                    {user.last_login
+                      ? new Date(user.last_login).toLocaleString()
+                      : 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -200,13 +225,19 @@ export default function UsersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate(`/users/${user.id}`)}>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/users/${user.id}`)}
+                        >
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/users/${user.id}/edit`)}>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/users/${user.id}/edit`)}
+                        >
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/users/${user.id}/roles`)}>
+                        <DropdownMenuItem
+                          onClick={() => navigate(`/users/${user.id}/roles`)}
+                        >
                           Manage Roles
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -232,5 +263,5 @@ export default function UsersPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

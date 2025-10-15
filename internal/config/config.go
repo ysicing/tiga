@@ -25,6 +25,7 @@ type Config struct {
 type ServerConfig struct {
 	Debug        bool
 	Port         int
+	GRPCDomain   string
 	GRPCPort     int
 	ReadTimeout  int
 	WriteTimeout int
@@ -120,6 +121,7 @@ func LoadFromFile(filename string) (*Config, error) {
 		Server: ServerConfig{
 			Debug:        getEnvAsBool("DEBUG", false),
 			Port:         configFile.Server.HTTPPort,
+			GRPCDomain:   getOrDefault(configFile.Server.GRPCDomain, configFile.Server.Domain),
 			GRPCPort:     getIntOrDefault(configFile.Server.GRPCPort, 12307),
 			ReadTimeout:  getEnvAsInt("SERVER_READ_TIMEOUT", 60),
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 60),
@@ -183,6 +185,7 @@ type ConfigFile struct {
 		AppSubtitle string `yaml:"app_subtitle"`
 		Domain      string `yaml:"domain"`
 		HTTPPort    int    `yaml:"http_port"`
+		GRPCDomain  string `yaml:"grpc_domain"`
 		GRPCPort    int    `yaml:"grpc_port"`
 		TLSEnabled  bool   `yaml:"tls_enabled"`
 	} `yaml:"server"`
@@ -217,6 +220,7 @@ func LoadFromEnv() *Config {
 		Server: ServerConfig{
 			Debug:        getEnvAsBool("DEBUG", false),
 			Port:         getEnvAsInt("SERVER_PORT", 12306),
+			GRPCDomain:   getEnv("SERVER_GRPC_DOMAIN", ""),
 			GRPCPort:     getEnvAsInt("SERVER_GRPC_PORT", 12307),
 			ReadTimeout:  getEnvAsInt("SERVER_READ_TIMEOUT", 60),
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 60),

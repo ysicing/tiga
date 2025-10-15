@@ -1,8 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Database, Server, Box, Container } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Box, Container, Database, Server } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export interface SubsystemCardProps {
   type: string
@@ -72,7 +73,9 @@ export function SubsystemCard({
       <CardContent>
         {isEmpty ? (
           <div className="py-4 text-center">
-            <p className="text-sm text-muted-foreground">{t('overview.empty')}</p>
+            <p className="text-sm text-muted-foreground">
+              {t('overview.empty')}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -81,7 +84,10 @@ export function SubsystemCard({
             </div>
             <div className="flex gap-2 flex-wrap">
               {running > 0 && (
-                <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20">
+                <Badge
+                  variant="default"
+                  className="bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20"
+                >
                   {running} {t('overview.status.running')}
                 </Badge>
               )}

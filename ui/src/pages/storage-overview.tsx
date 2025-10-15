@@ -1,8 +1,15 @@
+import {
+  IconAlertCircle,
+  IconBucket,
+  IconChartBar,
+  IconShield,
+  IconUsers,
+} from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { IconBucket, IconUsers, IconShield, IconChartBar, IconAlertCircle } from '@tabler/icons-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function StorageOverview() {
   const { t } = useTranslation()
@@ -47,7 +54,9 @@ export function StorageOverview() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('storage.overview', '对象存储概览')}</h1>
+          <h1 className="text-2xl font-bold">
+            {t('storage.overview', '对象存储概览')}
+          </h1>
           <p className="text-muted-foreground mt-1">
             {t('storage.overview.description', 'MinIO 对象存储服务管理')}
           </p>
@@ -58,7 +67,10 @@ export function StorageOverview() {
         <IconAlertCircle className="h-4 w-4" />
         <AlertTitle>{t('common.comingSoon', '即将推出')}</AlertTitle>
         <AlertDescription>
-          {t('storage.comingSoon.description', 'MinIO 对象存储管理功能正在开发中，敬请期待。')}
+          {t(
+            'storage.comingSoon.description',
+            'MinIO 对象存储管理功能正在开发中，敬请期待。'
+          )}
         </AlertDescription>
       </Alert>
 

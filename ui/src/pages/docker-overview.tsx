@@ -1,8 +1,14 @@
+import {
+  IconAlertCircle,
+  IconBox,
+  IconNetwork,
+  IconStack,
+} from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { IconBox, IconNetwork, IconStack, IconAlertCircle } from '@tabler/icons-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function DockerOverview() {
   const { t } = useTranslation()
@@ -39,7 +45,9 @@ export function DockerOverview() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('docker.overview', 'Docker 概览')}</h1>
+          <h1 className="text-2xl font-bold">
+            {t('docker.overview', 'Docker 概览')}
+          </h1>
           <p className="text-muted-foreground mt-1">
             {t('docker.overview.description', '管理 Docker 容器、镜像和网络')}
           </p>
@@ -50,7 +58,10 @@ export function DockerOverview() {
         <IconAlertCircle className="h-4 w-4" />
         <AlertTitle>{t('common.comingSoon', '即将推出')}</AlertTitle>
         <AlertDescription>
-          {t('docker.comingSoon.description', 'Docker 管理功能正在开发中，敬请期待。')}
+          {t(
+            'docker.comingSoon.description',
+            'Docker 管理功能正在开发中，敬请期待。'
+          )}
         </AlertDescription>
       </Alert>
 

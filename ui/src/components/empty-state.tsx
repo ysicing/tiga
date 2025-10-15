@@ -1,7 +1,8 @@
-import { Button } from '@/components/ui/button'
-import { PackageX } from 'lucide-react'
 import { ReactNode } from 'react'
+import { PackageX } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 export interface EmptyStateProps {
   message: string
@@ -28,7 +29,9 @@ export function EmptyState({
       <div className="mb-4 text-muted-foreground">
         {icon || <PackageX className="h-16 w-16" />}
       </div>
-      <p className="text-lg font-medium text-muted-foreground mb-4">{message}</p>
+      <p className="text-lg font-medium text-muted-foreground mb-4">
+        {message}
+      </p>
       {onAction && actionText && (
         <Button onClick={onAction} variant="default">
           {actionText}

@@ -1,7 +1,14 @@
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
+import { useInstall } from '@/contexts/install-context'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Eye, EyeOff } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+
+import {
+  AdminAccountSchema,
+  type AdminAccount,
+} from '@/lib/schemas/install-schemas'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -14,9 +21,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { Eye, EyeOff } from 'lucide-react'
-import { AdminAccountSchema, type AdminAccount } from '@/lib/schemas/install-schemas'
-import { useInstall } from '@/contexts/install-context'
 
 export function AdminStep() {
   const { t } = useTranslation()
@@ -39,7 +43,9 @@ export function AdminStep() {
   const password = form.watch('password')
 
   // Calculate password strength
-  const getPasswordStrength = (pwd: string): { score: number; label: string; color: string } => {
+  const getPasswordStrength = (
+    pwd: string
+  ): { score: number; label: string; color: string } => {
     if (!pwd) return { score: 0, label: '', color: '' }
 
     let score = 0
@@ -48,12 +54,29 @@ export function AdminStep() {
     if (/[A-Z]/.test(pwd)) score += 25
     if (/[0-9]/.test(pwd)) score += 25
 
-    if (score <= 25) return { score, label: t('install.admin.passwordWeak'), color: 'bg-red-500' }
+    if (score <= 25)
+      return {
+        score,
+        label: t('install.admin.passwordWeak'),
+        color: 'bg-red-500',
+      }
     if (score <= 50)
-      return { score, label: t('install.admin.passwordFair'), color: 'bg-orange-500' }
+      return {
+        score,
+        label: t('install.admin.passwordFair'),
+        color: 'bg-orange-500',
+      }
     if (score <= 75)
-      return { score, label: t('install.admin.passwordGood'), color: 'bg-yellow-500' }
-    return { score, label: t('install.admin.passwordStrong'), color: 'bg-green-500' }
+      return {
+        score,
+        label: t('install.admin.passwordGood'),
+        color: 'bg-yellow-500',
+      }
+    return {
+      score,
+      label: t('install.admin.passwordStrong'),
+      color: 'bg-green-500',
+    }
   }
 
   const passwordStrength = getPasswordStrength(password)
@@ -68,7 +91,9 @@ export function AdminStep() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{t('install.admin.title')}</h2>
-        <p className="text-muted-foreground">{t('install.admin.description')}</p>
+        <p className="text-muted-foreground">
+          {t('install.admin.description')}
+        </p>
       </div>
 
       <Form {...form}>
@@ -83,7 +108,9 @@ export function AdminStep() {
                 <FormControl>
                   <Input placeholder="admin" {...field} />
                 </FormControl>
-                <FormDescription>{t('install.admin.usernameHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.admin.usernameHelp')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -97,7 +124,11 @@ export function AdminStep() {
               <FormItem>
                 <FormLabel>{t('install.admin.email')}</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="admin@example.com" {...field} />
+                  <Input
+                    type="email"
+                    placeholder="admin@example.com"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -133,7 +164,9 @@ export function AdminStep() {
                     </Button>
                   </div>
                 </FormControl>
-                <FormDescription>{t('install.admin.passwordHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.admin.passwordHelp')}
+                </FormDescription>
                 <FormMessage />
 
                 {/* Password Strength Indicator */}
@@ -143,7 +176,9 @@ export function AdminStep() {
                       <span className="text-muted-foreground">
                         {t('install.admin.passwordStrength')}:
                       </span>
-                      <span className="font-medium">{passwordStrength.label}</span>
+                      <span className="font-medium">
+                        {passwordStrength.label}
+                      </span>
                     </div>
                     <Progress value={passwordStrength.score} className="h-2" />
                   </div>
@@ -171,7 +206,9 @@ export function AdminStep() {
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4" />

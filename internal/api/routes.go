@@ -359,19 +359,35 @@ func SetupRoutes(
 				databaseGroup.GET("/audit-logs", dbAuditHandler.ListAuditLogs)
 			}
 
-			// ==================== MinIO Subsystem ====================
-			minioGroup := protected.Group("/minio/instances/:id")
-			{
-				// Bucket operations
-				minioGroup.GET("/buckets", minioBucketHandler.ListBuckets)
-				minioGroup.POST("/buckets", minioBucketHandler.CreateBucket)
-				minioGroup.DELETE("/buckets/:bucket", minioBucketHandler.DeleteBucket)
+				// ==================== MinIO Subsystem ====================
+				minioGroup := protected.Group("/minio/instances/:id")
+				{
+            // Bucket operations
+            minioGroup.GET("/buckets", minioBucketHandler.ListBuckets)
+            minioGroup.POST("/buckets", minioBucketHandler.CreateBucket)
+            minioGroup.GET("/buckets/:bucket", minioBucketHandler.GetBucket)
+            minioGroup.PUT("/buckets/:bucket/policy", minioBucketHandler.UpdateBucketPolicy)
+            minioGroup.DELETE("/buckets/:bucket", minioBucketHandler.DeleteBucket)
 
-				// Object operations
-				minioGroup.GET("/buckets/:bucket/objects", minioObjectHandler.ListObjects)
-				minioGroup.GET("/buckets/:bucket/objects/:object", minioObjectHandler.GetObject)
-				minioGroup.POST("/buckets/:bucket/objects", minioObjectHandler.UploadObject)
-				minioGroup.DELETE("/buckets/:bucket/objects/:object", minioObjectHandler.DeleteObject)
+					// Object operations
+					minioGroup.GET("/buckets/:bucket/objects", minioObjectHandler.ListObjects)
+					minioGroup.GET("/buckets/:bucket/objects/:object", minioObjectHandler.GetObject)
+					minioGroup.POST("/buckets/:bucket/objects", minioObjectHandler.UploadObject)
+					minioGroup.DELETE("/buckets/:bucket/objects/:object", minioObjectHandler.DeleteObject)
+
+					// File operations (generic)
+					minioFileHandler := minio.NewFileHandler(*instanceRepo)
+					minioGroup.GET("/files", minioFileHandler.List)
+					minioGroup.POST("/files", minioFileHandler.Upload)
+					minioGroup.GET("/files/download", minioFileHandler.DownloadURL)
+					minioGroup.GET("/files/preview", minioFileHandler.PreviewURL)
+					minioGroup.DELETE("/files", minioFileHandler.Delete)
+
+            // User operations
+            minioUserHandler := minio.NewUserHandler(*instanceRepo)
+            minioGroup.GET("/users", minioUserHandler.ListUsers)
+            minioGroup.POST("/users", minioUserHandler.CreateUser)
+            minioGroup.DELETE("/users/:username", minioUserHandler.DeleteUser)
 			}
 
 			// ==================== Alert Management Subsystem ====================
@@ -445,6 +461,30 @@ func SetupRoutes(
 
 					// Service probe history (for multi-line chart)
 					hostsGroup.GET("/:id/probe-history", serviceMonitorHandler.GetHostProbeHistory)
+				}
+
+				// MinIO Permission routes (global under /minio)
+				minioPermHandler := minio.NewPermissionHandler(*instanceRepo)
+				minioAPI := protected.Group("/minio")
+				{
+					// MinIO instances CRUD
+					minioInstHandler := minio.NewMinioInstanceHandler(*instanceRepo)
+					minioAPI.POST("/instances", minioInstHandler.Create)
+					minioAPI.GET("/instances", minioInstHandler.List)
+					minioAPI.GET("/instances/:id", minioInstHandler.Get)
+					minioAPI.PUT("/instances/:id", minioInstHandler.Update)
+					minioAPI.DELETE("/instances/:id", minioInstHandler.Delete)
+					minioAPI.POST("/instances/:id/test", minioInstHandler.Test)
+
+					minioAPI.POST("/permissions", minioPermHandler.GrantPermission)
+					minioAPI.GET("/permissions", minioPermHandler.ListPermissions)
+					minioAPI.DELETE("/permissions/:id", minioPermHandler.RevokePermission)
+
+					// Shares
+					minioShareHandler := minio.NewShareHandler(*instanceRepo)
+					minioAPI.POST("/shares", minioShareHandler.CreateShare)
+					minioAPI.GET("/shares", minioShareHandler.ListShares)
+					minioAPI.DELETE("/shares/:id", minioShareHandler.RevokeShare)
 				}
 
 				// Host groups (simplified - just list unique group names)

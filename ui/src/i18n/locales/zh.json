@@ -99,6 +99,10 @@
       "domainHelp": "访问 Tiga 的域名或 IP 地址",
       "httpPort": "HTTP 端口",
       "httpPortHelp": "HTTP 服务器端口（1-65535）",
+      "grpcDomain": "gRPC 域名",
+      "grpcDomainHelp": "gRPC 服务的域名或 IP 地址（可选，默认与 HTTP 域名相同）",
+      "grpcPort": "gRPC 端口",
+      "grpcPortHelp": "gRPC 服务器端口（可选，默认 12307）",
       "language": "界面语言",
       "languageHelp": "默认界面语言",
       "enableAnalytics": "允许匿名收集统计数据",
@@ -195,6 +199,7 @@
   },
   "overview": {
     "title": "概览",
+    "selectSubsystem": "选择要管理的子系统",
     "clusterStats": "集群统计",
     "recentEvents": "最近事件",
     "resourceCharts": "资源图表",
@@ -610,10 +615,16 @@
     "metrics": "集群监控"
   },
   "minio": {
+    "title": "对象存储",
+    "management": "MinIO 管理",
+    "instances": "实例列表",
+    "overview": "实例概览",
+    "files": "文件管理",
     "buckets": "Buckets 管理",
     "users": "用户管理",
     "policies": "策略管理",
-    "metrics": "性能监控"
+    "metrics": "性能监控",
+    "instancePrefix": "实例"
   },
   "subsystem": {
     "devops": "DevOps",

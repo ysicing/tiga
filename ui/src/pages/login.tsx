@@ -1,9 +1,9 @@
-import { FormEvent, useState, useEffect } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import Logo from '@/assets/logo.png'
 import { useAuth } from '@/contexts/auth-context'
+import { configApi } from '@/services/config-api'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { configApi } from '@/services/config-api'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'

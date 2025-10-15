@@ -19,16 +19,18 @@ type HostService struct {
 	hostRepo       repository.HostRepository
 	agentMgr       *AgentManager
 	stateCollector *StateCollector
-	serverURL      string // Server URL for agent installation
+	serverURL      string // Server URL for agent installation script (HTTP)
+	grpcAddr       string // gRPC server address for agent connection (host:port)
 }
 
 // NewHostService creates a new HostService
-func NewHostService(hostRepo repository.HostRepository, agentMgr *AgentManager, stateCollector *StateCollector, serverURL string) *HostService {
+func NewHostService(hostRepo repository.HostRepository, agentMgr *AgentManager, stateCollector *StateCollector, serverURL string, grpcAddr string) *HostService {
 	return &HostService{
 		hostRepo:       hostRepo,
 		agentMgr:       agentMgr,
 		stateCollector: stateCollector,
 		serverURL:      serverURL,
+		grpcAddr:       grpcAddr,
 	}
 }
 
@@ -124,10 +126,12 @@ func (s *HostService) GetAgentInstallCommand(ctx context.Context, id uuid.UUID) 
 	}
 
 	// Generate installation command
+	// Note: serverURL is HTTP URL for downloading the install script
+	// grpcAddr is the gRPC address (host:port) for agent connection
 	cmd := fmt.Sprintf(
 		"curl -fsSL %s/agent/install.sh | bash -s -- --server %s --uuid %s --key %s",
 		s.serverURL,
-		s.serverURL,
+		s.grpcAddr,
 		host.ID.String(),
 		host.SecretKey,
 	)

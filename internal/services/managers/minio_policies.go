@@ -280,6 +280,50 @@ func (m *MinIOManager) GenerateBucketPolicy(bucketName string, accessLevel strin
 	return policy, nil
 }
 
+// GeneratePrefixPolicy generates a policy for specific bucket prefix access
+func (m *MinIOManager) GeneratePrefixPolicy(bucketName, prefix, accessLevel string) (map[string]interface{}, error) {
+    var actions []string
+
+    switch accessLevel {
+    case "readonly":
+        actions = []string{
+            "s3:GetBucketLocation",
+            "s3:GetObject",
+            "s3:ListBucket",
+        }
+    case "writeonly":
+        actions = []string{
+            "s3:PutObject",
+        }
+    case "readwrite":
+        actions = []string{
+            "s3:GetBucketLocation",
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject",
+            "s3:ListBucket",
+        }
+    default:
+        return nil, fmt.Errorf("invalid access level: %s", accessLevel)
+    }
+
+    policy := map[string]interface{}{
+        "Version": "2012-10-17",
+        "Statement": []map[string]interface{}{
+            {
+                "Effect":  "Allow",
+                "Action":  actions,
+                "Resource": []string{
+                    fmt.Sprintf("arn:aws:s3:::%s", bucketName),
+                    fmt.Sprintf("arn:aws:s3:::%s/%s*", bucketName, prefix),
+                },
+            },
+        },
+    }
+
+    return policy, nil
+}
+
 // ListUserPolicies lists policies attached to a user
 func (m *MinIOManager) ListUserPolicies(ctx context.Context, accessKey string) ([]string, error) {
 	userInfo, err := m.GetUserInfo(ctx, accessKey)
