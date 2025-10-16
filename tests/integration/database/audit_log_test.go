@@ -123,7 +123,7 @@ func TestAuditLogRecording(t *testing.T) {
 		log := repo.logs[0]
 		assert.Equal(t, "query.blocked", log.Action)
 		assert.False(t, log.Success)
-		assert.Contains(t, log.ErrorMessage, "DDL operations")
+		assert.Contains(t, log.ErrorMessage, "SQL contains forbidden operation")
 	})
 
 	t.Run("LogPermissionGrant", func(t *testing.T) {

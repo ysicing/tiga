@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -22,3 +24,13 @@ type MinIOAuditLog struct {
 }
 
 func (MinIOAuditLog) TableName() string { return "minio_audit_logs" }
+
+// GetID returns the audit log ID as a string (implements audit.AuditLog interface).
+func (l *MinIOAuditLog) GetID() string {
+	return l.ID.String()
+}
+
+// SetCreatedAt sets the creation timestamp (implements audit.AuditLog interface).
+func (l *MinIOAuditLog) SetCreatedAt(t time.Time) {
+	l.CreatedAt = t
+}

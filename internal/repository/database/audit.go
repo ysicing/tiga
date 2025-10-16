@@ -29,6 +29,17 @@ func (r *AuditLogRepository) Create(ctx context.Context, log *models.DatabaseAud
 	return nil
 }
 
+// CreateBatch stores multiple audit log entries in a single transaction (implements audit.AuditRepository).
+func (r *AuditLogRepository) CreateBatch(ctx context.Context, logs []*models.DatabaseAuditLog) error {
+	if len(logs) == 0 {
+		return nil
+	}
+	if err := r.db.WithContext(ctx).CreateInBatches(logs, 100).Error; err != nil {
+		return fmt.Errorf("failed to batch create database audit logs: %w", err)
+	}
+	return nil
+}
+
 // List returns paginated audit logs without additional filters.
 func (r *AuditLogRepository) List(ctx context.Context, page, pageSize int) ([]*models.DatabaseAuditLog, int64, error) {
 	filter := &AuditLogFilter{

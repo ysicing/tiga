@@ -18,6 +18,14 @@ func (r *AuditRepository) Create(ctx context.Context, log *models.MinIOAuditLog)
 	return r.db.WithContext(ctx).Create(log).Error
 }
 
+// CreateBatch stores multiple audit log entries in a single transaction (implements audit.AuditRepository).
+func (r *AuditRepository) CreateBatch(ctx context.Context, logs []*models.MinIOAuditLog) error {
+	if len(logs) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).CreateInBatches(logs, 100).Error
+}
+
 type AuditFilter struct {
 	InstanceID uuid.UUID
 	From, To   *time.Time

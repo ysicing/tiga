@@ -1,6 +1,10 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // DatabaseAuditLog records high-level database management operations for compliance tracking.
 type DatabaseAuditLog struct {
@@ -23,4 +27,14 @@ type DatabaseAuditLog struct {
 // TableName overrides the default table name.
 func (DatabaseAuditLog) TableName() string {
 	return "db_audit_logs"
+}
+
+// GetID returns the audit log ID as a string (implements audit.AuditLog interface).
+func (l *DatabaseAuditLog) GetID() string {
+	return l.ID.String()
+}
+
+// SetCreatedAt sets the creation timestamp (implements audit.AuditLog interface).
+func (l *DatabaseAuditLog) SetCreatedAt(t time.Time) {
+	l.CreatedAt = t
 }
