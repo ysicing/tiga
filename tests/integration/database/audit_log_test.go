@@ -218,7 +218,7 @@ func TestClientIPExtraction(t *testing.T) {
 		ctx := context.WithValue(context.Background(), "client_ip", "203.0.113.100")
 
 		ip := dbservices.ExtractClientIP(ctx)
-		// Note: The actual implementation uses a private context key
+		_ = ip // Note: The actual implementation uses a private context key
 		// This test demonstrates the expected behavior
 		// assert.Equal(t, "203.0.113.100", ip)
 

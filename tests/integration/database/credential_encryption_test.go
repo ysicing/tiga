@@ -121,7 +121,8 @@ func TestCredentialStorageSecurity(t *testing.T) {
 	// This test would require actual database connection
 	// For now, we test the encryption logic is properly integrated
 	t.Run("PasswordNeverStoredInPlaintext", func(t *testing.T) {
-		cryptoService, _ := crypto.NewService("testkeytest keytest keytest key") // 32 bytes
+		cryptoService, err := crypto.NewService("12345678901234567890123456789012") // Exactly 32 bytes
+		require.NoError(t, err)
 		crypto.SetDefaultService(cryptoService)
 
 		plainPassword := "MySecretPassword123"
