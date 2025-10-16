@@ -1,30 +1,29 @@
-import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useMemo, useState } from 'react'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+  ServiceMonitorListResponse,
+  ServiceMonitorService,
+} from '@/services/service-monitor'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { format } from 'date-fns'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Activity,
+  Edit,
+  Globe,
+  MoreVertical,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
+  Trash,
+  Wifi,
+} from 'lucide-react'
+import { toast } from 'sonner'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -32,161 +31,166 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'
 import {
-  Search,
-  Plus,
-  MoreVertical,
-  Activity,
-  Globe,
-  Server,
-  Wifi,
-  Edit,
-  Trash,
-  Play,
-  Pause,
-  RefreshCw
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
-import { ServiceMonitorService, ServiceMonitorListResponse } from '@/services/service-monitor';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 // Type for service monitor
 interface ServiceMonitor {
-  id: string;
-  name: string;
-  type: 'HTTP' | 'TCP' | 'ICMP';
-  target: string;
-  interval: number;
-  enabled: boolean;
-  status?: 'up' | 'down' | 'degraded' | 'unknown';
-  last_check_time?: string;
-  uptime_24h?: number;
-  failure_threshold: number;
-  notify_on_failure: boolean;
+  id: string
+  name: string
+  type: 'HTTP' | 'TCP' | 'ICMP'
+  target: string
+  interval: number
+  enabled: boolean
+  status?: 'up' | 'down' | 'degraded' | 'unknown'
+  last_check_time?: string
+  uptime_24h?: number
+  failure_threshold: number
+  notify_on_failure: boolean
 }
 
 const ServiceMonitorListPage: React.FC = () => {
-  const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedMonitor, setSelectedMonitor] = useState<ServiceMonitor | null>(null);
+  const queryClient = useQueryClient()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [selectedMonitor, setSelectedMonitor] = useState<ServiceMonitor | null>(
+    null
+  )
 
   // Fetch monitors
   const { data, isLoading } = useQuery<ServiceMonitorListResponse>({
     queryKey: ['service-monitors', searchQuery, typeFilter, statusFilter],
-    queryFn: () => ServiceMonitorService.list({
-      search: searchQuery,
-      type: typeFilter === 'all' ? undefined : typeFilter,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-    }),
-  });
-  const monitors = data?.items ?? [];
-  const totalMonitors = data?.total ?? monitors.length;
+    queryFn: () =>
+      ServiceMonitorService.list({
+        search: searchQuery,
+        type: typeFilter === 'all' ? undefined : typeFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      }),
+  })
+  const monitors = data?.items ?? []
+  const totalMonitors = data?.total ?? monitors.length
 
   const filteredMonitors = useMemo(() => {
     return monitors.filter((monitor) => {
       const matchSearch =
         !searchQuery ||
         monitor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        monitor.target.toLowerCase().includes(searchQuery.toLowerCase());
+        monitor.target.toLowerCase().includes(searchQuery.toLowerCase())
 
-      const matchType = typeFilter === 'all' || monitor.type === typeFilter;
-      const matchStatus = statusFilter === 'all' || monitor.status === statusFilter;
+      const matchType = typeFilter === 'all' || monitor.type === typeFilter
+      const matchStatus =
+        statusFilter === 'all' || monitor.status === statusFilter
 
-      return matchSearch && matchType && matchStatus;
-    });
-  }, [monitors, searchQuery, typeFilter, statusFilter]);
+      return matchSearch && matchType && matchStatus
+    })
+  }, [monitors, searchQuery, typeFilter, statusFilter])
 
   // Delete monitor mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => ServiceMonitorService.delete(id),
     onSuccess: () => {
-      toast.success('服务监控已删除');
-      queryClient.invalidateQueries({ queryKey: ['service-monitors'] });
-      setDeleteDialogOpen(false);
+      toast.success('服务监控已删除')
+      queryClient.invalidateQueries({ queryKey: ['service-monitors'] })
+      setDeleteDialogOpen(false)
     },
     onError: () => {
-      toast.error('删除服务监控失败');
+      toast.error('删除服务监控失败')
     },
-  });
+  })
 
   // Toggle enabled status
   const toggleMutation = useMutation({
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       ServiceMonitorService.update(id, { enabled }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-monitors'] });
-      toast.success('监控状态已更新');
+      queryClient.invalidateQueries({ queryKey: ['service-monitors'] })
+      toast.success('监控状态已更新')
     },
-  });
+  })
 
   // Trigger manual probe
   const triggerProbeMutation = useMutation({
     mutationFn: (id: string) => ServiceMonitorService.triggerProbe(id),
     onSuccess: () => {
-      toast.success('探测任务已触发');
-      queryClient.invalidateQueries({ queryKey: ['service-monitors'] });
+      toast.success('探测任务已触发')
+      queryClient.invalidateQueries({ queryKey: ['service-monitors'] })
     },
-  });
+  })
 
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'HTTP':
-        return <Globe className="h-4 w-4" />;
+        return <Globe className="h-4 w-4" />
       case 'TCP':
-        return <Server className="h-4 w-4" />;
+        return <Server className="h-4 w-4" />
       case 'ICMP':
-        return <Wifi className="h-4 w-4" />;
+        return <Wifi className="h-4 w-4" />
       default:
-        return <Activity className="h-4 w-4" />;
+        return <Activity className="h-4 w-4" />
     }
-  };
+  }
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'up':
-        return <Badge className="bg-green-500">在线</Badge>;
+        return <Badge className="bg-green-500">在线</Badge>
       case 'down':
-        return <Badge variant="destructive">离线</Badge>;
+        return <Badge variant="destructive">离线</Badge>
       case 'degraded':
-        return <Badge className="bg-yellow-500">降级</Badge>;
+        return <Badge className="bg-yellow-500">降级</Badge>
       default:
-        return <Badge variant="outline">未知</Badge>;
+        return <Badge variant="outline">未知</Badge>
     }
-  };
+  }
 
   const getUptimeBadge = (uptime?: number) => {
-    if (!uptime) return null;
+    if (!uptime) return null
 
-    let variant: 'default' | 'destructive' | 'outline' = 'default';
+    let variant: 'default' | 'destructive' | 'outline' = 'default'
     if (uptime >= 99.9) {
-      variant = 'default';
+      variant = 'default'
     } else if (uptime >= 95) {
-      variant = 'outline';
+      variant = 'outline'
     } else {
-      variant = 'destructive';
+      variant = 'destructive'
     }
 
-    return (
-      <Badge variant={variant}>
-        {uptime.toFixed(2)}%
-      </Badge>
-    );
-  };
+    return <Badge variant={variant}>{uptime.toFixed(2)}%</Badge>
+  }
 
   const handleDelete = (monitor: ServiceMonitor) => {
-    setSelectedMonitor(monitor);
-    setDeleteDialogOpen(true);
-  };
+    setSelectedMonitor(monitor)
+    setDeleteDialogOpen(true)
+  }
 
   const confirmDelete = () => {
     if (selectedMonitor) {
-      deleteMutation.mutate(selectedMonitor.id);
+      deleteMutation.mutate(selectedMonitor.id)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -196,7 +200,9 @@ const ServiceMonitorListPage: React.FC = () => {
           <h1 className="text-2xl font-bold">服务监控</h1>
           <p className="text-muted-foreground">管理和监控服务健康状态</p>
         </div>
-        <Button onClick={() => window.location.href = '/vms/service-monitors/new'}>
+        <Button
+          onClick={() => (window.location.href = '/vms/service-monitors/new')}
+        >
           <Plus className="mr-2 h-4 w-4" />
           新建监控
         </Button>
@@ -220,7 +226,7 @@ const ServiceMonitorListPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredMonitors.filter(m => m.status === 'up').length}
+              {filteredMonitors.filter((m) => m.status === 'up').length}
             </div>
           </CardContent>
         </Card>
@@ -231,7 +237,7 @@ const ServiceMonitorListPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredMonitors.filter(m => m.status === 'down').length}
+              {filteredMonitors.filter((m) => m.status === 'down').length}
             </div>
           </CardContent>
         </Card>
@@ -244,10 +250,13 @@ const ServiceMonitorListPage: React.FC = () => {
             <div className="text-2xl font-bold">
               {filteredMonitors.length > 0
                 ? (
-                  filteredMonitors.reduce((acc, m) => acc + (m.uptime_24h || 0), 0) /
-                  filteredMonitors.length
-                ).toFixed(2)
-                : '0.00'}%
+                    filteredMonitors.reduce(
+                      (acc, m) => acc + (m.uptime_24h || 0),
+                      0
+                    ) / filteredMonitors.length
+                  ).toFixed(2)
+                : '0.00'}
+              %
             </div>
           </CardContent>
         </Card>
@@ -349,7 +358,10 @@ const ServiceMonitorListPage: React.FC = () => {
                     <TableCell>{getUptimeBadge(monitor.uptime_24h)}</TableCell>
                     <TableCell>
                       {monitor.last_check_time
-                        ? format(new Date(monitor.last_check_time), 'MM-dd HH:mm:ss')
+                        ? format(
+                            new Date(monitor.last_check_time),
+                            'MM-dd HH:mm:ss'
+                          )
                         : '-'}
                     </TableCell>
                     <TableCell className="text-right">
@@ -361,13 +373,17 @@ const ServiceMonitorListPage: React.FC = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => window.location.href = `/vms/service-monitors/${monitor.id}`}
+                            onClick={() =>
+                              (window.location.href = `/vms/service-monitors/${monitor.id}`)
+                            }
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             查看详情
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => triggerProbeMutation.mutate(monitor.id)}
+                            onClick={() =>
+                              triggerProbeMutation.mutate(monitor.id)
+                            }
                           >
                             <RefreshCw className="mr-2 h-4 w-4" />
                             手动探测
@@ -420,7 +436,10 @@ const ServiceMonitorListPage: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               取消
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
@@ -430,7 +449,7 @@ const ServiceMonitorListPage: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}
 
-export default ServiceMonitorListPage;
+export default ServiceMonitorListPage

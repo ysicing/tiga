@@ -435,7 +435,15 @@ export interface Instance {
   name: string
   display_name?: string
   description?: string
-  type: 'mysql' | 'postgresql' | 'redis' | 'minio' | 'docker' | 'kubernetes' | 'k8s' | 'caddy'
+  type:
+    | 'mysql'
+    | 'postgresql'
+    | 'redis'
+    | 'minio'
+    | 'docker'
+    | 'kubernetes'
+    | 'k8s'
+    | 'caddy'
   status: 'running' | 'stopped' | 'error' | 'unknown' | 'provisioning'
   health: 'healthy' | 'unhealthy' | 'degraded' | 'unknown'
   health_message?: string

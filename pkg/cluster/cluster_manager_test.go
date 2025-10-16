@@ -86,7 +86,7 @@ func Test_shouldUpdateCluster(t *testing.T) {
 					},
 					config: "test-config",
 				},
-				cluster: &models.Cluster{Name: "test", Enable: true, Config: models.SecretString("test-config-new")},
+				cluster: &models.Cluster{Name: "test", Enable: true, Config: "test-config-new"},
 			},
 			want: true,
 		},
@@ -148,7 +148,7 @@ func Test_shouldUpdateCluster(t *testing.T) {
 			cluster := &models.Cluster{
 				Name:          "test",
 				Enable:        true,
-				Config:        models.SecretString("test-config"),
+				Config:        "test-config",
 				PrometheusURL: "test-prometheus-url",
 			}
 			got := shouldUpdateCluster(cs, cluster)

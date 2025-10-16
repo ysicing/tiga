@@ -1,17 +1,18 @@
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { useInstances } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
-  IconDatabase,
-  IconServer2,
   IconAlertCircle,
-  IconPlus
+  IconDatabase,
+  IconPlus,
+  IconServer2,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+
+import { useInstances } from '@/lib/api'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface DbsOverviewProps {
   type: 'mysql' | 'postgresql' | 'redis'
@@ -50,9 +51,10 @@ export function DbsOverview({ type }: DbsOverviewProps) {
   const { data, isLoading, error } = useInstances()
 
   // Filter instances by type
-  const instances = data?.data?.filter(instance =>
-    instance.type.toLowerCase() === type.toLowerCase()
-  ) || []
+  const instances =
+    data?.data?.filter(
+      (instance) => instance.type.toLowerCase() === type.toLowerCase()
+    ) || []
 
   const Icon = getIcon(type)
   const typeTitle = getTypeTitle(type)
@@ -61,7 +63,9 @@ export function DbsOverview({ type }: DbsOverviewProps) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{typeTitle} {t('dbs.instances', '实例')}</h1>
+          <h1 className="text-2xl font-bold">
+            {typeTitle} {t('dbs.instances', '实例')}
+          </h1>
         </div>
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
@@ -76,12 +80,16 @@ export function DbsOverview({ type }: DbsOverviewProps) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{typeTitle} {t('dbs.instances', '实例')}</h1>
+          <h1 className="text-2xl font-bold">
+            {typeTitle} {t('dbs.instances', '实例')}
+          </h1>
         </div>
         <Alert variant="destructive">
           <IconAlertCircle className="h-4 w-4" />
           <AlertTitle>{t('common.error')}</AlertTitle>
-          <AlertDescription>{error?.message || 'Failed to load instances'}</AlertDescription>
+          <AlertDescription>
+            {error?.message || 'Failed to load instances'}
+          </AlertDescription>
         </Alert>
       </div>
     )
@@ -93,13 +101,16 @@ export function DbsOverview({ type }: DbsOverviewProps) {
   }
 
   const handleCreateInstance = () => {
-    navigate(`/dbs/new?type=${type}`)
+    // Route to the new instance form with type preselected via query param
+    navigate(`/dbs/instances/new?type=${type}`)
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{typeTitle} {t('dbs.instances', '实例')}</h1>
+        <h1 className="text-2xl font-bold">
+          {typeTitle} {t('dbs.instances', '实例')}
+        </h1>
         <Button onClick={handleCreateInstance}>
           <IconPlus className="h-4 w-4 mr-2" />
           {t('dbs.createInstance', '创建实例')}
@@ -117,10 +128,7 @@ export function DbsOverview({ type }: DbsOverviewProps) {
                 defaultValue: `暂无 ${typeTitle} 实例`,
               })}
             </p>
-            <Button
-              className="mt-4"
-              onClick={handleCreateInstance}
-            >
+            <Button className="mt-4" onClick={handleCreateInstance}>
               <IconPlus className="h-4 w-4 mr-2" />
               {t('dbs.createFirstInstance', '创建第一个实例')}
             </Button>
@@ -128,7 +136,7 @@ export function DbsOverview({ type }: DbsOverviewProps) {
         </Card>
       ) : (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {instances.map(instance => {
+          {instances.map((instance) => {
             return (
               <Card
                 key={instance.id}
@@ -142,7 +150,9 @@ export function DbsOverview({ type }: DbsOverviewProps) {
                       {instance.name}
                     </span>
                     <Badge
-                      variant={instance.status === 'running' ? 'default' : 'secondary'}
+                      variant={
+                        instance.status === 'running' ? 'default' : 'secondary'
+                      }
                     >
                       {instance.status}
                     </Badge>
@@ -151,18 +161,26 @@ export function DbsOverview({ type }: DbsOverviewProps) {
                 <CardContent>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('common.connection')}:</span>
+                      <span className="text-muted-foreground">
+                        {t('common.connection')}:
+                      </span>
                       <span>
                         {(instance.connection?.host as string) || 'N/A'}
-                        {instance.connection?.port ? `:${instance.connection.port}` : ''}
+                        {instance.connection?.port
+                          ? `:${instance.connection.port}`
+                          : ''}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('common.version')}:</span>
+                      <span className="text-muted-foreground">
+                        {t('common.version')}:
+                      </span>
                       <span>{instance.version || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('common.health')}:</span>
+                      <span className="text-muted-foreground">
+                        {t('common.health')}:
+                      </span>
                       <span>{instance.health || 'unknown'}</span>
                     </div>
                   </div>

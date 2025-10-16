@@ -93,6 +93,10 @@
       "domainHelp": "Domain or IP address for accessing Tiga",
       "httpPort": "HTTP Port",
       "httpPortHelp": "Port for HTTP server (1-65535)",
+      "grpcDomain": "gRPC Domain",
+      "grpcDomainHelp": "Domain or IP address for gRPC service (optional, defaults to HTTP domain)",
+      "grpcPort": "gRPC Port",
+      "grpcPortHelp": "Port for gRPC server (optional, defaults to 12307)",
       "language": "Language",
       "languageHelp": "Default interface language",
       "enableAnalytics": "Allow anonymous usage statistics",
@@ -181,6 +185,7 @@
   },
   "overview": {
     "title": "Overview",
+    "selectSubsystem": "Select the subsystem you want to manage",
     "clusterStats": "Cluster Statistics",
     "recentEvents": "Recent Events",
     "resourceCharts": "Resource Charts",
@@ -705,10 +710,16 @@
     "metrics": "Cluster Metrics"
   },
   "minio": {
+    "title": "Object Storage",
+    "management": "MinIO Management",
+    "instances": "Instances",
+    "overview": "Overview",
+    "files": "Files",
     "buckets": "Buckets",
     "users": "Users",
     "policies": "Policies",
-    "metrics": "Metrics"
+    "metrics": "Metrics",
+    "instancePrefix": "Instance"
   },
   "subsystem": {
     "devops": "DevOps",

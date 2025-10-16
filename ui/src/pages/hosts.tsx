@@ -1,16 +1,23 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  Database,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
+} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,32 +25,42 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Database, Server, MoreHorizontal, Search, Plus, RefreshCw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 interface Instance {
-  id: string;
-  name: string;
-  type: string;
-  environment: string;
-  status: string;
-  health: string;
-  host: string;
-  port: number;
-  version: string;
-  createdAt: string;
+  id: string
+  name: string
+  type: string
+  environment: string
+  status: string
+  health: string
+  host: string
+  port: number
+  version: string
+  createdAt: string
 }
 
 const getStatusBadge = (status: string) => {
-  const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  const variants: Record<
+    string,
+    'default' | 'secondary' | 'destructive' | 'outline'
+  > = {
     running: 'default',
     stopped: 'secondary',
     failed: 'destructive',
     pending: 'outline',
-  };
-  return <Badge variant={variants[status] || 'outline'}>{status}</Badge>;
-};
+  }
+  return <Badge variant={variants[status] || 'outline'}>{status}</Badge>
+}
 
 const getHealthBadge = (health: string) => {
   const colors: Record<string, string> = {
@@ -51,31 +68,33 @@ const getHealthBadge = (health: string) => {
     unhealthy: 'bg-red-500',
     degraded: 'bg-yellow-500',
     unknown: 'bg-gray-500',
-  };
+  }
   return (
     <div className="flex items-center gap-2">
-      <div className={`h-2 w-2 rounded-full ${colors[health] || colors.unknown}`} />
+      <div
+        className={`h-2 w-2 rounded-full ${colors[health] || colors.unknown}`}
+      />
       <span className="capitalize">{health}</span>
     </div>
-  );
-};
+  )
+}
 
 const getServiceIcon = (type: string) => {
-  const iconClass = 'h-5 w-5';
+  const iconClass = 'h-5 w-5'
   switch (type.toLowerCase()) {
     case 'mysql':
     case 'postgres':
     case 'redis':
-      return <Database className={iconClass} />;
+      return <Database className={iconClass} />
     default:
-      return <Server className={iconClass} />;
+      return <Server className={iconClass} />
   }
-};
+}
 
 export default function InstanceListPage() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('all');
+  const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedType, setSelectedType] = useState<string>('all')
 
   // TODO: Fetch real data from API
   const instances: Instance[] = [
@@ -139,17 +158,26 @@ export default function InstanceListPage() {
       version: '7.2.3',
       createdAt: '2024-02-05T16:45:00Z',
     },
-  ];
+  ]
 
-  const serviceTypes = ['all', 'mysql', 'postgres', 'redis', 'minio', 'docker', 'k8s', 'caddy'];
+  const serviceTypes = [
+    'all',
+    'mysql',
+    'postgres',
+    'redis',
+    'minio',
+    'docker',
+    'k8s',
+    'caddy',
+  ]
 
   const filteredInstances = instances.filter((instance) => {
     const matchesSearch =
       instance.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instance.host.includes(searchTerm);
-    const matchesType = selectedType === 'all' || instance.type === selectedType;
-    return matchesSearch && matchesType;
-  });
+      instance.host.includes(searchTerm)
+    const matchesType = selectedType === 'all' || instance.type === selectedType
+    return matchesSearch && matchesType
+  })
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -159,7 +187,7 @@ export default function InstanceListPage() {
           <Button variant="outline" size="icon">
             <RefreshCw className="h-4 w-4" />
           </Button>
-          <Button onClick={() => navigate('/dbs/new')}>
+          <Button onClick={() => navigate('/dbs/instances/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add Instance
           </Button>
@@ -169,7 +197,9 @@ export default function InstanceListPage() {
       <Card>
         <CardHeader>
           <CardTitle>Manage Instances</CardTitle>
-          <CardDescription>View and manage all service instances</CardDescription>
+          <CardDescription>
+            View and manage all service instances
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
@@ -185,14 +215,20 @@ export default function InstanceListPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  Filter: {selectedType === 'all' ? 'All Types' : selectedType.toUpperCase()}
+                  Filter:{' '}
+                  {selectedType === 'all'
+                    ? 'All Types'
+                    : selectedType.toUpperCase()}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Service Type</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {serviceTypes.map((type) => (
-                  <DropdownMenuItem key={type} onClick={() => setSelectedType(type)}>
+                  <DropdownMenuItem
+                    key={type}
+                    onClick={() => setSelectedType(type)}
+                  >
                     {type === 'all' ? 'All Types' : type.toUpperCase()}
                   </DropdownMenuItem>
                 ))}
@@ -218,7 +254,7 @@ export default function InstanceListPage() {
                 <TableRow
                   key={instance.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/dbs/${instance.id}`)}
+                  onClick={() => navigate(`/dbs/instances/${instance.id}`)}
                 >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -227,18 +263,27 @@ export default function InstanceListPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{instance.type.toUpperCase()}</Badge>
+                    <Badge variant="outline">
+                      {instance.type.toUpperCase()}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="capitalize">{instance.environment}</TableCell>
+                  <TableCell className="capitalize">
+                    {instance.environment}
+                  </TableCell>
                   <TableCell>{getStatusBadge(instance.status)}</TableCell>
                   <TableCell>{getHealthBadge(instance.health)}</TableCell>
                   <TableCell className="font-mono text-sm">
                     {instance.host}:{instance.port}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{instance.version}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {instance.version}
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuTrigger
+                        asChild
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button variant="ghost" className="h-8 w-8 p-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
@@ -246,22 +291,28 @@ export default function InstanceListPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/dbs/${instance.id}`);
-                        }}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/dbs/instances/${instance.id}`)
+                          }}
+                        >
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/dbs/${instance.id}/edit`);
-                        }}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/dbs/instances/${instance.id}`)
+                          }}
+                        >
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/dbs/${instance.id}/metrics`);
-                        }}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/database/${instance.id}`)
+                          }}
+                        >
                           View Metrics
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -287,5 +338,5 @@ export default function InstanceListPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

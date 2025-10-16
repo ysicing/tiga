@@ -1,12 +1,14 @@
-import { Link, useLocation } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import Logo from '@/assets/logo.png'
 import {
-  IconWorldWww,
-  IconLayoutDashboard,
-  IconFileCode,
   IconCertificate,
   IconChartBar,
+  IconFileCode,
+  IconLayoutDashboard,
+  IconWorldWww,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { Link, useLocation } from 'react-router-dom'
+
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +21,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import Logo from '@/assets/logo.png'
 
 const menuItems = [
   {
@@ -99,7 +100,9 @@ export function WebServerSidebar() {
 
         {/* Web 服务器菜单 */}
         <SidebarGroup>
-          <SidebarGroupLabel>{t('webserver.title', 'Web 服务器')}</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {t('webserver.title', 'Web 服务器')}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {

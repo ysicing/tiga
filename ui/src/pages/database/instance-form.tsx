@@ -1,17 +1,38 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import * as z from 'zod'
-import { IconArrowLeft, IconDatabase } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { useCreateInstance } from '@/services/database-api'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { IconArrowLeft, IconDatabase } from '@tabler/icons-react'
+import { useForm } from 'react-hook-form'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import * as z from 'zod'
+
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 const instanceFormSchema = z.object({
   name: z.string().min(1, '实例名称不能为空').max(100, '实例名称过长'),
@@ -28,17 +49,47 @@ type InstanceFormValues = z.infer<typeof instanceFormSchema>
 
 export function InstanceForm() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const createMutation = useCreateInstance()
   const [showPassword, setShowPassword] = useState(false)
+
+  const normalizeType = (
+    t: string | null
+  ): 'mysql' | 'postgresql' | 'redis' => {
+    switch ((t || '').toLowerCase()) {
+      case 'mysql':
+        return 'mysql'
+      case 'postgresql':
+      case 'postgres':
+        return 'postgresql'
+      case 'redis':
+        return 'redis'
+      default:
+        return 'mysql'
+    }
+  }
+
+  const initialType = normalizeType(searchParams.get('type'))
+
+  const defaultPorts: Record<'mysql' | 'postgresql' | 'redis', string> = {
+    mysql: '3306',
+    postgresql: '5432',
+    redis: '6379',
+  }
+  const defaultUsernames: Record<'mysql' | 'postgresql' | 'redis', string> = {
+    mysql: 'root',
+    postgresql: 'postgres',
+    redis: '',
+  }
 
   const form = useForm<InstanceFormValues>({
     resolver: zodResolver(instanceFormSchema),
     defaultValues: {
       name: '',
-      type: 'mysql',
+      type: initialType,
       host: '',
-      port: '3306',
-      username: 'root',  // MySQL default username
+      port: defaultPorts[initialType],
+      username: defaultUsernames[initialType],
       password: '',
       ssl_mode: '',
       description: '',
@@ -49,16 +100,6 @@ export function InstanceForm() {
 
   // 根据数据库类型设置默认端口和用户名
   const handleTypeChange = (type: 'mysql' | 'postgresql' | 'redis') => {
-    const defaultPorts = {
-      mysql: '3306',
-      postgresql: '5432',
-      redis: '6379',
-    }
-    const defaultUsernames = {
-      mysql: 'root',
-      postgresql: 'postgres',
-      redis: '',  // Redis 不需要用户名
-    }
     form.setValue('port', defaultPorts[type])
     form.setValue('username', defaultUsernames[type])
   }
@@ -70,7 +111,7 @@ export function InstanceForm() {
         name: values.name,
         type: values.type,
         host: values.host,
-        port: parseInt(values.port, 10)
+        port: parseInt(values.port, 10),
       }
 
       // Only include optional fields if they have values
@@ -103,7 +144,9 @@ export function InstanceForm() {
             <IconDatabase className="w-8 h-8" />
             新建数据库实例
           </h1>
-          <p className="text-muted-foreground mt-2">添加 MySQL、PostgreSQL 或 Redis 数据库实例</p>
+          <p className="text-muted-foreground mt-2">
+            添加 MySQL、PostgreSQL 或 Redis 数据库实例
+          </p>
         </div>
       </div>
 
@@ -140,7 +183,9 @@ export function InstanceForm() {
                     <FormItem>
                       <FormLabel>数据库类型 *</FormLabel>
                       <Select
-                        onValueChange={(value: 'mysql' | 'postgresql' | 'redis') => {
+                        onValueChange={(
+                          value: 'mysql' | 'postgresql' | 'redis'
+                        ) => {
                           field.onChange(value)
                           handleTypeChange(value)
                         }}
@@ -170,7 +215,10 @@ export function InstanceForm() {
                     <FormItem>
                       <FormLabel>主机地址 *</FormLabel>
                       <FormControl>
-                        <Input placeholder="例如: localhost 或 192.168.1.100" {...field} />
+                        <Input
+                          placeholder="例如: localhost 或 192.168.1.100"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -204,7 +252,12 @@ export function InstanceForm() {
                       <FormItem>
                         <FormLabel>用户名</FormLabel>
                         <FormControl>
-                          <Input placeholder={selectedType === 'mysql' ? 'root' : 'postgres'} {...field} />
+                          <Input
+                            placeholder={
+                              selectedType === 'mysql' ? 'root' : 'postgres'
+                            }
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -248,7 +301,10 @@ export function InstanceForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>SSL 模式</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="选择SSL模式" />
@@ -258,7 +314,9 @@ export function InstanceForm() {
                             <SelectItem value="disable">禁用</SelectItem>
                             <SelectItem value="require">要求</SelectItem>
                             <SelectItem value="verify-ca">验证CA</SelectItem>
-                            <SelectItem value="verify-full">完全验证</SelectItem>
+                            <SelectItem value="verify-full">
+                              完全验证
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -289,7 +347,11 @@ export function InstanceForm() {
 
               {/* 操作按钮 */}
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => navigate('/dbs/instances')}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate('/dbs/instances')}
+                >
                   取消
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending}>

@@ -33,7 +33,6 @@ import (
 	"github.com/ysicing/tiga/internal/services/monitor"
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/scheduler"
-	"github.com/ysicing/tiga/pkg/common"
 	"github.com/ysicing/tiga/pkg/crypto"
 	"github.com/ysicing/tiga/proto"
 
@@ -119,6 +118,9 @@ func (a *Application) Initialize(ctx context.Context) error {
 		return err
 	}
 
+	// Set encryption key for models.SecretString
+	models.SetEncryptionKey(appEncryptionKey)
+
 	credentialKey, err := a.ensureDatabaseCredentialKey(ctx)
 	if err != nil {
 		return err
@@ -135,8 +137,6 @@ func (a *Application) Initialize(ctx context.Context) error {
 			return fmt.Errorf("failed to initialize database credential encryption: %w", err)
 		}
 	}
-
-	common.SetEncryptKey(appEncryptionKey)
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(a.db.DB)
@@ -204,10 +204,13 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	logrus.Info("Application components initialized successfully")
 
-	// Get JWT secret from config (use a default if not set)
+	// Validate JWT secret from config
 	jwtSecret := a.config.JWT.Secret
 	if jwtSecret == "" {
-		jwtSecret = "default-secret-change-in-production"
+		return fmt.Errorf("JWT secret is not configured. Set JWT_SECRET environment variable or security.jwt_secret in config.yaml")
+	}
+	if len(jwtSecret) < 32 {
+		return fmt.Errorf("JWT secret must be at least 32 characters for security")
 	}
 
 	// Initialize JWT manager
@@ -224,12 +227,18 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	// Initialize host monitoring services (shared between gRPC and HTTP)
 	serverURL := fmt.Sprintf("http://localhost:%d", a.config.Server.Port)
+	grpcPort := a.config.Server.GRPCPort
+	if grpcPort == 0 {
+		grpcPort = 12307 // Default gRPC port
+	}
+	grpcAddr := fmt.Sprintf("localhost:%d", grpcPort)
+
 	a.hostRepo = repository.NewHostRepository(a.db.DB)
 	a.stateCollector = host.NewStateCollector(a.hostRepo)
 	a.agentManager = host.NewAgentManager(a.hostRepo, a.stateCollector, a.db.DB)
 	a.stateCollector.SetAgentManager(a.agentManager) // Complete the circular reference
 	a.terminalManager = host.NewTerminalManager()
-	a.hostService = host.NewHostService(a.hostRepo, a.agentManager, a.stateCollector, serverURL)
+	a.hostService = host.NewHostService(a.hostRepo, a.agentManager, a.stateCollector, serverURL, grpcAddr)
 
 	logrus.Info("Host monitoring services initialized")
 
@@ -260,6 +269,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 		a.stateCollector,
 		a.terminalManager,
 		a.probeScheduler,
+		a.config, // Pass full config for dependency injection
 	)
 
 	// Serve static files from embedded filesystem

@@ -1,10 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
-import { OverviewDashboard } from '../overview-dashboard'
-import * as api from '@/lib/api'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import type { Instance } from '@/types/api'
+import * as api from '@/lib/api'
+
+import { OverviewDashboard } from '../overview-dashboard'
 
 // Mock the API module
 vi.mock('@/lib/api', () => ({
@@ -29,9 +31,7 @@ const createWrapper = () => {
   })
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        {children}
-      </BrowserRouter>
+      <BrowserRouter>{children}</BrowserRouter>
     </QueryClientProvider>
   )
 }
@@ -115,10 +115,42 @@ describe('OverviewDashboard', () => {
 
   it('correctly aggregates instances by type', async () => {
     const mockInstances: Instance[] = [
-      { id: '1', name: 'mysql-1', type: 'mysql', status: 'running', health: 'healthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
-      { id: '2', name: 'mysql-2', type: 'mysql', status: 'running', health: 'healthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
-      { id: '3', name: 'mysql-3', type: 'mysql', status: 'stopped', health: 'unknown', created_at: '2025-01-01', updated_at: '2025-01-01' },
-      { id: '4', name: 'mysql-4', type: 'mysql', status: 'error', health: 'unhealthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
+      {
+        id: '1',
+        name: 'mysql-1',
+        type: 'mysql',
+        status: 'running',
+        health: 'healthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
+      {
+        id: '2',
+        name: 'mysql-2',
+        type: 'mysql',
+        status: 'running',
+        health: 'healthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
+      {
+        id: '3',
+        name: 'mysql-3',
+        type: 'mysql',
+        status: 'stopped',
+        health: 'unknown',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
+      {
+        id: '4',
+        name: 'mysql-4',
+        type: 'mysql',
+        status: 'error',
+        health: 'unhealthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
     ]
 
     vi.mocked(api.useInstances).mockReturnValue({
@@ -159,8 +191,24 @@ describe('OverviewDashboard', () => {
 
   it('renders responsive grid layout', async () => {
     const mockInstances: Instance[] = [
-      { id: '1', name: 'mysql-1', type: 'mysql', status: 'running', health: 'healthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
-      { id: '2', name: 'redis-1', type: 'redis', status: 'running', health: 'healthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
+      {
+        id: '1',
+        name: 'mysql-1',
+        type: 'mysql',
+        status: 'running',
+        health: 'healthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
+      {
+        id: '2',
+        name: 'redis-1',
+        type: 'redis',
+        status: 'running',
+        health: 'healthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
     ]
 
     vi.mocked(api.useInstances).mockReturnValue({
@@ -170,7 +218,9 @@ describe('OverviewDashboard', () => {
       isError: false,
     } as any)
 
-    const { container } = render(<OverviewDashboard />, { wrapper: createWrapper() })
+    const { container } = render(<OverviewDashboard />, {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       const grid = container.querySelector('.grid')
@@ -181,8 +231,24 @@ describe('OverviewDashboard', () => {
 
   it('filters cards based on user permissions', async () => {
     const mockInstances: Instance[] = [
-      { id: '1', name: 'mysql-1', type: 'mysql', status: 'running', health: 'healthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
-      { id: '2', name: 'redis-1', type: 'redis', status: 'running', health: 'healthy', created_at: '2025-01-01', updated_at: '2025-01-01' },
+      {
+        id: '1',
+        name: 'mysql-1',
+        type: 'mysql',
+        status: 'running',
+        health: 'healthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
+      {
+        id: '2',
+        name: 'redis-1',
+        type: 'redis',
+        status: 'running',
+        health: 'healthy',
+        created_at: '2025-01-01',
+        updated_at: '2025-01-01',
+      },
     ]
 
     vi.mocked(api.useInstances).mockReturnValue({

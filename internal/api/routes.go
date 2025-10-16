@@ -5,22 +5,22 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
 	"github.com/ysicing/tiga/internal/api/handlers/instances"
 	"github.com/ysicing/tiga/internal/api/handlers/minio"
 	"github.com/ysicing/tiga/internal/api/middleware"
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/repository"
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	"github.com/ysicing/tiga/internal/services"
-	dbservices "github.com/ysicing/tiga/internal/services/database"
 	"github.com/ysicing/tiga/pkg/auth"
 	"github.com/ysicing/tiga/pkg/cluster"
 	"github.com/ysicing/tiga/pkg/handlers/resources"
 
+	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
+	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	alertservices "github.com/ysicing/tiga/internal/services/alert"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
+	dbservices "github.com/ysicing/tiga/internal/services/database"
 	hostservices "github.com/ysicing/tiga/internal/services/host"
 	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
 	websshservices "github.com/ysicing/tiga/internal/services/webssh"
@@ -40,7 +40,11 @@ func SetupRoutes(
 	stateCollector *hostservices.StateCollector,
 	terminalManager *hostservices.TerminalManager,
 	probeScheduler *monitorservices.ServiceProbeScheduler,
+	cfg *config.Config,
 ) {
+	// Global middleware to inject config into context for all routes
+	router.Use(middleware.ConfigMiddleware(cfg))
+
 	// Global middleware to inject DB into context for all routes
 	router.Use(func(c *gin.Context) {
 		c.Set("db", db)
@@ -365,6 +369,8 @@ func SetupRoutes(
 				// Bucket operations
 				minioGroup.GET("/buckets", minioBucketHandler.ListBuckets)
 				minioGroup.POST("/buckets", minioBucketHandler.CreateBucket)
+				minioGroup.GET("/buckets/:bucket", minioBucketHandler.GetBucket)
+				minioGroup.PUT("/buckets/:bucket/policy", minioBucketHandler.UpdateBucketPolicy)
 				minioGroup.DELETE("/buckets/:bucket", minioBucketHandler.DeleteBucket)
 
 				// Object operations
@@ -372,6 +378,20 @@ func SetupRoutes(
 				minioGroup.GET("/buckets/:bucket/objects/:object", minioObjectHandler.GetObject)
 				minioGroup.POST("/buckets/:bucket/objects", minioObjectHandler.UploadObject)
 				minioGroup.DELETE("/buckets/:bucket/objects/:object", minioObjectHandler.DeleteObject)
+
+				// File operations (generic)
+				minioFileHandler := minio.NewFileHandler(*instanceRepo)
+				minioGroup.GET("/files", minioFileHandler.List)
+				minioGroup.POST("/files", minioFileHandler.Upload)
+				minioGroup.GET("/files/download", minioFileHandler.DownloadURL)
+				minioGroup.GET("/files/preview", minioFileHandler.PreviewURL)
+				minioGroup.DELETE("/files", minioFileHandler.Delete)
+
+				// User operations
+				minioUserHandler := minio.NewUserHandler(*instanceRepo)
+				minioGroup.GET("/users", minioUserHandler.ListUsers)
+				minioGroup.POST("/users", minioUserHandler.CreateUser)
+				minioGroup.DELETE("/users/:username", minioUserHandler.DeleteUser)
 			}
 
 			// ==================== Alert Management Subsystem ====================
@@ -445,6 +465,30 @@ func SetupRoutes(
 
 					// Service probe history (for multi-line chart)
 					hostsGroup.GET("/:id/probe-history", serviceMonitorHandler.GetHostProbeHistory)
+				}
+
+				// MinIO Permission routes (global under /minio)
+				minioPermHandler := minio.NewPermissionHandler(*instanceRepo)
+				minioAPI := protected.Group("/minio")
+				{
+					// MinIO instances CRUD
+					minioInstHandler := minio.NewMinioInstanceHandler(*instanceRepo)
+					minioAPI.POST("/instances", minioInstHandler.Create)
+					minioAPI.GET("/instances", minioInstHandler.List)
+					minioAPI.GET("/instances/:id", minioInstHandler.Get)
+					minioAPI.PUT("/instances/:id", minioInstHandler.Update)
+					minioAPI.DELETE("/instances/:id", minioInstHandler.Delete)
+					minioAPI.POST("/instances/:id/test", minioInstHandler.Test)
+
+					minioAPI.POST("/permissions", minioPermHandler.GrantPermission)
+					minioAPI.GET("/permissions", minioPermHandler.ListPermissions)
+					minioAPI.DELETE("/permissions/:id", minioPermHandler.RevokePermission)
+
+					// Shares
+					minioShareHandler := minio.NewShareHandler(*instanceRepo)
+					minioAPI.POST("/shares", minioShareHandler.CreateShare)
+					minioAPI.GET("/shares", minioShareHandler.ListShares)
+					minioAPI.DELETE("/shares/:id", minioShareHandler.RevokeShare)
 				}
 
 				// Host groups (simplified - just list unique group names)

@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/pkg/cluster"
@@ -147,8 +148,8 @@ func NewInitCheckHandler(configPath string) gin.HandlerFunc {
 			return
 		}
 
-		var config AppConfig
-		if err := yaml.Unmarshal(data, &config); err != nil {
+		var appConfig AppConfig
+		if err := yaml.Unmarshal(data, &appConfig); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"initialized": false,
 				"step":        0,
@@ -156,7 +157,7 @@ func NewInitCheckHandler(configPath string) gin.HandlerFunc {
 			return
 		}
 
-		if config.Server.InstallLock {
+		if appConfig.Server.InstallLock {
 			// ✅ install_lock = true → 已安装
 			c.JSON(http.StatusOK, gin.H{
 				"initialized": true,
@@ -169,7 +170,16 @@ func NewInitCheckHandler(configPath string) gin.HandlerFunc {
 		step := 0
 		userRepo := repository.NewUserRepository(models.DB)
 		uc, _ := userRepo.Count(context.Background())
-		if uc > 0 || common.AnonymousUserEnabled {
+
+		// Get anonymous user enabled flag from config
+		anonymousEnabled := false
+		if cfg, exists := c.Get("config"); exists {
+			if appCfg, ok := cfg.(*config.Config); ok {
+				anonymousEnabled = appCfg.Features.AnonymousUserEnabled
+			}
+		}
+
+		if uc > 0 || anonymousEnabled {
 			step = 1 // 已创建用户，进入步骤2
 		}
 

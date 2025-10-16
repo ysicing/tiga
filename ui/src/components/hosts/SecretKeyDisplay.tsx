@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Copy, RefreshCw, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useState } from 'react'
+import { Check, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { devopsAPI } from '@/lib/api-client'
+import { cn } from '@/lib/utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,16 +14,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import { devopsAPI } from '@/lib/api-client';
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface SecretKeyDisplayProps {
-  hostId: string;
-  secretKey?: string;
-  agentInstallCmd?: string;
-  onKeyRegenerated?: (newKey: string, newCommand: string) => void;
+  hostId: string
+  secretKey?: string
+  agentInstallCmd?: string
+  onKeyRegenerated?: (newKey: string, newCommand: string) => void
 }
 
 export function SecretKeyDisplay({
@@ -31,67 +32,68 @@ export function SecretKeyDisplay({
   agentInstallCmd,
   onKeyRegenerated,
 }: SecretKeyDisplayProps) {
-  const safeSecretKey = secretKey ?? '';
-  const safeAgentInstallCmd = agentInstallCmd ?? '';
-  const hasSecretKey = safeSecretKey.length > 0;
-  const [showKey, setShowKey] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [copiedCommand, setCopiedCommand] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  const safeSecretKey = secretKey ?? ''
+  const safeAgentInstallCmd = agentInstallCmd ?? ''
+  const hasSecretKey = safeSecretKey.length > 0
+  const [showKey, setShowKey] = useState(false)
+  const [copiedKey, setCopiedKey] = useState(false)
+  const [copiedCommand, setCopiedCommand] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
 
   // 复制到剪贴板
   const copyToClipboard = async (text: string, type: 'key' | 'command') => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(text)
       if (type === 'key') {
-        setCopiedKey(true);
-        setTimeout(() => setCopiedKey(false), 2000);
+        setCopiedKey(true)
+        setTimeout(() => setCopiedKey(false), 2000)
       } else {
-        setCopiedCommand(true);
-        setTimeout(() => setCopiedCommand(false), 2000);
+        setCopiedCommand(true)
+        setTimeout(() => setCopiedCommand(false), 2000)
       }
-      toast.success(`${type === 'key' ? '密钥' : '安装命令'}已复制到剪贴板`);
+      toast.success(`${type === 'key' ? '密钥' : '安装命令'}已复制到剪贴板`)
     } catch (err) {
-      toast.error('无法复制到剪贴板');
+      toast.error('无法复制到剪贴板')
     }
-  };
+  }
 
   // 重置密钥
   const handleRegenerateKey = async () => {
-    setRegenerating(true);
+    setRegenerating(true)
     try {
-      const response: any = await devopsAPI.vms.hosts.regenerateSecretKey(hostId);
+      const response: any =
+        await devopsAPI.vms.hosts.regenerateSecretKey(hostId)
 
       // API client returns the full response including code and data
       if (response.code === 0) {
         toast.success('密钥已重置', {
           description: '旧 Agent 连接已断开，请使用新命令重新部署 Agent',
-        });
+        })
 
         // 通知父组件密钥已更新
         if (onKeyRegenerated) {
           onKeyRegenerated(
             response.data.secret_key,
             response.data.agent_install_cmd
-          );
+          )
         }
       } else {
-        throw new Error(response.message || '重置失败');
+        throw new Error(response.message || '重置失败')
       }
     } catch (error) {
       toast.error('重置失败', {
         description: error instanceof Error ? error.message : '未知错误',
-      });
+      })
     } finally {
-      setRegenerating(false);
+      setRegenerating(false)
     }
-  };
+  }
 
   // 遮挡密钥显示
   const maskedKey =
     safeSecretKey.length > 8
       ? safeSecretKey.slice(0, 8) + '****' + safeSecretKey.slice(-8)
-      : safeSecretKey || '未生成';
+      : safeSecretKey || '未生成'
 
   return (
     <div className="space-y-4">
@@ -103,7 +105,9 @@ export function SecretKeyDisplay({
             <Input
               id="secret-key"
               type="text"
-              value={hasSecretKey ? (showKey ? safeSecretKey : maskedKey) : '未生成'}
+              value={
+                hasSecretKey ? (showKey ? safeSecretKey : maskedKey) : '未生成'
+              }
               readOnly
               className="pr-24 font-mono text-sm"
             />
@@ -166,7 +170,9 @@ export function SecretKeyDisplay({
                     <li>当前 Agent 连接会被断开</li>
                     <li>需要使用新的安装命令重新部署 Agent</li>
                   </ul>
-                  <p className="mt-2 text-red-600 font-medium">此操作不可撤销！</p>
+                  <p className="mt-2 text-red-600 font-medium">
+                    此操作不可撤销！
+                  </p>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -216,5 +222,5 @@ export function SecretKeyDisplay({
         </p>
       </div>
     </div>
-  );
+  )
 }

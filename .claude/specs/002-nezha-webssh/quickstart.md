@@ -49,7 +49,7 @@ curl -X POST "http://localhost:12306/api/v1/hosts" \
     "uuid": "550e8400-e29b-41d4-a716-446655440000",
     "name": "test-host-01",
     "secret_key": "encrypted_key_here",
-    "agent_install_cmd": "curl -fsSL http://localhost:12306/agent/install.sh | bash -s -- --server http://localhost:12306 --uuid 550e8400-e29b-41d4-a716-446655440000 --key encrypted_key_here"
+    "agent_install_cmd": "curl -fsSL http://localhost:12306/agent/install.sh | bash -s -- --server localhost:12307 --uuid 550e8400-e29b-41d4-a716-446655440000 --key encrypted_key_here"
   }
 }
 ```
@@ -66,7 +66,7 @@ curl -X POST "http://localhost:12306/api/v1/hosts" \
 **在测试主机上执行**:
 ```bash
 # 复制agent_install_cmd并执行
-curl -fsSL http://localhost:12306/agent/install.sh | bash -s -- --server http://localhost:12306 --uuid 550e8400-e29b-41d4-a716-446655440000 --key encrypted_key_here
+curl -fsSL http://localhost:12306/agent/install.sh | bash -s -- --server localhost:12307 --uuid 550e8400-e29b-41d4-a716-446655440000 --key encrypted_key_here
 ```
 
 **期望结果**:
@@ -77,7 +77,7 @@ curl -fsSL http://localhost:12306/agent/install.sh | bash -s -- --server http://
 [INFO] Starting Tiga Agent...
 [SUCCESS] Agent installed and started successfully
 [INFO] Agent version: 1.0.0
-[INFO] Server: http://localhost:12306
+[INFO] Server: localhost:12307
 ```
 
 **验证要点**:
@@ -789,7 +789,7 @@ systemctl daemon-reload
 ## 故障排查
 
 ### Agent无法连接
-- 检查网络连通性:`telnet <server_ip> 12306`
+- 检查网络连通性:`telnet <server_ip> 12307`
 - 检查Agent日志:`journalctl -u tiga-agent -f`
 - 验证密钥正确性
 - 检查防火墙规则

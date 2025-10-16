@@ -1,132 +1,140 @@
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Terminal, Settings, Loader2, Key } from 'lucide-react';
-import { formatBytes } from '@/lib/utils';
-import { devopsAPI } from '@/lib/api-client';
-import { HostMonitorTab } from '@/components/hosts/host-monitor-tab';
-import { HostActivitiesTab } from '@/components/hosts/host-activities-tab';
-import { HostTerminalTab } from '@/components/hosts/host-terminal-tab';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { SecretKeyDisplay } from '@/components/hosts/SecretKeyDisplay';
+import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, Key, Loader2, Settings, Terminal } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import { devopsAPI } from '@/lib/api-client'
+import { formatBytes } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { HostActivitiesTab } from '@/components/hosts/host-activities-tab'
+import { HostMonitorTab } from '@/components/hosts/host-monitor-tab'
+import { HostTerminalTab } from '@/components/hosts/host-terminal-tab'
+import { SecretKeyDisplay } from '@/components/hosts/SecretKeyDisplay'
 
 export function HostDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState(() => {
     // Load from localStorage or URL param
-    return localStorage.getItem('host-detail-active-tab') || 'activities';
-  });
+    return localStorage.getItem('host-detail-active-tab') || 'activities'
+  })
 
   // Fetch host data from API
-  const { data: hostResponse, isLoading, isError } = useQuery({
+  const {
+    data: hostResponse,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['host', id],
     queryFn: async () => {
-      if (!id) throw new Error('No host ID provided');
-      return devopsAPI.vms.hosts.get(id);
+      if (!id) throw new Error('No host ID provided')
+      return devopsAPI.vms.hosts.get(id)
     },
     enabled: !!id,
     staleTime: 10000, // 10 seconds
-  });
+  })
 
-  const host = (hostResponse as any)?.data;
+  const host = (hostResponse as any)?.data
 
-  const [secretKey, setSecretKey] = useState<string | undefined>();
-  const [installCommand, setInstallCommand] = useState<string | undefined>();
-  const [credentialsOpen, setCredentialsOpen] = useState(false);
-  const [credentialsLoading, setCredentialsLoading] = useState(false);
-  const [credentialsError, setCredentialsError] = useState<string | null>(null);
-  const credentialsFetchedRef = useRef(false);
+  const [secretKey, setSecretKey] = useState<string | undefined>()
+  const [installCommand, setInstallCommand] = useState<string | undefined>()
+  const [credentialsOpen, setCredentialsOpen] = useState(false)
+  const [credentialsLoading, setCredentialsLoading] = useState(false)
+  const [credentialsError, setCredentialsError] = useState<string | null>(null)
+  const credentialsFetchedRef = useRef(false)
 
   useEffect(() => {
-    setSecretKey(host?.secret_key);
-    setInstallCommand(host?.agent_install_cmd);
-  }, [host?.secret_key, host?.agent_install_cmd]);
+    setSecretKey(host?.secret_key)
+    setInstallCommand(host?.agent_install_cmd)
+  }, [host?.secret_key, host?.agent_install_cmd])
 
   useEffect(() => {
     if (!credentialsOpen || !id) {
-      credentialsFetchedRef.current = false;
-      return;
+      credentialsFetchedRef.current = false
+      return
     }
 
     if (secretKey && installCommand) {
-      credentialsFetchedRef.current = true;
-      setCredentialsError(null);
-      setCredentialsLoading(false);
-      return;
+      credentialsFetchedRef.current = true
+      setCredentialsError(null)
+      setCredentialsLoading(false)
+      return
     }
 
     if (credentialsFetchedRef.current) {
-      return;
+      return
     }
-    credentialsFetchedRef.current = true;
+    credentialsFetchedRef.current = true
 
-    let cancelled = false;
+    let cancelled = false
 
     const fetchCredentials = async () => {
-      setCredentialsLoading(true);
-      setCredentialsError(null);
+      setCredentialsLoading(true)
+      setCredentialsError(null)
 
       try {
-        const response: any = await devopsAPI.vms.hosts.get(id);
+        const response: any = await devopsAPI.vms.hosts.get(id)
         if (!cancelled) {
           if (response?.code === 0) {
-            setSecretKey(response.data?.secret_key ?? '');
-            setInstallCommand(response.data?.agent_install_cmd ?? '');
+            setSecretKey(response.data?.secret_key ?? '')
+            setInstallCommand(response.data?.agent_install_cmd ?? '')
           } else {
-            setCredentialsError(response?.message || '获取凭证失败');
+            setCredentialsError(response?.message || '获取凭证失败')
           }
         }
 
-        const cmdResponse: any = await devopsAPI.vms.hosts.getAgentInstallCommand(id);
+        const cmdResponse: any =
+          await devopsAPI.vms.hosts.getAgentInstallCommand(id)
         if (!cancelled) {
           if (cmdResponse?.code === 0) {
-            setInstallCommand(cmdResponse.data?.agent_install_cmd ?? '');
+            setInstallCommand(cmdResponse.data?.agent_install_cmd ?? '')
           } else {
-            setCredentialsError((prev) => prev || cmdResponse?.message || '获取安装命令失败');
+            setCredentialsError(
+              (prev) => prev || cmdResponse?.message || '获取安装命令失败'
+            )
           }
         }
       } catch (err) {
         if (!cancelled) {
-          setCredentialsError('无法获取凭证');
+          setCredentialsError('无法获取凭证')
         }
       } finally {
         if (!cancelled) {
-          setCredentialsLoading(false);
+          setCredentialsLoading(false)
         }
       }
-    };
+    }
 
-    fetchCredentials();
+    fetchCredentials()
 
     return () => {
-      cancelled = true;
-    };
-  }, [credentialsOpen, id, secretKey, installCommand]);
+      cancelled = true
+    }
+  }, [credentialsOpen, id, secretKey, installCommand])
 
   // Save active tab to localStorage
   useEffect(() => {
-    localStorage.setItem('host-detail-active-tab', activeTab);
-  }, [activeTab]);
+    localStorage.setItem('host-detail-active-tab', activeTab)
+  }, [activeTab])
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    );
+    )
   }
 
   if (isError || !host) {
@@ -139,7 +147,7 @@ export function HostDetailPage() {
           返回列表
         </Button>
       </div>
-    );
+    )
   }
 
   return (
@@ -147,7 +155,11 @@ export function HostDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/vms/hosts')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/vms/hosts')}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -159,7 +171,10 @@ export function HostDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {host.host_info?.ssh_enabled && (
-            <Button onClick={() => navigate(`/vms/hosts/${id}/ssh`)} disabled={!host.online}>
+            <Button
+              onClick={() => navigate(`/vms/hosts/${id}/ssh`)}
+              disabled={!host.online}
+            >
               <Terminal className="mr-2 h-4 w-4" />
               终端
             </Button>
@@ -168,7 +183,10 @@ export function HostDetailPage() {
             <Key className="mr-2 h-4 w-4" />
             凭证
           </Button>
-          <Button variant="outline" onClick={() => navigate(`/vms/hosts/${id}/edit`)}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/vms/hosts/${id}/edit`)}
+          >
             <Settings className="mr-2 h-4 w-4" />
             设置
           </Button>
@@ -200,10 +218,10 @@ export function HostDetailPage() {
                   variant="outline"
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(host.id);
-                      toast.success('已复制主机 ID');
+                      await navigator.clipboard.writeText(host.id)
+                      toast.success('已复制主机 ID')
                     } catch {
-                      toast.error('无法复制主机 ID');
+                      toast.error('无法复制主机 ID')
                     }
                   }}
                 >
@@ -228,8 +246,8 @@ export function HostDetailPage() {
                 secretKey={secretKey}
                 agentInstallCmd={installCommand}
                 onKeyRegenerated={(newKey, newCmd) => {
-                  setSecretKey(newKey);
-                  setInstallCommand(newCmd);
+                  setSecretKey(newKey)
+                  setInstallCommand(newCmd)
                 }}
               />
             )}
@@ -295,11 +313,19 @@ export function HostDetailPage() {
       )}
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className={`grid w-full ${host.host_info?.ssh_enabled ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
+        <TabsList
+          className={`grid w-full ${host.host_info?.ssh_enabled ? 'grid-cols-3' : 'grid-cols-2'}`}
+        >
           <TabsTrigger value="activities">动态</TabsTrigger>
           <TabsTrigger value="monitor">监控</TabsTrigger>
-          {host.host_info?.ssh_enabled && <TabsTrigger value="terminal">终端</TabsTrigger>}
+          {host.host_info?.ssh_enabled && (
+            <TabsTrigger value="terminal">终端</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Activities Tab */}
@@ -320,5 +346,5 @@ export function HostDetailPage() {
         )}
       </Tabs>
     </div>
-  );
+  )
 }

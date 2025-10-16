@@ -1,6 +1,7 @@
 // Database Management API service
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import { apiClient } from '@/lib/api-client'
 
 // Type definitions
@@ -87,17 +88,20 @@ export const useInstances = () => {
   return useQuery({
     queryKey: ['database', 'instances'],
     queryFn: async () => {
-      const response = await apiClient.get<{ data: { instances: DatabaseInstance[], count: number } }>('/database/instances')
+      const response = await apiClient.get<{
+        data: { instances: DatabaseInstance[]; count: number }
+      }>('/database/instances')
       return response
-    }
+    },
   })
 }
 
 export const useInstance = (id: number) => {
   return useQuery({
     queryKey: ['database', 'instance', id],
-    queryFn: () => apiClient.get<{ data: DatabaseInstance }>(`/database/instances/${id}`),
-    enabled: !!id
+    queryFn: () =>
+      apiClient.get<{ data: DatabaseInstance }>(`/database/instances/${id}`),
+    enabled: !!id,
   })
 }
 
@@ -109,7 +113,7 @@ export const useCreateInstance = () => {
       apiClient.post<{ data: DatabaseInstance }>('/database/instances', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database', 'instances'] })
-    }
+    },
   })
 }
 
@@ -117,12 +121,23 @@ export const useUpdateInstance = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<DatabaseInstance> }) =>
-      apiClient.put<{ data: DatabaseInstance }>(`/database/instances/${id}`, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number
+      data: Partial<DatabaseInstance>
+    }) =>
+      apiClient.put<{ data: DatabaseInstance }>(
+        `/database/instances/${id}`,
+        data
+      ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['database', 'instances'] })
-      queryClient.invalidateQueries({ queryKey: ['database', 'instance', variables.id] })
-    }
+      queryClient.invalidateQueries({
+        queryKey: ['database', 'instance', variables.id],
+      })
+    },
   })
 }
 
@@ -130,20 +145,19 @@ export const useDeleteInstance = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: number) =>
-      apiClient.delete(`/database/instances/${id}`),
+    mutationFn: (id: number) => apiClient.delete(`/database/instances/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database', 'instances'] })
-    }
+    },
   })
 }
 
 export const useTestConnection = () => {
   return useMutation({
     mutationFn: (id: number) =>
-      apiClient.post<{ data: { status: string; version?: string; message: string } }>(
-        `/database/instances/${id}/test`
-      )
+      apiClient.post<{
+        data: { status: string; version?: string; message: string }
+      }>(`/database/instances/${id}/test`),
   })
 }
 
@@ -151,8 +165,11 @@ export const useTestConnection = () => {
 export const useDatabases = (instanceId: number) => {
   return useQuery({
     queryKey: ['database', 'instance', instanceId, 'databases'],
-    queryFn: () => apiClient.get<{ data: Database[] }>(`/database/instances/${instanceId}/databases`),
-    enabled: !!instanceId
+    queryFn: () =>
+      apiClient.get<{ data: Database[] }>(
+        `/database/instances/${instanceId}/databases`
+      ),
+    enabled: !!instanceId,
   })
 }
 
@@ -160,13 +177,22 @@ export const useCreateDatabase = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ instanceId, data }: { instanceId: number; data: Partial<Database> }) =>
-      apiClient.post<{ data: Database }>(`/database/instances/${instanceId}/databases`, data),
+    mutationFn: ({
+      instanceId,
+      data,
+    }: {
+      instanceId: number
+      data: Partial<Database>
+    }) =>
+      apiClient.post<{ data: Database }>(
+        `/database/instances/${instanceId}/databases`,
+        data
+      ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['database', 'instance', variables.instanceId, 'databases']
+        queryKey: ['database', 'instance', variables.instanceId, 'databases'],
       })
-    }
+    },
   })
 }
 
@@ -178,7 +204,7 @@ export const useDeleteDatabase = () => {
       apiClient.delete(`/database/databases/${id}?confirm_name=${confirmName}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database'] })
-    }
+    },
   })
 }
 
@@ -186,8 +212,11 @@ export const useDeleteDatabase = () => {
 export const useDatabaseUsers = (instanceId: number) => {
   return useQuery({
     queryKey: ['database', 'instance', instanceId, 'users'],
-    queryFn: () => apiClient.get<{ data: DatabaseUser[] }>(`/database/instances/${instanceId}/users`),
-    enabled: !!instanceId
+    queryFn: () =>
+      apiClient.get<{ data: DatabaseUser[] }>(
+        `/database/instances/${instanceId}/users`
+      ),
+    enabled: !!instanceId,
   })
 }
 
@@ -195,13 +224,22 @@ export const useCreateDatabaseUser = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ instanceId, data }: { instanceId: number; data: Partial<DatabaseUser> & { password: string } }) =>
-      apiClient.post<{ data: DatabaseUser }>(`/database/instances/${instanceId}/users`, data),
+    mutationFn: ({
+      instanceId,
+      data,
+    }: {
+      instanceId: number
+      data: Partial<DatabaseUser> & { password: string }
+    }) =>
+      apiClient.post<{ data: DatabaseUser }>(
+        `/database/instances/${instanceId}/users`,
+        data
+      ),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ['database', 'instance', variables.instanceId, 'users']
+        queryKey: ['database', 'instance', variables.instanceId, 'users'],
       })
-    }
+    },
   })
 }
 
@@ -209,11 +247,22 @@ export const useUpdateUserPassword = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, oldPassword, newPassword }: { id: number; oldPassword: string; newPassword: string }) =>
-      apiClient.patch(`/database/users/${id}`, { old_password: oldPassword, new_password: newPassword }),
+    mutationFn: ({
+      id,
+      oldPassword,
+      newPassword,
+    }: {
+      id: number
+      oldPassword: string
+      newPassword: string
+    }) =>
+      apiClient.patch(`/database/users/${id}`, {
+        old_password: oldPassword,
+        new_password: newPassword,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database'] })
-    }
+    },
   })
 }
 
@@ -221,11 +270,10 @@ export const useDeleteDatabaseUser = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: number) =>
-      apiClient.delete(`/database/users/${id}`),
+    mutationFn: (id: number) => apiClient.delete(`/database/users/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database'] })
-    }
+    },
   })
 }
 
@@ -233,8 +281,11 @@ export const useDeleteDatabaseUser = () => {
 export const useUserPermissions = (userId: number) => {
   return useQuery({
     queryKey: ['database', 'user', userId, 'permissions'],
-    queryFn: () => apiClient.get<{ data: PermissionPolicy[] }>(`/database/users/${userId}/permissions`),
-    enabled: !!userId
+    queryFn: () =>
+      apiClient.get<{ data: PermissionPolicy[] }>(
+        `/database/users/${userId}/permissions`
+      ),
+    enabled: !!userId,
   })
 }
 
@@ -242,11 +293,15 @@ export const useGrantPermission = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: { user_id: number; database_id: number; role: 'readonly' | 'readwrite' }) =>
+    mutationFn: (data: {
+      user_id: number
+      database_id: number
+      role: 'readonly' | 'readwrite'
+    }) =>
       apiClient.post<{ data: PermissionPolicy }>('/database/permissions', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database'] })
-    }
+    },
   })
 }
 
@@ -254,22 +309,32 @@ export const useRevokePermission = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: number) =>
-      apiClient.delete(`/database/permissions/${id}`),
+    mutationFn: (id: number) => apiClient.delete(`/database/permissions/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['database'] })
-    }
+    },
   })
 }
 
 // Query Execution
 export const useExecuteQuery = () => {
   return useMutation({
-    mutationFn: ({ instanceId, databaseName, query }: { instanceId: number; databaseName: string; query: string }) =>
-      apiClient.post<{ data: QueryResult }>(`/database/instances/${instanceId}/query`, {
-        database_name: databaseName,
-        query
-      })
+    mutationFn: ({
+      instanceId,
+      databaseName,
+      query,
+    }: {
+      instanceId: number
+      databaseName: string
+      query: string
+    }) =>
+      apiClient.post<{ data: QueryResult }>(
+        `/database/instances/${instanceId}/query`,
+        {
+          database_name: databaseName,
+          query,
+        }
+      ),
   })
 }
 
@@ -294,8 +359,14 @@ export const useAuditLogs = (filters: AuditLogFilters) => {
 
   return useQuery({
     queryKey: ['database', 'audit-logs', filters],
-    queryFn: () => apiClient.get<{ data: { logs: AuditLog[]; total: number; page: number; page_size: number } }>(
-      `/database/audit-logs?${queryParams.toString()}`
-    )
+    queryFn: () =>
+      apiClient.get<{
+        data: {
+          logs: AuditLog[]
+          total: number
+          page: number
+          page_size: number
+        }
+      }>(`/database/audit-logs?${queryParams.toString()}`),
   })
 }

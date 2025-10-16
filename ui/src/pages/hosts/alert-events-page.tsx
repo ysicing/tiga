@@ -1,25 +1,12 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertBadge } from '@/components/hosts/alert-badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react'
+import { AlertRuleService, AlertStatus } from '@/services/alert-rule'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertCircle, CheckCircle2, RefreshCw, Search } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -27,121 +14,140 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Search, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
-import { AlertRuleService, AlertStatus } from '@/services/alert-rule';
-import { toast } from 'sonner';
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
+import { AlertBadge } from '@/components/hosts/alert-badge'
 
 export function AlertEventsPage() {
-  const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [severityFilter, setSeverityFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<AlertStatus | 'all'>('firing');
-  const [isAckDialogOpen, setIsAckDialogOpen] = useState(false);
-  const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [note, setNote] = useState('');
+  const queryClient = useQueryClient()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [severityFilter, setSeverityFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<AlertStatus | 'all'>(
+    'firing'
+  )
+  const [isAckDialogOpen, setIsAckDialogOpen] = useState(false)
+  const [isResolveDialogOpen, setIsResolveDialogOpen] = useState(false)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [note, setNote] = useState('')
 
   // Fetch alert events
   const { data: eventsData, isLoading } = useQuery({
     queryKey: ['alert-events', statusFilter],
-    queryFn: () => AlertRuleService.listEvents({
-      status: statusFilter === 'all' ? undefined : statusFilter,
-      page: 1,
-      page_size: 100,
-    }),
+    queryFn: () =>
+      AlertRuleService.listEvents({
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        page: 1,
+        page_size: 100,
+      }),
     refetchInterval: 30000, // Refresh every 30 seconds
-  });
+  })
 
   // Acknowledge mutation
   const acknowledgeMutation = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       AlertRuleService.acknowledgeEvent(id, note),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alert-events'] });
-      setIsAckDialogOpen(false);
-      setNote('');
-      toast.success('告警已确认');
+      queryClient.invalidateQueries({ queryKey: ['alert-events'] })
+      setIsAckDialogOpen(false)
+      setNote('')
+      toast.success('告警已确认')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || '确认告警失败');
+      toast.error(error.response?.data?.message || '确认告警失败')
     },
-  });
+  })
 
   // Resolve mutation
   const resolveMutation = useMutation({
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       AlertRuleService.resolveEvent(id, note),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alert-events'] });
-      setIsResolveDialogOpen(false);
-      setNote('');
-      toast.success('告警已解决');
+      queryClient.invalidateQueries({ queryKey: ['alert-events'] })
+      setIsResolveDialogOpen(false)
+      setNote('')
+      toast.success('告警已解决')
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || '解决告警失败');
+      toast.error(error.response?.data?.message || '解决告警失败')
     },
-  });
+  })
 
   const handleAcknowledge = (eventId: string) => {
-    setSelectedEventId(eventId);
-    setIsAckDialogOpen(true);
-  };
+    setSelectedEventId(eventId)
+    setIsAckDialogOpen(true)
+  }
 
   const confirmAcknowledge = () => {
     if (selectedEventId) {
-      acknowledgeMutation.mutate({ id: selectedEventId, note });
+      acknowledgeMutation.mutate({ id: selectedEventId, note })
     }
-  };
+  }
 
   const handleResolve = (eventId: string) => {
-    setSelectedEventId(eventId);
-    setIsResolveDialogOpen(true);
-  };
+    setSelectedEventId(eventId)
+    setIsResolveDialogOpen(true)
+  }
 
   const confirmResolve = () => {
     if (selectedEventId) {
-      resolveMutation.mutate({ id: selectedEventId, note });
+      resolveMutation.mutate({ id: selectedEventId, note })
     }
-  };
+  }
 
-  const events = eventsData?.items || [];
+  const events = eventsData?.items || []
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.target_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.rule_name?.toLowerCase().includes(searchTerm.toLowerCase());
+      event.rule_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesSeverity =
-      severityFilter === 'all' || event.severity === severityFilter;
+      severityFilter === 'all' || event.severity === severityFilter
 
-    return matchesSearch && matchesSeverity;
-  });
+    return matchesSearch && matchesSeverity
+  })
 
   const stats = {
     total: events.length,
-    critical: events.filter((e) => e.severity === 'critical' && e.status === 'firing')
-      .length,
-    warning: events.filter((e) => e.severity === 'warning' && e.status === 'firing')
-      .length,
+    critical: events.filter(
+      (e) => e.severity === 'critical' && e.status === 'firing'
+    ).length,
+    warning: events.filter(
+      (e) => e.severity === 'warning' && e.status === 'firing'
+    ).length,
     acknowledged: events.filter((e) => e.status === 'acknowledged').length,
-  };
+  }
 
   const getStatusBadge = (status: AlertStatus) => {
     switch (status) {
       case 'resolved':
-        return <Badge variant="secondary">已解决</Badge>;
+        return <Badge variant="secondary">已解决</Badge>
       case 'acknowledged':
-        return <Badge variant="outline">已确认</Badge>;
+        return <Badge variant="outline">已确认</Badge>
       case 'firing':
-        return <Badge variant="destructive">触发中</Badge>;
+        return <Badge variant="destructive">触发中</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{status}</Badge>
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -149,9 +155,7 @@ export function AlertEventsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">告警事件</h1>
-          <p className="text-muted-foreground mt-1">
-            查看和管理系统告警事件
-          </p>
+          <p className="text-muted-foreground mt-1">查看和管理系统告警事件</p>
         </div>
       </div>
 
@@ -184,7 +188,9 @@ export function AlertEventsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">{stats.warning}</p>
+            <p className="text-2xl font-bold text-yellow-600">
+              {stats.warning}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -225,7 +231,10 @@ export function AlertEventsPage() {
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AlertStatus | 'all')}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as AlertStatus | 'all')}
+        >
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="状态" />
           </SelectTrigger>
@@ -239,7 +248,9 @@ export function AlertEventsPage() {
 
         <Button
           variant="outline"
-          onClick={() => queryClient.invalidateQueries({ queryKey: ['alert-events'] })}
+          onClick={() =>
+            queryClient.invalidateQueries({ queryKey: ['alert-events'] })
+          }
           disabled={isLoading}
         >
           <RefreshCw
@@ -253,9 +264,7 @@ export function AlertEventsPage() {
       {filteredEvents.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            {events.length === 0
-              ? '暂无告警事件'
-              : '没有找到匹配的告警事件'}
+            {events.length === 0 ? '暂无告警事件' : '没有找到匹配的告警事件'}
           </p>
         </div>
       ) : (
@@ -349,8 +358,8 @@ export function AlertEventsPage() {
             <Button
               variant="outline"
               onClick={() => {
-                setIsAckDialogOpen(false);
-                setNote('');
+                setIsAckDialogOpen(false)
+                setNote('')
               }}
             >
               取消
@@ -390,8 +399,8 @@ export function AlertEventsPage() {
             <Button
               variant="outline"
               onClick={() => {
-                setIsResolveDialogOpen(false);
-                setNote('');
+                setIsResolveDialogOpen(false)
+                setNote('')
               }}
             >
               取消
@@ -406,5 +415,5 @@ export function AlertEventsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

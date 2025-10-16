@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
+
 	"github.com/ysicing/tiga/internal/services/alert"
+
+	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 )
 
 // AlertTask runs alert processing

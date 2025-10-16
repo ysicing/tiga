@@ -1,14 +1,23 @@
-import { Outlet } from 'react-router-dom'
-import { SidebarProvider } from '@/components/ui/sidebar'
-import { SiteHeader } from '@/components/site-header'
-import { AppSidebar } from '@/components/app-sidebar'
 import { ClusterProvider } from '@/contexts/cluster-context'
-import { GlobalSearchProvider, useGlobalSearch } from '@/components/global-search-provider'
+import { Outlet } from 'react-router-dom'
+
+import { SidebarProvider } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
 import { GlobalSearch } from '@/components/global-search'
+import {
+  GlobalSearchProvider,
+  useGlobalSearch,
+} from '@/components/global-search-provider'
+import { SiteHeader } from '@/components/site-header'
 
 function GlobalSearchWrapper() {
   const { isOpen, closeSearch, openSearch } = useGlobalSearch()
-  return <GlobalSearch open={isOpen} onOpenChange={(open) => open ? openSearch() : closeSearch()} />
+  return (
+    <GlobalSearch
+      open={isOpen}
+      onOpenChange={(open) => (open ? openSearch() : closeSearch())}
+    />
+  )
 }
 
 export function K8sLayout() {

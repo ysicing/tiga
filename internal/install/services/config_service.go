@@ -33,6 +33,7 @@ type AppConfig struct {
 		AppSubtitle string `yaml:"app_subtitle,omitempty"`
 		Domain      string `yaml:"domain"`
 		HTTPPort    int    `yaml:"http_port"`
+		GRPCDomain  string `yaml:"grpc_domain,omitempty"`
 		GRPCPort    int    `yaml:"grpc_port,omitempty"`
 		Language    string `yaml:"language"`
 	} `yaml:"server"`
@@ -91,6 +92,13 @@ func (s *ConfigService) GenerateConfigFile(installConfig models.InstallConfig) e
 	config.Server.AppSubtitle = installConfig.Settings.AppSubtitle
 	config.Server.Domain = installConfig.Settings.Domain
 	config.Server.HTTPPort = installConfig.Settings.HTTPPort
+	// 设置 gRPC 域名，如果未提供则使用 HTTP 域名
+	if installConfig.Settings.GRPCDomain != "" {
+		config.Server.GRPCDomain = installConfig.Settings.GRPCDomain
+	} else {
+		config.Server.GRPCDomain = installConfig.Settings.Domain
+	}
+	// 设置 gRPC 端口，默认为 12307
 	if installConfig.Settings.GRPCPort > 0 {
 		config.Server.GRPCPort = installConfig.Settings.GRPCPort
 	} else {

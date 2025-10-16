@@ -15,30 +15,42 @@ import (
 
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
-	"github.com/ysicing/tiga/pkg/common"
 )
 
 type OAuthManager struct {
 	jwtSecret         string
+	jwtExpiresIn      int // JWT expiration time in seconds
 	oauthProviderRepo *repository.OAuthProviderRepository
 }
 
 func NewOAuthManager(jwtSecret string) *OAuthManager {
 	return &OAuthManager{
 		jwtSecret:         jwtSecret,
+		jwtExpiresIn:      24 * 60 * 60, // Default: 24 hours
+		oauthProviderRepo: repository.NewOAuthProviderRepository(models.DB),
+	}
+}
+
+// NewOAuthManagerWithConfig creates an OAuthManager with custom JWT expiration
+func NewOAuthManagerWithConfig(jwtSecret string, jwtExpiresIn int) *OAuthManager {
+	if jwtExpiresIn <= 0 {
+		jwtExpiresIn = 24 * 60 * 60 // Default to 24 hours if invalid
+	}
+	return &OAuthManager{
+		jwtSecret:         jwtSecret,
+		jwtExpiresIn:      jwtExpiresIn,
 		oauthProviderRepo: repository.NewOAuthProviderRepository(models.DB),
 	}
 }
 
 func getRequestHost(c *gin.Context) string {
-	if common.Host != "" {
-		return common.Host
-	}
+	// Try X-Forwarded headers first (reverse proxy scenario)
 	proto := c.Request.Header.Get("X-Forwarded-Proto")
 	host := c.Request.Header.Get("X-Forwarded-Host")
 	if proto != "" && host != "" {
 		return proto + "://" + host
 	}
+	// Fall back to request host
 	if c.Request.Host != "" {
 		scheme := "https"
 		if c.Request.TLS == nil {
@@ -80,7 +92,7 @@ func (om *OAuthManager) GenerateState() string {
 
 func (om *OAuthManager) GenerateJWT(user *models.User, refreshToken string) (string, error) {
 	now := time.Now()
-	expirationTime := now.Add(common.JWTExpirationSeconds * time.Second)
+	expirationTime := now.Add(time.Duration(om.jwtExpiresIn) * time.Second)
 
 	claims := Claims{
 		UserID:       user.ID.String(), // Convert UUID to string

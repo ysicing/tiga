@@ -1,15 +1,28 @@
-import { useParams, useNavigate } from 'react-router-dom'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { IconArrowLeft, IconDatabase, IconUsers, IconKey, IconTerminal } from '@tabler/icons-react'
 import { useInstance } from '@/services/database-api'
+import {
+  IconArrowLeft,
+  IconDatabase,
+  IconKey,
+  IconTerminal,
+  IconUsers,
+} from '@tabler/icons-react'
+import { useNavigate, useParams } from 'react-router-dom'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DatabaseList } from '@/components/database/database-list'
-import { UserList } from '@/components/database/user-list'
 import { PermissionList } from '@/components/database/permission-list'
 import { QueryConsole } from '@/components/database/query-console'
+import { UserList } from '@/components/database/user-list'
 
 export function InstanceDetail() {
   const { id } = useParams<{ id: string }>()
@@ -66,8 +79,8 @@ export function InstanceDetail() {
             instance.status === 'online'
               ? 'bg-green-500'
               : instance.status === 'offline'
-              ? 'bg-gray-500'
-              : 'bg-yellow-500'
+                ? 'bg-gray-500'
+                : 'bg-yellow-500'
           }
         >
           {instance.status}
@@ -95,7 +108,9 @@ export function InstanceDetail() {
             </div>
             <div>
               <div className="text-sm text-muted-foreground">SSL 模式</div>
-              <div className="font-medium">{instance.ssl_mode || 'disable'}</div>
+              <div className="font-medium">
+                {instance.ssl_mode || 'disable'}
+              </div>
             </div>
           </div>
           {instance.description && (

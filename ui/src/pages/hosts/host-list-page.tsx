@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useHostStore } from '@/stores/host-store';
-import { useHostMonitor } from '@/hooks/use-host-monitor';
-import { HostCard } from '@/components/hosts/host-card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Plus, RefreshCw, Search, LayoutGrid, LayoutList, Terminal, Settings } from 'lucide-react';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useEffect, useState } from 'react'
+import { useHostStore } from '@/stores/host-store'
+import {
+  LayoutGrid,
+  LayoutList,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  Terminal,
+} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+
+import { devopsAPI } from '@/lib/api-client'
+import { useHostMonitor } from '@/hooks/use-host-monitor'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -14,82 +22,88 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { toast } from 'sonner';
-import { devopsAPI } from '@/lib/api-client';
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { HostCard } from '@/components/hosts/host-card'
 
 type HostFormData = {
-  name: string;
-  note?: string;
-  public_note?: string;
-  display_index: number;
-  hide_for_guest: boolean;
+  name: string
+  note?: string
+  public_note?: string
+  display_index: number
+  hide_for_guest: boolean
 
   // Billing information
-  cost: number;
-  renewal_type: 'monthly' | 'yearly';
-  purchase_date?: string;
-  expiry_date?: string;
-  auto_renew: boolean;
-  traffic_limit: number;
+  cost: number
+  renewal_type: 'monthly' | 'yearly'
+  purchase_date?: string
+  expiry_date?: string
+  auto_renew: boolean
+  traffic_limit: number
 
   // Group (simple string grouping)
-  group_name?: string;
-};
+  group_name?: string
+}
 
 // Calculate days until expiry
 function getDaysUntilExpiry(expiryDate?: string): number | null {
-  if (!expiryDate) return null;
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-  const diffTime = expiry.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  if (!expiryDate) return null
+  const expiry = new Date(expiryDate)
+  const now = new Date()
+  const diffTime = expiry.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays
 }
 
 // Get expiry status with color
 function getExpiryStatus(days: number | null): { text: string; color: string } {
-  if (days === null) return { text: '永久有效', color: 'text-muted-foreground' };
-  if (days < 0) return { text: `已过期 ${Math.abs(days)} 天`, color: 'text-red-600 font-semibold' };
-  if (days === 0) return { text: '今天到期', color: 'text-red-600 font-semibold' };
-  if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' };
-  if (days <= 30) return { text: `${days} 天后到期`, color: 'text-orange-600' };
-  return { text: `${days} 天后到期`, color: 'text-muted-foreground' };
+  if (days === null) return { text: '永久有效', color: 'text-muted-foreground' }
+  if (days < 0)
+    return {
+      text: `已过期 ${Math.abs(days)} 天`,
+      color: 'text-red-600 font-semibold',
+    }
+  if (days === 0)
+    return { text: '今天到期', color: 'text-red-600 font-semibold' }
+  if (days <= 7) return { text: `${days} 天后到期`, color: 'text-red-600' }
+  if (days <= 30) return { text: `${days} 天后到期`, color: 'text-orange-600' }
+  return { text: `${days} 天后到期`, color: 'text-muted-foreground' }
 }
 
 export function HostListPage() {
-  const navigate = useNavigate();
-  const { hosts, loading, setHosts, setLoading } = useHostStore();
-  const { connected, reconnecting } = useHostMonitor({ autoConnect: true });
-  const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate()
+  const { hosts, loading, setHosts, setLoading } = useHostStore()
+  const { connected, reconnecting } = useHostMonitor({ autoConnect: true })
+  const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'card' | 'table'>(() => {
     // Load from localStorage
-    const saved = localStorage.getItem('host-list-view-mode');
-    return (saved as 'card' | 'table') || 'card';
-  });
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingHost, setEditingHost] = useState<any>(null);
+    const saved = localStorage.getItem('host-list-view-mode')
+    return (saved as 'card' | 'table') || 'card'
+  })
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingHost, setEditingHost] = useState<any>(null)
   const [installCmdDialog, setInstallCmdDialog] = useState<{
-    open: boolean;
-    id?: string;
-    cmd?: string;
-  }>({ open: false });
+    open: boolean
+    id?: string
+    cmd?: string
+  }>({ open: false })
 
   // Save view mode to localStorage
   useEffect(() => {
-    localStorage.setItem('host-list-view-mode', viewMode);
-  }, [viewMode]);
+    localStorage.setItem('host-list-view-mode', viewMode)
+  }, [viewMode])
 
   const [formData, setFormData] = useState<HostFormData>({
     name: '',
@@ -103,56 +117,56 @@ export function HostListPage() {
     expiry_date: '',
     auto_renew: false,
     traffic_limit: 0,
-  });
+  })
 
   // Fetch hosts on mount
   useEffect(() => {
-    fetchHosts();
-  }, []);
+    fetchHosts()
+  }, [])
 
   const fetchHosts = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const data: any = await devopsAPI.vms.hosts.list();
+      const data: any = await devopsAPI.vms.hosts.list()
       if (data.code === 0) {
-        setHosts(data.data.items || []);
+        setHosts(data.data.items || [])
       }
     } catch (error) {
-      console.error('Failed to fetch hosts:', error);
-      toast.error('获取主机列表失败');
+      console.error('Failed to fetch hosts:', error)
+      toast.error('获取主机列表失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const getCurrentLocalDate = () => {
-    const now = new Date();
-    const offset = now.getTimezoneOffset();
-    const local = new Date(now.getTime() - offset * 60000);
-    return local.toISOString().split('T')[0];
-  };
+    const now = new Date()
+    const offset = now.getTimezoneOffset()
+    const local = new Date(now.getTime() - offset * 60000)
+    return local.toISOString().split('T')[0]
+  }
 
   const handleCreateHost = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     try {
       const payload = {
         ...formData,
         purchase_date: formData.purchase_date || getCurrentLocalDate(),
         expiry_date: formData.expiry_date || undefined,
-      };
+      }
 
-      const data: any = await devopsAPI.vms.hosts.create(payload);
+      const data: any = await devopsAPI.vms.hosts.create(payload)
       if (data.code === 0) {
-        toast.success('主机创建成功');
-        setIsCreateDialogOpen(false);
+        toast.success('主机创建成功')
+        setIsCreateDialogOpen(false)
 
         // Show agent install command
         setInstallCmdDialog({
           open: true,
           id: data.data.id,
           cmd: data.data.agent_install_cmd,
-        });
+        })
 
         // Reset form
         setFormData({
@@ -167,56 +181,56 @@ export function HostListPage() {
           expiry_date: '',
           auto_renew: false,
           traffic_limit: 0,
-        });
+        })
 
         // Refresh list
-        fetchHosts();
+        fetchHosts()
       } else {
-        toast.error(data.message || '创建失败');
+        toast.error(data.message || '创建失败')
       }
     } catch (error) {
-      console.error('Failed to create host:', error);
-      toast.error('创建主机失败');
+      console.error('Failed to create host:', error)
+      toast.error('创建主机失败')
     }
-  };
+  }
 
   const handleDeleteHost = async (id: string, name: string) => {
     if (!confirm(`确定要删除主机"${name}"吗？此操作不可恢复。`)) {
-      return;
+      return
     }
 
     try {
-      const data: any = await devopsAPI.vms.hosts.delete(id);
+      const data: any = await devopsAPI.vms.hosts.delete(id)
       if (data.code === 0) {
-        toast.success('主机删除成功');
-        fetchHosts();
+        toast.success('主机删除成功')
+        fetchHosts()
       } else {
-        toast.error(data.message || '删除失败');
+        toast.error(data.message || '删除失败')
       }
     } catch (error) {
-      console.error('Failed to delete host:', error);
-      toast.error('删除主机失败');
+      console.error('Failed to delete host:', error)
+      toast.error('删除主机失败')
     }
-  };
+  }
 
   const normalizeDate = (value?: string | null) => {
-    if (!value) return '';
-    const date = value.split('T')[0];
-    return date;
-  };
+    if (!value) return ''
+    const date = value.split('T')[0]
+    return date
+  }
 
   const normalizeNumber = (value: unknown, defaultValue = 0) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : defaultValue;
-  };
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : defaultValue
+  }
 
   const handleEditHost = async (host: any) => {
     try {
       // Fetch full host details including secret_key and agent_install_cmd
-      const response: any = await devopsAPI.vms.hosts.get(host.id);
+      const response: any = await devopsAPI.vms.hosts.get(host.id)
       if (response.code === 0) {
-        const fullHost = response.data;
-        setEditingHost(fullHost);
+        const fullHost = response.data
+        setEditingHost(fullHost)
         setFormData({
           name: fullHost?.name ?? '',
           note: fullHost?.note ?? '',
@@ -224,39 +238,43 @@ export function HostListPage() {
           display_index: normalizeNumber(fullHost?.display_index),
           hide_for_guest: Boolean(fullHost?.hide_for_guest),
           cost: normalizeNumber(fullHost?.cost),
-          renewal_type: fullHost?.renewal_type === 'yearly' ? 'yearly' : 'monthly',
+          renewal_type:
+            fullHost?.renewal_type === 'yearly' ? 'yearly' : 'monthly',
           purchase_date: normalizeDate(fullHost?.purchase_date),
           expiry_date: normalizeDate(fullHost?.expiry_date),
           auto_renew: Boolean(fullHost?.auto_renew),
           traffic_limit: normalizeNumber(fullHost?.traffic_limit),
           group_name: fullHost?.group_name ?? '',
-        });
-        setIsEditDialogOpen(true);
+        })
+        setIsEditDialogOpen(true)
       } else {
-        toast.error(response.message || '获取主机详情失败');
+        toast.error(response.message || '获取主机详情失败')
       }
     } catch (error) {
-      console.error('Failed to fetch host details:', error);
-      toast.error('获取主机详情失败');
+      console.error('Failed to fetch host details:', error)
+      toast.error('获取主机详情失败')
     }
-  };
+  }
 
   const handleUpdateHost = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!editingHost) return;
+    if (!editingHost) return
 
     try {
       const payload = {
         ...formData,
         purchase_date: formData.purchase_date || undefined,
         expiry_date: formData.expiry_date || undefined,
-      };
-      const data: any = await devopsAPI.vms.hosts.update(editingHost.id, payload);
+      }
+      const data: any = await devopsAPI.vms.hosts.update(
+        editingHost.id,
+        payload
+      )
       if (data.code === 0) {
-        toast.success('主机更新成功');
-        setIsEditDialogOpen(false);
-        setEditingHost(null);
+        toast.success('主机更新成功')
+        setIsEditDialogOpen(false)
+        setEditingHost(null)
 
         // Reset form
         setFormData({
@@ -271,44 +289,48 @@ export function HostListPage() {
           expiry_date: '',
           auto_renew: false,
           traffic_limit: 0,
-        });
+        })
 
         // Refresh list
-        fetchHosts();
+        fetchHosts()
       } else {
-        toast.error(data.message || '更新失败');
+        toast.error(data.message || '更新失败')
       }
     } catch (error) {
-      console.error('Failed to update host:', error);
-      toast.error('更新主机失败');
+      console.error('Failed to update host:', error)
+      toast.error('更新主机失败')
     }
-  };
+  }
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('已复制到剪贴板');
-  };
+    navigator.clipboard.writeText(text)
+    toast.success('已复制到剪贴板')
+  }
 
-  const filteredHosts = hosts.filter((host) =>
-    host.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    host.note?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredHosts = hosts.filter(
+    (host) =>
+      host.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      host.note?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   // Group hosts by group_name for card view
-  const groupedHosts = filteredHosts.reduce((acc, host) => {
-    const groupName = host.group_name || '未分类主机';
-    if (!acc[groupName]) {
-      acc[groupName] = [];
-    }
-    acc[groupName].push(host);
-    return acc;
-  }, {} as Record<string, typeof filteredHosts>);
+  const groupedHosts = filteredHosts.reduce(
+    (acc, host) => {
+      const groupName = host.group_name || '未分类主机'
+      if (!acc[groupName]) {
+        acc[groupName] = []
+      }
+      acc[groupName].push(host)
+      return acc
+    },
+    {} as Record<string, typeof filteredHosts>
+  )
 
   const stats = {
     total: hosts.length,
     online: hosts.filter((h) => h.online).length,
     offline: hosts.filter((h) => !h.online).length,
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -316,9 +338,7 @@ export function HostListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">主机管理</h1>
-          <p className="text-muted-foreground mt-1">
-            管理和监控您的主机节点
-          </p>
+          <p className="text-muted-foreground mt-1">管理和监控您的主机节点</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -356,9 +376,7 @@ export function HostListPage() {
               <p className="text-sm font-medium text-muted-foreground">
                 离线主机
               </p>
-              <p className="text-2xl font-bold text-red-600">
-                {stats.offline}
-              </p>
+              <p className="text-2xl font-bold text-red-600">{stats.offline}</p>
             </div>
           </div>
         </div>
@@ -375,7 +393,13 @@ export function HostListPage() {
             className="pl-9"
           />
         </div>
-        <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'card' | 'table')}>
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(value) =>
+            value && setViewMode(value as 'card' | 'table')
+          }
+        >
           <ToggleGroupItem value="card" aria-label="卡片视图">
             <LayoutGrid className="h-4 w-4" />
           </ToggleGroupItem>
@@ -384,13 +408,21 @@ export function HostListPage() {
           </ToggleGroupItem>
         </ToggleGroup>
         <Button variant="outline" onClick={fetchHosts} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+          />
           刷新
         </Button>
         <div className="flex items-center gap-2 text-sm">
-          <div className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : reconnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`} />
+          <div
+            className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : reconnecting ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}
+          />
           <span className="text-muted-foreground">
-            {connected ? '实时监控已连接' : reconnecting ? '重新连接中...' : '监控断开'}
+            {connected
+              ? '实时监控已连接'
+              : reconnecting
+                ? '重新连接中...'
+                : '监控断开'}
           </span>
         </div>
       </div>
@@ -399,7 +431,9 @@ export function HostListPage() {
       {filteredHosts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            {hosts.length === 0 ? '暂无主机，点击"添加主机"开始' : '没有找到匹配的主机'}
+            {hosts.length === 0
+              ? '暂无主机，点击"添加主机"开始'
+              : '没有找到匹配的主机'}
           </p>
         </div>
       ) : viewMode === 'card' ? (
@@ -425,8 +459,8 @@ export function HostListPage() {
                         variant="outline"
                         size="sm"
                         onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditHost(host);
+                          e.stopPropagation()
+                          handleEditHost(host)
                         }}
                       >
                         <Settings className="h-4 w-4" />
@@ -435,8 +469,8 @@ export function HostListPage() {
                         variant="destructive"
                         size="sm"
                         onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteHost(host.id, host.name);
+                          e.stopPropagation()
+                          handleDeleteHost(host.id, host.name)
                         }}
                       >
                         删除
@@ -454,24 +488,44 @@ export function HostListPage() {
           <table className="w-full">
             <thead className="bg-muted/50">
               <tr className="border-b">
-                <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">名称</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">分组</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">系统</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">CPU</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">内存</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">磁盘</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">网络 ↓/↑</th>
-                <th className="px-4 py-3 text-left text-sm font-medium">到期时间</th>
-                <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  状态
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  名称
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  分组
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  系统
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium">
+                  CPU
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium">
+                  内存
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium">
+                  磁盘
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium">
+                  网络 ↓/↑
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  到期时间
+                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>
               {filteredHosts.map((host) => {
-                const state = host.current_state;
-                const info = host.host_info;
-                const daysUntilExpiry = getDaysUntilExpiry(host.expiry_date);
-                const expiryStatus = getExpiryStatus(daysUntilExpiry);
+                const state = host.current_state
+                const info = host.host_info
+                const daysUntilExpiry = getDaysUntilExpiry(host.expiry_date)
+                const expiryStatus = getExpiryStatus(daysUntilExpiry)
                 return (
                   <tr
                     key={host.id}
@@ -480,42 +534,68 @@ export function HostListPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${host.online ? 'bg-green-500' : 'bg-red-500'}`} />
-                        <span className="text-sm">{host.online ? '在线' : '离线'}</span>
+                        <div
+                          className={`h-2 w-2 rounded-full ${host.online ? 'bg-green-500' : 'bg-red-500'}`}
+                        />
+                        <span className="text-sm">
+                          {host.online ? '在线' : '离线'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div>
                         <div className="font-medium">{host.name}</div>
                         {host.note && (
-                          <div className="text-xs text-muted-foreground">{host.note}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {host.note}
+                          </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm">{host.group_name || '-'}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {host.group_name || '-'}
+                    </td>
                     <td className="px-4 py-3 text-sm">
                       {info ? `${info.platform} ${info.arch}` : '-'}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       {state ? (
-                        <span className={state.cpu_usage >= 80 ? 'text-red-600' : ''}>
+                        <span
+                          className={
+                            state.cpu_usage >= 80 ? 'text-red-600' : ''
+                          }
+                        >
                           {state.cpu_usage.toFixed(1)}%
                         </span>
-                      ) : '-'}
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       {state ? (
-                        <span className={state.mem_usage >= 80 ? 'text-red-600' : ''}>
+                        <span
+                          className={
+                            state.mem_usage >= 80 ? 'text-red-600' : ''
+                          }
+                        >
                           {state.mem_usage.toFixed(1)}%
                         </span>
-                      ) : '-'}
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       {state ? (
-                        <span className={state.disk_usage >= 80 ? 'text-red-600' : ''}>
+                        <span
+                          className={
+                            state.disk_usage >= 80 ? 'text-red-600' : ''
+                          }
+                        >
                           {state.disk_usage.toFixed(1)}%
                         </span>
-                      ) : '-'}
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       {state ? (
@@ -523,7 +603,9 @@ export function HostListPage() {
                           {(state.net_in_speed / 1024 / 1024).toFixed(1)}M /
                           {(state.net_out_speed / 1024 / 1024).toFixed(1)}M
                         </span>
-                      ) : '-'}
+                      ) : (
+                        '-'
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={expiryStatus.color}>
@@ -536,8 +618,8 @@ export function HostListPage() {
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditHost(host);
+                            e.stopPropagation()
+                            handleEditHost(host)
                           }}
                           title="设置"
                         >
@@ -548,8 +630,8 @@ export function HostListPage() {
                           size="sm"
                           disabled={!host.online}
                           onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/vms/hosts/${host.id}/ssh`);
+                            e.stopPropagation()
+                            navigate(`/vms/hosts/${host.id}/ssh`)
                           }}
                           title="终端"
                         >
@@ -559,8 +641,8 @@ export function HostListPage() {
                           variant="ghost"
                           size="sm"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteHost(host.id, host.name);
+                            e.stopPropagation()
+                            handleDeleteHost(host.id, host.name)
                           }}
                           title="删除"
                         >
@@ -569,7 +651,7 @@ export function HostListPage() {
                       </div>
                     </td>
                   </tr>
-                );
+                )
               })}
             </tbody>
           </table>
@@ -592,7 +674,9 @@ export function HostListPage() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   required
                   placeholder="web-server-01"
                 />
@@ -603,7 +687,9 @@ export function HostListPage() {
                 <Textarea
                   id="note"
                   value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, note: e.target.value })
+                  }
                   placeholder="管理员可见的备注信息"
                   rows={2}
                 />
@@ -614,7 +700,9 @@ export function HostListPage() {
                 <Textarea
                   id="public_note"
                   value={formData.public_note}
-                  onChange={(e) => setFormData({ ...formData, public_note: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, public_note: e.target.value })
+                  }
                   placeholder="访客可见的备注信息"
                   rows={2}
                 />
@@ -628,17 +716,25 @@ export function HostListPage() {
                     type="number"
                     step="0.01"
                     value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cost: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                   <p className="text-xs text-muted-foreground">
-                    根据续费周期，此费用为{formData.renewal_type === 'monthly' ? '月' : '年'}费用
+                    根据续费周期，此费用为
+                    {formData.renewal_type === 'monthly' ? '月' : '年'}费用
                   </p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="renewal_type">续费周期</Label>
                   <Select
                     value={formData.renewal_type}
-                    onValueChange={(value: 'monthly' | 'yearly') => setFormData({ ...formData, renewal_type: value })}
+                    onValueChange={(value: 'monthly' | 'yearly') =>
+                      setFormData({ ...formData, renewal_type: value })
+                    }
                   >
                     <SelectTrigger id="renewal_type">
                       <SelectValue />
@@ -658,7 +754,12 @@ export function HostListPage() {
                     id="purchase_date"
                     type="date"
                     value={formData.purchase_date}
-                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        purchase_date: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
@@ -667,7 +768,9 @@ export function HostListPage() {
                     id="expiry_date"
                     type="date"
                     value={formData.expiry_date}
-                    onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expiry_date: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -679,7 +782,12 @@ export function HostListPage() {
                     id="traffic_limit"
                     type="number"
                     value={formData.traffic_limit}
-                    onChange={(e) => setFormData({ ...formData, traffic_limit: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        traffic_limit: parseInt(e.target.value) || 0,
+                      })
+                    }
                     placeholder="0 表示无限"
                   />
                 </div>
@@ -688,7 +796,9 @@ export function HostListPage() {
                   <Input
                     id="group_name"
                     value={formData.group_name || ''}
-                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, group_name: e.target.value })
+                    }
                     placeholder="例如：生产环境、测试环境"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -707,7 +817,9 @@ export function HostListPage() {
                 <Switch
                   id="auto_renew"
                   checked={formData.auto_renew}
-                  onCheckedChange={(checked) => setFormData({ ...formData, auto_renew: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, auto_renew: checked })
+                  }
                 />
               </div>
 
@@ -721,12 +833,18 @@ export function HostListPage() {
                 <Switch
                   id="hide_for_guest"
                   checked={formData.hide_for_guest}
-                  onCheckedChange={(checked) => setFormData({ ...formData, hide_for_guest: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, hide_for_guest: checked })
+                  }
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
                 取消
               </Button>
               <Button type="submit">创建</Button>
@@ -746,7 +864,9 @@ export function HostListPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-1">
                 <Label className="text-base font-semibold">基本信息</Label>
-                <p className="text-xs text-muted-foreground">修改主机的基本配置</p>
+                <p className="text-xs text-muted-foreground">
+                  修改主机的基本配置
+                </p>
               </div>
 
               <div className="grid gap-2">
@@ -754,7 +874,9 @@ export function HostListPage() {
                 <Input
                   id="edit-name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   required
                   placeholder="web-server-01"
                 />
@@ -765,7 +887,9 @@ export function HostListPage() {
                 <Textarea
                   id="edit-note"
                   value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, note: e.target.value })
+                  }
                   placeholder="管理员可见的备注信息"
                   rows={2}
                 />
@@ -776,7 +900,9 @@ export function HostListPage() {
                 <Textarea
                   id="edit-public_note"
                   value={formData.public_note}
-                  onChange={(e) => setFormData({ ...formData, public_note: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, public_note: e.target.value })
+                  }
                   placeholder="访客可见的备注信息"
                   rows={2}
                 />
@@ -790,17 +916,25 @@ export function HostListPage() {
                     type="number"
                     step="0.01"
                     value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cost: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                   <p className="text-xs text-muted-foreground">
-                    根据续费周期，此费用为{formData.renewal_type === 'monthly' ? '月' : '年'}费用
+                    根据续费周期，此费用为
+                    {formData.renewal_type === 'monthly' ? '月' : '年'}费用
                   </p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-renewal_type">续费周期</Label>
                   <Select
                     value={formData.renewal_type}
-                    onValueChange={(value: 'monthly' | 'yearly') => setFormData({ ...formData, renewal_type: value })}
+                    onValueChange={(value: 'monthly' | 'yearly') =>
+                      setFormData({ ...formData, renewal_type: value })
+                    }
                   >
                     <SelectTrigger id="edit-renewal_type">
                       <SelectValue />
@@ -820,7 +954,12 @@ export function HostListPage() {
                     id="edit-purchase_date"
                     type="date"
                     value={formData.purchase_date}
-                    onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        purchase_date: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
@@ -829,7 +968,9 @@ export function HostListPage() {
                     id="edit-expiry_date"
                     type="date"
                     value={formData.expiry_date}
-                    onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expiry_date: e.target.value })
+                    }
                   />
                 </div>
               </div>
@@ -841,7 +982,12 @@ export function HostListPage() {
                     id="edit-traffic_limit"
                     type="number"
                     value={formData.traffic_limit}
-                    onChange={(e) => setFormData({ ...formData, traffic_limit: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        traffic_limit: parseInt(e.target.value) || 0,
+                      })
+                    }
                     placeholder="0 表示无限"
                   />
                 </div>
@@ -850,7 +996,9 @@ export function HostListPage() {
                   <Input
                     id="edit-group_name"
                     value={formData.group_name || ''}
-                    onChange={(e) => setFormData({ ...formData, group_name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, group_name: e.target.value })
+                    }
                     placeholder="例如：生产环境、测试环境"
                   />
                 </div>
@@ -866,7 +1014,9 @@ export function HostListPage() {
                 <Switch
                   id="edit-auto_renew"
                   checked={formData.auto_renew}
-                  onCheckedChange={(checked) => setFormData({ ...formData, auto_renew: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, auto_renew: checked })
+                  }
                 />
               </div>
 
@@ -880,7 +1030,9 @@ export function HostListPage() {
                 <Switch
                   id="edit-hide_for_guest"
                   checked={formData.hide_for_guest}
-                  onCheckedChange={(checked) => setFormData({ ...formData, hide_for_guest: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, hide_for_guest: checked })
+                  }
                 />
               </div>
             </div>
@@ -889,8 +1041,8 @@ export function HostListPage() {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setIsEditDialogOpen(false);
-                  setEditingHost(null);
+                  setIsEditDialogOpen(false)
+                  setEditingHost(null)
                 }}
               >
                 取消
@@ -902,7 +1054,12 @@ export function HostListPage() {
       </Dialog>
 
       {/* Agent Install Command Dialog */}
-      <Dialog open={installCmdDialog.open} onOpenChange={(open) => setInstallCmdDialog({ ...installCmdDialog, open })}>
+      <Dialog
+        open={installCmdDialog.open}
+        onOpenChange={(open) =>
+          setInstallCmdDialog({ ...installCmdDialog, open })
+        }
+      >
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Agent 安装命令</DialogTitle>
@@ -956,5 +1113,5 @@ export function HostListPage() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

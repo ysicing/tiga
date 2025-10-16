@@ -1,8 +1,15 @@
+import {
+  IconAlertCircle,
+  IconCertificate,
+  IconChartBar,
+  IconFileCode,
+  IconWorldWww,
+} from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { IconWorldWww, IconFileCode, IconCertificate, IconChartBar, IconAlertCircle } from '@tabler/icons-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function WebServerOverview() {
   const { t } = useTranslation()
@@ -47,9 +54,14 @@ export function WebServerOverview() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t('webserver.overview', 'Web 服务器概览')}</h1>
+          <h1 className="text-2xl font-bold">
+            {t('webserver.overview', 'Web 服务器概览')}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            {t('webserver.overview.description', 'Caddy Web 服务器和反向代理管理')}
+            {t(
+              'webserver.overview.description',
+              'Caddy Web 服务器和反向代理管理'
+            )}
           </p>
         </div>
       </div>
@@ -58,7 +70,10 @@ export function WebServerOverview() {
         <IconAlertCircle className="h-4 w-4" />
         <AlertTitle>{t('common.comingSoon', '即将推出')}</AlertTitle>
         <AlertDescription>
-          {t('webserver.comingSoon.description', 'Caddy Web 服务器管理功能正在开发中，敬请期待。')}
+          {t(
+            'webserver.comingSoon.description',
+            'Caddy Web 服务器管理功能正在开发中，敬请期待。'
+          )}
         </AlertDescription>
       </Alert>
 

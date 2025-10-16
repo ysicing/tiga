@@ -2,16 +2,17 @@ package utils
 
 import "testing"
 
-func TestEncryptDecryptString(t *testing.T) {
+func TestEncryptDecryptStringWithKey(t *testing.T) {
 	original := "Hello, World!asdas"
-	encrypted := EncryptString(original)
-	decrypted, err := DecryptString(encrypted)
+	testKey := "test-encryption-key-32-bytes!"
+	encrypted := EncryptStringWithKey(original, testKey)
+	decrypted, err := DecryptStringWithKey(encrypted, testKey)
 	t.Log("Encrypted:", encrypted)
 	t.Log("Decrypted:", decrypted)
 	if err != nil {
-		t.Fatalf("DecryptString() failed: %v", err)
+		t.Fatalf("DecryptStringWithKey() failed: %v", err)
 	}
 	if decrypted != original {
-		t.Errorf("DecryptString() = %q, want %q", decrypted, original)
+		t.Errorf("DecryptStringWithKey() = %q, want %q", decrypted, original)
 	}
 }

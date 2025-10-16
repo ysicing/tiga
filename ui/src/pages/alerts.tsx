@@ -1,16 +1,23 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Plus,
+  RefreshCw,
+  Search,
+  XCircle,
+} from 'lucide-react'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,20 +25,28 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { AlertTriangle, Search, Plus, RefreshCw, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface Alert {
-  id: string;
-  title: string;
-  severity: 'info' | 'warning' | 'error' | 'critical';
-  status: 'open' | 'acknowledged' | 'resolved';
-  instance: string;
-  message: string;
-  createdAt: string;
-  acknowledgedBy?: string;
-  resolvedBy?: string;
+  id: string
+  title: string
+  severity: 'info' | 'warning' | 'error' | 'critical'
+  status: 'open' | 'acknowledged' | 'resolved'
+  instance: string
+  message: string
+  createdAt: string
+  acknowledgedBy?: string
+  resolvedBy?: string
 }
 
 const getSeverityBadge = (severity: string) => {
@@ -40,31 +55,31 @@ const getSeverityBadge = (severity: string) => {
     warning: { variant: 'outline', className: 'bg-yellow-500' },
     error: { variant: 'destructive', className: 'bg-orange-500' },
     critical: { variant: 'destructive', className: 'bg-red-600' },
-  };
-  const config = variants[severity] || variants.info;
+  }
+  const config = variants[severity] || variants.info
   return (
     <Badge variant={config.variant} className={config.className}>
       {severity.toUpperCase()}
     </Badge>
-  );
-};
+  )
+}
 
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'open':
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      return <AlertTriangle className="h-4 w-4 text-red-500" />
     case 'acknowledged':
-      return <Clock className="h-4 w-4 text-yellow-500" />;
+      return <Clock className="h-4 w-4 text-yellow-500" />
     case 'resolved':
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className="h-4 w-4 text-green-500" />
     default:
-      return <XCircle className="h-4 w-4 text-gray-500" />;
+      return <XCircle className="h-4 w-4 text-gray-500" />
   }
-};
+}
 
 export default function AlertsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSeverity, setSelectedSeverity] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('all')
 
   // TODO: Fetch real data from API
   const alerts: Alert[] = [
@@ -117,21 +132,24 @@ export default function AlertsPage() {
       createdAt: '2024-03-02T16:30:00Z',
       resolvedBy: 'system',
     },
-  ];
+  ]
 
-  const severityOptions = ['all', 'info', 'warning', 'error', 'critical'];
+  const severityOptions = ['all', 'info', 'warning', 'error', 'critical']
 
   const filteredAlerts = alerts.filter((alert) => {
     const matchesSearch =
       alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      alert.instance.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSeverity = selectedSeverity === 'all' || alert.severity === selectedSeverity;
-    return matchesSearch && matchesSeverity;
-  });
+      alert.instance.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSeverity =
+      selectedSeverity === 'all' || alert.severity === selectedSeverity
+    return matchesSearch && matchesSeverity
+  })
 
-  const openAlerts = filteredAlerts.filter((a) => a.status === 'open');
-  const acknowledgedAlerts = filteredAlerts.filter((a) => a.status === 'acknowledged');
-  const resolvedAlerts = filteredAlerts.filter((a) => a.status === 'resolved');
+  const openAlerts = filteredAlerts.filter((a) => a.status === 'open')
+  const acknowledgedAlerts = filteredAlerts.filter(
+    (a) => a.status === 'acknowledged'
+  )
+  const resolvedAlerts = filteredAlerts.filter((a) => a.status === 'resolved')
 
   const AlertTable = ({ alerts }: { alerts: Alert[] }) => (
     <Table>
@@ -152,7 +170,9 @@ export default function AlertsPage() {
             <TableCell>{getStatusIcon(alert.status)}</TableCell>
             <TableCell className="font-medium">{alert.title}</TableCell>
             <TableCell>{getSeverityBadge(alert.severity)}</TableCell>
-            <TableCell className="font-mono text-sm">{alert.instance}</TableCell>
+            <TableCell className="font-mono text-sm">
+              {alert.instance}
+            </TableCell>
             <TableCell className="max-w-md truncate">{alert.message}</TableCell>
             <TableCell className="text-sm text-muted-foreground">
               {new Date(alert.createdAt).toLocaleString()}
@@ -170,12 +190,15 @@ export default function AlertsPage() {
                   {alert.status === 'open' && (
                     <DropdownMenuItem>Acknowledge</DropdownMenuItem>
                   )}
-                  {(alert.status === 'open' || alert.status === 'acknowledged') && (
+                  {(alert.status === 'open' ||
+                    alert.status === 'acknowledged') && (
                     <DropdownMenuItem>Resolve</DropdownMenuItem>
                   )}
                   <DropdownMenuItem>View Details</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive">
+                    Delete
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>
@@ -183,7 +206,7 @@ export default function AlertsPage() {
         ))}
       </TableBody>
     </Table>
-  );
+  )
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -217,7 +240,9 @@ export default function AlertsPage() {
             <Clock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{acknowledgedAlerts.length}</div>
+            <div className="text-2xl font-bold">
+              {acknowledgedAlerts.length}
+            </div>
             <p className="text-xs text-muted-foreground">In progress</p>
           </CardContent>
         </Card>
@@ -252,15 +277,23 @@ export default function AlertsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  Severity: {selectedSeverity === 'all' ? 'All' : selectedSeverity.toUpperCase()}
+                  Severity:{' '}
+                  {selectedSeverity === 'all'
+                    ? 'All'
+                    : selectedSeverity.toUpperCase()}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by Severity</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {severityOptions.map((severity) => (
-                  <DropdownMenuItem key={severity} onClick={() => setSelectedSeverity(severity)}>
-                    {severity === 'all' ? 'All Severities' : severity.toUpperCase()}
+                  <DropdownMenuItem
+                    key={severity}
+                    onClick={() => setSelectedSeverity(severity)}
+                  >
+                    {severity === 'all'
+                      ? 'All Severities'
+                      : severity.toUpperCase()}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -269,9 +302,7 @@ export default function AlertsPage() {
 
           <Tabs defaultValue="open" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="open">
-                Open ({openAlerts.length})
-              </TabsTrigger>
+              <TabsTrigger value="open">Open ({openAlerts.length})</TabsTrigger>
               <TabsTrigger value="acknowledged">
                 Acknowledged ({acknowledgedAlerts.length})
               </TabsTrigger>
@@ -299,5 +330,5 @@ export default function AlertsPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

@@ -1,27 +1,27 @@
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+} from 'recharts'
 
 interface DataLine {
-  dataKey: string;
-  name: string;
-  color: string;
+  dataKey: string
+  name: string
+  color: string
 }
 
 interface MultiLineChartProps {
-  data: any[];
-  title: string;
-  lines: DataLine[];
-  unit?: string;
-  height?: number;
-  formatValue?: (value: number) => string;
+  data: any[]
+  title: string
+  lines: DataLine[]
+  unit?: string
+  height?: number
+  formatValue?: (value: number) => string
 }
 
 export function MultiLineChart({
@@ -33,33 +33,36 @@ export function MultiLineChart({
   formatValue,
 }: MultiLineChartProps) {
   const defaultFormatter = (value: number) => {
-    if (formatValue) return formatValue(value);
-    return `${value.toFixed(2)}${unit}`;
-  };
+    if (formatValue) return formatValue(value)
+    return `${value.toFixed(2)}${unit}`
+  }
 
   // Convert UTC time to Beijing time (UTC+8)
   const toBeijingTime = (date: Date): Date => {
-    return new Date(date.getTime() + (8 * 60 * 60 * 1000));
-  };
+    return new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  }
 
-  const formatTime = (value: string, format: 'short' | 'full' = 'short'): string => {
-    const date = new Date(value);
-    const beijingDate = toBeijingTime(date);
+  const formatTime = (
+    value: string,
+    format: 'short' | 'full' = 'short'
+  ): string => {
+    const date = new Date(value)
+    const beijingDate = toBeijingTime(date)
 
     if (format === 'short') {
-      const hours = beijingDate.getHours().toString().padStart(2, '0');
-      const minutes = beijingDate.getMinutes().toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
+      const hours = beijingDate.getHours().toString().padStart(2, '0')
+      const minutes = beijingDate.getMinutes().toString().padStart(2, '0')
+      return `${hours}:${minutes}`
     } else {
-      const year = beijingDate.getFullYear();
-      const month = (beijingDate.getMonth() + 1).toString().padStart(2, '0');
-      const day = beijingDate.getDate().toString().padStart(2, '0');
-      const hours = beijingDate.getHours().toString().padStart(2, '0');
-      const minutes = beijingDate.getMinutes().toString().padStart(2, '0');
-      const seconds = beijingDate.getSeconds().toString().padStart(2, '0');
-      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      const year = beijingDate.getFullYear()
+      const month = (beijingDate.getMonth() + 1).toString().padStart(2, '0')
+      const day = beijingDate.getDate().toString().padStart(2, '0')
+      const hours = beijingDate.getHours().toString().padStart(2, '0')
+      const minutes = beijingDate.getMinutes().toString().padStart(2, '0')
+      const seconds = beijingDate.getSeconds().toString().padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     }
-  };
+  }
 
   return (
     <div className="w-full">
@@ -103,5 +106,5 @@ export function MultiLineChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
-  );
+  )
 }

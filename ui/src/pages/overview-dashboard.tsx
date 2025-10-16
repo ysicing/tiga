@@ -1,36 +1,43 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { useInstances } from '@/lib/api'
-import { SubsystemCard } from '@/components/subsystem-card'
-import type { Instance, SubsystemStats } from '@/types/api'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertCircle } from 'lucide-react'
 import { ClusterProvider } from '@/contexts/cluster-context'
-import { GlobalSearchProvider, useGlobalSearch } from '@/components/global-search-provider'
-import { GlobalSearch } from '@/components/global-search'
+import { AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+
+import type { Instance, SubsystemStats } from '@/types/api'
+import { useInstances } from '@/lib/api'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Toaster } from '@/components/ui/sonner'
+import { GlobalSearch } from '@/components/global-search'
+import {
+  GlobalSearchProvider,
+  useGlobalSearch,
+} from '@/components/global-search-provider'
+import { SubsystemCard } from '@/components/subsystem-card'
 
 // Aggregate instances by type
 function aggregateInstancesByType(instances: Instance[]): SubsystemStats[] {
-  const grouped = instances.reduce((acc, instance) => {
-    const type = instance.type.toLowerCase()
-    if (!acc[type]) {
-      acc[type] = { type, count: 0, running: 0, stopped: 0, error: 0 }
-    }
-    acc[type].count++
+  const grouped = instances.reduce(
+    (acc, instance) => {
+      const type = instance.type.toLowerCase()
+      if (!acc[type]) {
+        acc[type] = { type, count: 0, running: 0, stopped: 0, error: 0 }
+      }
+      acc[type].count++
 
-    if (instance.status === 'running') {
-      acc[type].running++
-    } else if (instance.status === 'stopped') {
-      acc[type].stopped++
-    } else if (instance.status === 'error') {
-      acc[type].error++
-    }
+      if (instance.status === 'running') {
+        acc[type].running++
+      } else if (instance.status === 'stopped') {
+        acc[type].stopped++
+      } else if (instance.status === 'error') {
+        acc[type].error++
+      }
 
-    return acc
-  }, {} as Record<string, SubsystemStats>)
+      return acc
+    },
+    {} as Record<string, SubsystemStats>
+  )
 
   return Object.values(grouped).sort((a, b) => a.type.localeCompare(b.type))
 }
@@ -67,11 +74,18 @@ function OverviewDashboardContent() {
     if (!data?.data) return []
 
     const aggregated = aggregateInstancesByType(data.data)
-    const statsMap = new Map(aggregated.map(stat => [stat.type, stat]))
+    const statsMap = new Map(aggregated.map((stat) => [stat.type, stat]))
 
     // Include all subsystem types, showing 0 for empty ones
-    return ALL_SUBSYSTEM_TYPES.map(type =>
-      statsMap.get(type) || { type, count: 0, running: 0, stopped: 0, error: 0 }
+    return ALL_SUBSYSTEM_TYPES.map(
+      (type) =>
+        statsMap.get(type) || {
+          type,
+          count: 0,
+          running: 0,
+          stopped: 0,
+          error: 0,
+        }
     )
   }, [data])
 
@@ -145,7 +159,9 @@ function OverviewDashboardContent() {
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <p className="text-lg text-muted-foreground">{t('overview.noInstances')}</p>
+            <p className="text-lg text-muted-foreground">
+              {t('overview.noInstances')}
+            </p>
             <p className="text-sm text-muted-foreground mt-2">
               {t('overview.createFirst')}
             </p>

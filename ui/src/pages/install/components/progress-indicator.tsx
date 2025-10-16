@@ -1,5 +1,6 @@
-import { useTranslation } from 'react-i18next'
 import { CheckCircle2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+
 import { cn } from '@/lib/utils'
 
 interface ProgressIndicatorProps {
@@ -14,7 +15,10 @@ const defaultSteps = [
   { key: 'confirm', label: 'install.steps.confirm' },
 ]
 
-export function ProgressIndicator({ currentStep, totalSteps = 4 }: ProgressIndicatorProps) {
+export function ProgressIndicator({
+  currentStep,
+  totalSteps = 4,
+}: ProgressIndicatorProps) {
   const { t } = useTranslation()
 
   return (

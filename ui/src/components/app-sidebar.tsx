@@ -175,7 +175,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               >
                 <Link to="/k8s/overview" onClick={handleMenuItemClick}>
                   <IconLayoutDashboard className="text-sidebar-primary" />
-                  <span className="font-medium">{t('nav.k8sOverview', 'K8s 概览')}</span>
+                  <span className="font-medium">
+                    {t('nav.k8sOverview', 'K8s 概览')}
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

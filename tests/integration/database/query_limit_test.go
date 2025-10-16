@@ -9,8 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	dbservices "github.com/ysicing/tiga/internal/services/database"
 	"github.com/ysicing/tiga/pkg/dbdriver"
+
+	dbservices "github.com/ysicing/tiga/internal/services/database"
 )
 
 func TestQueryTimeoutLimit(t *testing.T) {
@@ -25,6 +26,7 @@ func TestQueryTimeoutLimit(t *testing.T) {
 				MaxResultBytes: 10 * 1024 * 1024,
 			},
 		)
+		_ = executor // used for config validation
 
 		// Simulate a long-running query
 		// In a real test, this would connect to a database and execute a slow query
@@ -51,6 +53,7 @@ func TestQueryTimeoutLimit(t *testing.T) {
 				MaxResultBytes: 10 * 1024 * 1024,
 			},
 		)
+		_ = executor // used for config validation
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -171,6 +174,7 @@ func TestQueryExecutionMetrics(t *testing.T) {
 			},
 			RowCount: 3,
 		}
+		_ = result // used for size estimation
 
 		// Estimate bytes returned
 		estimatedBytes := len(data) * 3
@@ -207,6 +211,7 @@ func TestQuerySessionRecording(t *testing.T) {
 			Query:        "SELECT * FROM large_table WHERE complex_condition",
 			ClientIP:     "192.168.1.100",
 		}
+		_ = req // used for session recording
 
 		// Simulate timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

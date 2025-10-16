@@ -18,6 +18,9 @@ type Config struct {
 	OAuth              OAuthConfig
 	Security           SecurityConfig
 	DatabaseManagement DatabaseManagementConfig
+	Kubernetes         KubernetesConfig
+	Webhook            WebhookConfig
+	Features           FeaturesConfig
 	Log                LogConfig
 }
 
@@ -25,6 +28,7 @@ type Config struct {
 type ServerConfig struct {
 	Debug        bool
 	Port         int
+	GRPCDomain   string
 	GRPCPort     int
 	ReadTimeout  int
 	WriteTimeout int
@@ -84,6 +88,26 @@ type SecurityConfig struct {
 	BcryptCost    int
 }
 
+// KubernetesConfig holds Kubernetes-related configuration
+type KubernetesConfig struct {
+	NodeTerminalImage   string // Docker image for node terminal pods
+	NodeTerminalPodName string // Name prefix for node terminal pods
+}
+
+// WebhookConfig holds webhook configuration
+type WebhookConfig struct {
+	Enabled  bool
+	Username string
+	Password string
+}
+
+// FeaturesConfig holds feature flags
+type FeaturesConfig struct {
+	AnonymousUserEnabled bool
+	DisableGZIP          bool
+	DisableVersionCheck  bool
+}
+
 // LogConfig holds logging configuration
 type LogConfig struct {
 	Level  string
@@ -120,6 +144,7 @@ func LoadFromFile(filename string) (*Config, error) {
 		Server: ServerConfig{
 			Debug:        getEnvAsBool("DEBUG", false),
 			Port:         configFile.Server.HTTPPort,
+			GRPCDomain:   getOrDefault(configFile.Server.GRPCDomain, configFile.Server.Domain),
 			GRPCPort:     getIntOrDefault(configFile.Server.GRPCPort, 12307),
 			ReadTimeout:  getEnvAsInt("SERVER_READ_TIMEOUT", 60),
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 60),
@@ -143,7 +168,7 @@ func LoadFromFile(filename string) (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			Secret:    getOrDefault(configFile.Security.JWTSecret, getEnv("JWT_SECRET", "your-secret-key-change-in-production")),
+			Secret:    getOrDefault(configFile.Security.JWTSecret, getEnv("JWT_SECRET", "")),
 			ExpiresIn: getEnvAsDuration("JWT_EXPIRES_IN", 24*time.Hour),
 		},
 		OAuth: OAuthConfig{
@@ -166,6 +191,20 @@ func LoadFromFile(filename string) (*Config, error) {
 			MaxResultBytes:      getIntOrDefault(configFile.DatabaseManagement.MaxResultBytes, 10*1024*1024),
 			AuditRetentionDays:  getIntOrDefault(configFile.DatabaseManagement.AuditRetentionDays, 90),
 		},
+		Kubernetes: KubernetesConfig{
+			NodeTerminalImage:   getEnv("NODE_TERMINAL_IMAGE", "busybox:latest"),
+			NodeTerminalPodName: "tiga-node-terminal-agent",
+		},
+		Webhook: WebhookConfig{
+			Username: getEnv("WEBHOOK_USERNAME", ""),
+			Password: getEnv("WEBHOOK_PASSWORD", ""),
+			Enabled:  getEnv("WEBHOOK_USERNAME", "") != "" && getEnv("WEBHOOK_PASSWORD", "") != "",
+		},
+		Features: FeaturesConfig{
+			AnonymousUserEnabled: getEnvAsBool("ANONYMOUS_USER_ENABLED", false),
+			DisableGZIP:          getEnvAsBool("DISABLE_GZIP", true),
+			DisableVersionCheck:  getEnvAsBool("DISABLE_VERSION_CHECK", false),
+		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
 			Format: getEnv("LOG_FORMAT", "json"),
@@ -183,6 +222,7 @@ type ConfigFile struct {
 		AppSubtitle string `yaml:"app_subtitle"`
 		Domain      string `yaml:"domain"`
 		HTTPPort    int    `yaml:"http_port"`
+		GRPCDomain  string `yaml:"grpc_domain"`
 		GRPCPort    int    `yaml:"grpc_port"`
 		TLSEnabled  bool   `yaml:"tls_enabled"`
 	} `yaml:"server"`
@@ -217,6 +257,7 @@ func LoadFromEnv() *Config {
 		Server: ServerConfig{
 			Debug:        getEnvAsBool("DEBUG", false),
 			Port:         getEnvAsInt("SERVER_PORT", 12306),
+			GRPCDomain:   getEnv("SERVER_GRPC_DOMAIN", ""),
 			GRPCPort:     getEnvAsInt("SERVER_GRPC_PORT", 12307),
 			ReadTimeout:  getEnvAsInt("SERVER_READ_TIMEOUT", 60),
 			WriteTimeout: getEnvAsInt("SERVER_WRITE_TIMEOUT", 60),
@@ -240,7 +281,7 @@ func LoadFromEnv() *Config {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			Secret:    getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			Secret:    getEnv("JWT_SECRET", ""),
 			ExpiresIn: getEnvAsDuration("JWT_EXPIRES_IN", 24*time.Hour),
 		},
 		OAuth: OAuthConfig{
@@ -254,14 +295,28 @@ func LoadFromEnv() *Config {
 			},
 		},
 		Security: SecurityConfig{
-			EncryptionKey: "",
+			EncryptionKey: getEnv("ENCRYPTION_KEY", ""),
 			BcryptCost:    getEnvAsInt("BCRYPT_COST", 10),
 		},
 		DatabaseManagement: DatabaseManagementConfig{
-			CredentialKey:       "",
+			CredentialKey:       getEnv("CREDENTIAL_KEY", ""),
 			QueryTimeoutSeconds: getEnvAsInt("DB_MGMT_QUERY_TIMEOUT", 30),
 			MaxResultBytes:      getEnvAsInt("DB_MGMT_MAX_RESULT_BYTES", 10*1024*1024),
 			AuditRetentionDays:  getEnvAsInt("DB_MGMT_AUDIT_RETENTION_DAYS", 90),
+		},
+		Kubernetes: KubernetesConfig{
+			NodeTerminalImage:   getEnv("NODE_TERMINAL_IMAGE", "busybox:latest"),
+			NodeTerminalPodName: "tiga-node-terminal-agent",
+		},
+		Webhook: WebhookConfig{
+			Username: getEnv("WEBHOOK_USERNAME", ""),
+			Password: getEnv("WEBHOOK_PASSWORD", ""),
+			Enabled:  getEnv("WEBHOOK_USERNAME", "") != "" && getEnv("WEBHOOK_PASSWORD", "") != "",
+		},
+		Features: FeaturesConfig{
+			AnonymousUserEnabled: getEnvAsBool("ANONYMOUS_USER_ENABLED", false),
+			DisableGZIP:          getEnvAsBool("DISABLE_GZIP", true),
+			DisableVersionCheck:  getEnvAsBool("DISABLE_VERSION_CHECK", false),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "debug"),
@@ -394,4 +449,45 @@ func (c *installChecker) IsInstalled() bool {
 	}
 
 	return config.Server.InstallLock
+}
+
+// Validate validates the configuration and returns errors for critical missing values
+func (c *Config) Validate() error {
+	var errors []string
+
+	// Validate JWT Secret
+	if c.JWT.Secret == "" {
+		errors = append(errors, "JWT_SECRET is not set (required for authentication)")
+	} else if len(c.JWT.Secret) < 32 {
+		errors = append(errors, "JWT_SECRET must be at least 32 characters")
+	}
+
+	// Validate Encryption Key for database management
+	if c.Security.EncryptionKey != "" && len(c.Security.EncryptionKey) != 44 {
+		// Base64-encoded 32-byte key is 44 characters
+		errors = append(errors, "ENCRYPTION_KEY must be a base64-encoded 32-byte key (44 characters)")
+	}
+
+	if c.DatabaseManagement.CredentialKey != "" && len(c.DatabaseManagement.CredentialKey) != 44 {
+		errors = append(errors, "CREDENTIAL_KEY must be a base64-encoded 32-byte key (44 characters)")
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("configuration validation failed:\n- %s",
+			fmt.Sprintf("%s", errors))
+	}
+
+	return nil
+}
+
+// ValidateOrExit validates the configuration and exits if validation fails
+func (c *Config) ValidateOrExit() {
+	if err := c.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Configuration Error:\n%v\n\n", err)
+		fmt.Fprintf(os.Stderr, "🔑 To generate secure keys, run:\n")
+		fmt.Fprintf(os.Stderr, "  JWT_SECRET:       openssl rand -base64 48\n")
+		fmt.Fprintf(os.Stderr, "  ENCRYPTION_KEY:   openssl rand -base64 32\n")
+		fmt.Fprintf(os.Stderr, "\nThen set them in config.yaml or as environment variables.\n")
+		os.Exit(1)
+	}
 }

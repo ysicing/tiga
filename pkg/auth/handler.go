@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
+	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/pkg/common"
@@ -17,6 +18,32 @@ import (
 
 	authservices "github.com/ysicing/tiga/internal/services/auth"
 )
+
+// getConfigFromContext retrieves config from gin context, returns nil if not found
+func getConfigFromContext(c *gin.Context) *config.Config {
+	if cfg, exists := c.Get("config"); exists {
+		if appCfg, ok := cfg.(*config.Config); ok {
+			return appCfg
+		}
+	}
+	return nil
+}
+
+// getCookieExpiration returns cookie expiration seconds from config or default
+func getCookieExpiration(c *gin.Context) int {
+	if cfg := getConfigFromContext(c); cfg != nil {
+		return int(cfg.JWT.ExpiresIn) * 2 // Double JWT expiration for cookie
+	}
+	return 24 * 60 * 60 * 2 // Default: 48 hours (double of 24 hours JWT)
+}
+
+// isAnonymousEnabled returns anonymous user enabled flag from config or default
+func isAnonymousEnabled(c *gin.Context) bool {
+	if cfg := getConfigFromContext(c); cfg != nil {
+		return cfg.Features.AnonymousUserEnabled
+	}
+	return false // Default: disabled
+}
 
 // AnonymousUser for backward compatibility
 var AnonymousUser = models.User{
@@ -123,7 +150,7 @@ func (h *AuthHandler) PasswordLogin(c *gin.Context) {
 		return
 	}
 
-	setCookieSecure(c, "auth_token", jwtToken, common.CookieExpirationSeconds)
+	setCookieSecure(c, "auth_token", jwtToken, getCookieExpiration(c))
 
 	c.Status(http.StatusNoContent)
 }
@@ -216,7 +243,7 @@ func (h *AuthHandler) Callback(c *gin.Context) {
 	}
 
 	// Set JWT as HTTP-only cookie with secure/samesite settings
-	setCookieSecure(c, "auth_token", jwtToken, common.CookieExpirationSeconds)
+	setCookieSecure(c, "auth_token", jwtToken, getCookieExpiration(c))
 
 	c.Redirect(http.StatusFound, "/dashboard")
 }
@@ -245,7 +272,7 @@ func (h *AuthHandler) GetUser(c *gin.Context) {
 
 func (h *AuthHandler) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if common.AnonymousUserEnabled {
+		if isAnonymousEnabled(c) {
 			c.Set("user", AnonymousUser)
 			c.Next()
 			return
@@ -274,7 +301,7 @@ func (h *AuthHandler) RequireAuth() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			setCookieSecure(c, "auth_token", refreshedToken, common.CookieExpirationSeconds)
+			setCookieSecure(c, "auth_token", refreshedToken, getCookieExpiration(c))
 			// Validate the refreshed token
 			claims, err = h.manager.ValidateJWT(refreshedToken)
 			if err != nil {
@@ -345,7 +372,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	// Update the cookie with the new token
-	setCookieSecure(c, "auth_token", newToken, common.CookieExpirationSeconds)
+	setCookieSecure(c, "auth_token", newToken, getCookieExpiration(c))
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -510,11 +537,10 @@ func (h *AuthHandler) GetOAuthProvider(c *gin.Context) {
 }
 
 // setCookieSecure sets a cookie with SameSite=Lax and HttpOnly=true. It marks Secure=true
-// when the request is over TLS or X-Forwarded-Proto indicates https, or when
-// common.Host appears to be an https scheme.
+// when the request is over TLS or X-Forwarded-Proto indicates https.
 func setCookieSecure(c *gin.Context, name, value string, maxAge int) {
-	// Determine if secure should be set
-	secure := strings.HasPrefix(common.Host, "https://") || (c.Request != nil && (c.Request.TLS != nil || strings.EqualFold(c.Request.Header.Get("X-Forwarded-Proto"), "https")))
+	// Determine if secure should be set based on TLS or X-Forwarded-Proto header
+	secure := c.Request != nil && (c.Request.TLS != nil || strings.EqualFold(c.Request.Header.Get("X-Forwarded-Proto"), "https"))
 
 	// Set SameSite to Lax for OAuth flows while still providing CSRF protection
 	c.SetSameSite(http.SameSiteLaxMode)

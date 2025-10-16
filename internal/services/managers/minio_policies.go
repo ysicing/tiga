@@ -82,28 +82,28 @@ func (m *MinIOManager) ListPolicies(ctx context.Context) ([]MinioPolicyInfo, err
 
 // GetPolicy retrieves a specific policy
 func (m *MinIOManager) GetPolicy(ctx context.Context, policyName string) (*MinioPolicyInfo, error) {
-    adminClient, err := m.getAdminClient()
-    if err != nil {
-        return nil, fmt.Errorf("failed to get admin client: %w", err)
-    }
+	adminClient, err := m.getAdminClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get admin client: %w", err)
+	}
 
-    // Get policy
-    policyInfoResp, err := adminClient.InfoCannedPolicy(ctx, policyName)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get policy: %w", err)
-    }
+	// Get policy
+	policyInfoResp, err := adminClient.InfoCannedPolicy(ctx, policyName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get policy: %w", err)
+	}
 
-    var policyDoc map[string]interface{}
-    if err := json.Unmarshal(policyInfoResp.Policy, &policyDoc); err != nil {
-        return nil, fmt.Errorf("failed to parse policy: %w", err)
-    }
+	var policyDoc map[string]interface{}
+	if err := json.Unmarshal(policyInfoResp.Policy, &policyDoc); err != nil {
+		return nil, fmt.Errorf("failed to parse policy: %w", err)
+	}
 
-    policyInfo := &MinioPolicyInfo{
-        Name:   policyName,
-        Policy: policyDoc,
-    }
+	policyInfo := &MinioPolicyInfo{
+		Name:   policyName,
+		Policy: policyDoc,
+	}
 
-    return policyInfo, nil
+	return policyInfo, nil
 }
 
 // UpdatePolicy updates an existing policy
@@ -272,6 +272,50 @@ func (m *MinIOManager) GenerateBucketPolicy(bucketName string, accessLevel strin
 				"Resource": []string{
 					fmt.Sprintf("arn:aws:s3:::%s", bucketName),
 					fmt.Sprintf("arn:aws:s3:::%s/*", bucketName),
+				},
+			},
+		},
+	}
+
+	return policy, nil
+}
+
+// GeneratePrefixPolicy generates a policy for specific bucket prefix access
+func (m *MinIOManager) GeneratePrefixPolicy(bucketName, prefix, accessLevel string) (map[string]interface{}, error) {
+	var actions []string
+
+	switch accessLevel {
+	case "readonly":
+		actions = []string{
+			"s3:GetBucketLocation",
+			"s3:GetObject",
+			"s3:ListBucket",
+		}
+	case "writeonly":
+		actions = []string{
+			"s3:PutObject",
+		}
+	case "readwrite":
+		actions = []string{
+			"s3:GetBucketLocation",
+			"s3:GetObject",
+			"s3:PutObject",
+			"s3:DeleteObject",
+			"s3:ListBucket",
+		}
+	default:
+		return nil, fmt.Errorf("invalid access level: %s", accessLevel)
+	}
+
+	policy := map[string]interface{}{
+		"Version": "2012-10-17",
+		"Statement": []map[string]interface{}{
+			{
+				"Effect": "Allow",
+				"Action": actions,
+				"Resource": []string{
+					fmt.Sprintf("arn:aws:s3:::%s", bucketName),
+					fmt.Sprintf("arn:aws:s3:::%s/%s*", bucketName, prefix),
 				},
 			},
 		},

@@ -40,6 +40,7 @@ type SystemSettings struct {
 	AppSubtitle     string `json:"app_subtitle" yaml:"app_subtitle" binding:"max=100"`
 	Domain          string `json:"domain" yaml:"domain" binding:"required"`
 	HTTPPort        int    `json:"http_port" yaml:"http_port" binding:"required,min=1,max=65535"`
+	GRPCDomain      string `json:"grpc_domain" yaml:"grpc_domain" binding:"omitempty"`
 	GRPCPort        int    `json:"grpc_port" yaml:"grpc_port" binding:"omitempty,min=1,max=65535"`
 	Language        string `json:"language" yaml:"language" binding:"required,oneof=zh-CN en-US"`
 	EnableAnalytics bool   `json:"enable_analytics" yaml:"enable_analytics"` // 是否允许匿名收集统计数据

@@ -1,23 +1,24 @@
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import Logo from '@/assets/logo.png'
 import {
-  IconServer2,
-  IconDatabase,
-  IconCloud,
-  IconContainer,
-  IconSettings,
   IconBell,
   IconBucket,
+  IconCloud,
+  IconContainer,
+  IconDatabase,
+  IconServer2,
+  IconSettings,
   IconWorldWww,
 } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { Toaster } from '@/components/ui/sonner'
+import { Footer } from '@/components/footer'
 import { LanguageToggle } from '@/components/language-toggle'
 import { ModeToggle } from '@/components/mode-toggle'
 import { UserMenu } from '@/components/user-menu'
-import { Footer } from '@/components/footer'
-import { Separator } from '@/components/ui/separator'
-import Logo from '@/assets/logo.png'
 
 // Define main subsystems (not individual instance types)
 const SUBSYSTEMS = [

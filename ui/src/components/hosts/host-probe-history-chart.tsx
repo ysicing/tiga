@@ -1,22 +1,23 @@
-import { useState } from 'react';
+import { useState } from 'react'
+import { ServiceHistoryInfo } from '@/services/service-monitor'
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ServiceHistoryInfo } from '@/services/service-monitor';
+} from 'recharts'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface HostProbeHistoryChartProps {
-  data: ServiceHistoryInfo[];
-  hostName?: string;
-  height?: number;
+  data: ServiceHistoryInfo[]
+  hostName?: string
+  height?: number
 }
 
 // Generate distinct colors for multiple lines
@@ -32,87 +33,88 @@ const generateColors = (count: number): string[] => {
     '#3b82f6', // Sky blue
     '#ec4899', // Pink
     '#06b6d4', // Cyan
-  ];
+  ]
 
   if (count <= colors.length) {
-    return colors.slice(0, count);
+    return colors.slice(0, count)
   }
 
   // If we need more colors, generate them dynamically
-  const additionalColors: string[] = [];
+  const additionalColors: string[] = []
   for (let i = colors.length; i < count; i++) {
-    const hue = (i * 137) % 360; // Golden angle for good distribution
-    additionalColors.push(`hsl(${hue}, 70%, 50%)`);
+    const hue = (i * 137) % 360 // Golden angle for good distribution
+    additionalColors.push(`hsl(${hue}, 70%, 50%)`)
   }
 
-  return [...colors, ...additionalColors];
-};
+  return [...colors, ...additionalColors]
+}
 
 export function HostProbeHistoryChart({
   data,
   hostName,
   height = 400,
 }: HostProbeHistoryChartProps) {
-  const [activeTab, setActiveTab] = useState<'latency' | 'uptime'>('latency');
+  const [activeTab, setActiveTab] = useState<'latency' | 'uptime'>('latency')
 
   // Format time
   const formatTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
+    const date = new Date(timestamp)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
 
   const formatFullTime = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-  };
+    const date = new Date(timestamp)
+    const year = date.getFullYear()
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const day = date.getDate().toString().padStart(2, '0')
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  }
 
   // Transform data for chart
   const transformData = (metric: 'latency' | 'uptime') => {
-    if (data.length === 0) return [];
+    if (data.length === 0) return []
 
     // Get all unique timestamps across all services
-    const allTimestamps = new Set<number>();
+    const allTimestamps = new Set<number>()
     data.forEach((service) => {
-      service.timestamps.forEach((ts) => allTimestamps.add(ts));
-    });
+      service.timestamps.forEach((ts) => allTimestamps.add(ts))
+    })
 
-    const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
+    const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b)
 
     // Create chart data points
     return sortedTimestamps.map((timestamp) => {
-      const point: any = { timestamp };
+      const point: any = { timestamp }
 
       data.forEach((service) => {
-        const index = service.timestamps.indexOf(timestamp);
+        const index = service.timestamps.indexOf(timestamp)
         if (index !== -1) {
-          const value = metric === 'latency'
-            ? service.avg_delays[index]
-            : service.uptimes[index];
-          point[service.service_monitor_id] = value;
+          const value =
+            metric === 'latency'
+              ? service.avg_delays[index]
+              : service.uptimes[index]
+          point[service.service_monitor_id] = value
         }
-      });
+      })
 
-      return point;
-    });
-  };
+      return point
+    })
+  }
 
-  const chartData = transformData(activeTab);
-  const colors = generateColors(data.length);
+  const chartData = transformData(activeTab)
+  const colors = generateColors(data.length)
 
   const formatValue = (value: number) => {
     if (activeTab === 'latency') {
-      return `${value.toFixed(2)}ms`;
+      return `${value.toFixed(2)}ms`
     } else {
-      return `${value.toFixed(1)}%`;
+      return `${value.toFixed(1)}%`
     }
-  };
+  }
 
   if (data.length === 0) {
     return (
@@ -126,18 +128,19 @@ export function HostProbeHistoryChart({
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          Node Probe History {hostName && `- ${hostName}`}
-        </CardTitle>
+        <CardTitle>Node Probe History {hostName && `- ${hostName}`}</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'latency' | 'uptime')}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as 'latency' | 'uptime')}
+        >
           <TabsList className="mb-4">
             <TabsTrigger value="latency">Latency</TabsTrigger>
             <TabsTrigger value="uptime">Uptime</TabsTrigger>
@@ -155,7 +158,11 @@ export function HostProbeHistoryChart({
                 <YAxis
                   tick={{ fontSize: 12 }}
                   tickFormatter={(value) => `${value}ms`}
-                  label={{ value: 'Latency (ms)', angle: -90, position: 'insideLeft' }}
+                  label={{
+                    value: 'Latency (ms)',
+                    angle: -90,
+                    position: 'insideLeft',
+                  }}
                 />
                 <Tooltip
                   contentStyle={{
@@ -195,7 +202,11 @@ export function HostProbeHistoryChart({
                 <YAxis
                   tick={{ fontSize: 12 }}
                   tickFormatter={(value) => `${value}%`}
-                  label={{ value: 'Uptime (%)', angle: -90, position: 'insideLeft' }}
+                  label={{
+                    value: 'Uptime (%)',
+                    angle: -90,
+                    position: 'insideLeft',
+                  }}
                   domain={[0, 100]}
                 />
                 <Tooltip
@@ -226,5 +237,5 @@ export function HostProbeHistoryChart({
         </Tabs>
       </CardContent>
     </Card>
-  );
+  )
 }

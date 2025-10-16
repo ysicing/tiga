@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/websocket"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/pkg/cluster"
 	"github.com/ysicing/tiga/pkg/common"
@@ -42,6 +43,14 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 
 	user := c.MustGet("user").(models.User)
 
+	// Get node terminal image from config or use default
+	nodeTerminalImage := "busybox:latest" // default
+	if cfg, exists := c.Get("config"); exists {
+		if appCfg, ok := cfg.(*config.Config); ok {
+			nodeTerminalImage = appCfg.Kubernetes.NodeTerminalImage
+		}
+	}
+
 	websocket.Handler(func(conn *websocket.Conn) {
 		defer func() {
 			_ = conn.Close()
@@ -64,7 +73,7 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
 
-		nodeAgentName, err := h.createNodeAgent(ctx, cs, nodeName)
+		nodeAgentName, err := h.createNodeAgent(ctx, cs, nodeName, nodeTerminalImage)
 		if err != nil {
 			log.Printf("Failed to create node agent pod: %v", err)
 			h.sendErrorMessage(conn, fmt.Sprintf("Failed to create node agent pod: %v", err))
@@ -92,7 +101,7 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 	}).ServeHTTP(c.Writer, c.Request)
 }
 
-func (h *NodeTerminalHandler) createNodeAgent(ctx context.Context, cs *cluster.ClientSet, nodeName string) (string, error) {
+func (h *NodeTerminalHandler) createNodeAgent(ctx context.Context, cs *cluster.ClientSet, nodeName string, nodeTerminalImage string) (string, error) {
 	truncateNodeName := nodeName
 	if len(nodeName)+len(common.NodeTerminalPodName)+5 > 63 {
 		maxLength := 63 - len(common.NodeTerminalPodName) - 5
@@ -123,7 +132,7 @@ func (h *NodeTerminalHandler) createNodeAgent(ctx context.Context, cs *cluster.C
 			Containers: []corev1.Container{
 				{
 					Name:  common.NodeTerminalPodName,
-					Image: common.NodeTerminalImage,
+					Image: nodeTerminalImage,
 					Command: []string{
 						"nsenter",
 						"--target", "1",

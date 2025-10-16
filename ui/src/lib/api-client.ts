@@ -212,11 +212,7 @@ class ApiClient {
     return response.blob()
   }
 
-  async put<T>(
-    url: string,
-    data?: unknown,
-    options?: RequestInit
-  ): Promise<T> {
+  async put<T>(url: string, data?: unknown, options?: RequestInit): Promise<T> {
     return this.makeRequest<T>(url, {
       ...options,
       method: 'PUT',
@@ -269,18 +265,41 @@ export function buildK8sResourceUrl(path: string): string {
     '/search',
     '/resources/apply',
     '/image/tags',
-    '/pods', '/namespaces', '/nodes', '/services', '/deployments',
-    '/configmaps', '/secrets', '/persistentvolumes', '/persistentvolumeclaims',
-    '/storageclasses', '/statefulsets', '/daemonsets', '/replicasets',
-    '/jobs', '/cronjobs', '/ingresses', '/ingressclasses', '/networkpolicies',
-    '/serviceaccounts', '/roles', '/rolebindings', '/clusterroles',
-    '/clusterrolebindings', '/horizontalpodautoscalers', '/poddisruptionbudgets',
-    '/endpoints', '/events', '/limitranges', '/resourcequotas',
-    '/customresourcedefinitions', '/crds'
+    '/pods',
+    '/namespaces',
+    '/nodes',
+    '/services',
+    '/deployments',
+    '/configmaps',
+    '/secrets',
+    '/persistentvolumes',
+    '/persistentvolumeclaims',
+    '/storageclasses',
+    '/statefulsets',
+    '/daemonsets',
+    '/replicasets',
+    '/jobs',
+    '/cronjobs',
+    '/ingresses',
+    '/ingressclasses',
+    '/networkpolicies',
+    '/serviceaccounts',
+    '/roles',
+    '/rolebindings',
+    '/clusterroles',
+    '/clusterrolebindings',
+    '/horizontalpodautoscalers',
+    '/poddisruptionbudgets',
+    '/endpoints',
+    '/events',
+    '/limitranges',
+    '/resourcequotas',
+    '/customresourcedefinitions',
+    '/crds',
   ]
 
   // Check if path needs cluster prefix
-  const needsClusterPrefix = k8sPaths.some(p => path.startsWith(p))
+  const needsClusterPrefix = k8sPaths.some((p) => path.startsWith(p))
 
   if (needsClusterPrefix) {
     return `/cluster/${currentCluster}${path}`
@@ -311,7 +330,8 @@ export const devopsAPI = {
     list: (params?: Record<string, any>) => apiClient.get('/dbs', params),
     get: (id: string) => apiClient.get(`/dbs/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/dbs', data),
-    update: (id: string, data: Record<string, any>) => apiClient.patch(`/dbs/${id}`, data),
+    update: (id: string, data: Record<string, any>) =>
+      apiClient.patch(`/dbs/${id}`, data),
     delete: (id: string) => apiClient.delete(`/dbs/${id}`),
     updateStatus: (id: string, status: string) =>
       apiClient.patch(`/dbs/${id}/status`, { status }),
@@ -324,20 +344,25 @@ export const devopsAPI = {
   metrics: {
     query: (params: Record<string, any>) => apiClient.get('/metrics', params),
     create: (data: Record<string, any>) => apiClient.post('/metrics', data),
-    aggregate: (params: Record<string, any>) => apiClient.get('/metrics/aggregate', params),
-    timeseries: (params: Record<string, any>) => apiClient.get('/metrics/timeseries', params),
+    aggregate: (params: Record<string, any>) =>
+      apiClient.get('/metrics/aggregate', params),
+    timeseries: (params: Record<string, any>) =>
+      apiClient.get('/metrics/timeseries', params),
   },
 
   // Alerts
   alerts: {
-    listRules: (params?: Record<string, any>) => apiClient.get('/alerts', params),
+    listRules: (params?: Record<string, any>) =>
+      apiClient.get('/alerts', params),
     getRule: (id: string) => apiClient.get(`/alerts/${id}`),
     createRule: (data: Record<string, any>) => apiClient.post('/alerts', data),
-    updateRule: (id: string, data: Record<string, any>) => apiClient.patch(`/alerts/${id}`, data),
+    updateRule: (id: string, data: Record<string, any>) =>
+      apiClient.patch(`/alerts/${id}`, data),
     deleteRule: (id: string) => apiClient.delete(`/alerts/${id}`),
     toggleRule: (id: string, enabled: boolean) =>
       apiClient.patch(`/alerts/${id}/toggle`, { enabled }),
-    listEvents: (params?: Record<string, any>) => apiClient.get('/alerts/events', params),
+    listEvents: (params?: Record<string, any>) =>
+      apiClient.get('/alerts/events', params),
     acknowledgeEvent: (eventId: string, note?: string) =>
       apiClient.post(`/alerts/events/${eventId}/acknowledge`, { note }),
     resolveEvent: (eventId: string, note?: string) =>
@@ -349,9 +374,9 @@ export const devopsAPI = {
     list: (params?: Record<string, any>) => apiClient.get('/audit', params),
     get: (id: string) => apiClient.get(`/audit/${id}`),
     search: (query: string, limit?: number) => {
-      const params = new URLSearchParams({ query });
-      if (limit) params.append('limit', limit.toString());
-      return apiClient.get(`/audit/search?${params.toString()}`);
+      const params = new URLSearchParams({ query })
+      if (limit) params.append('limit', limit.toString())
+      return apiClient.get(`/audit/search?${params.toString()}`)
     },
     statistics: () => apiClient.get('/audit/statistics'),
   },
@@ -361,7 +386,8 @@ export const devopsAPI = {
     list: (params?: Record<string, any>) => apiClient.get('/users', params),
     get: (id: string) => apiClient.get(`/users/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/users', data),
-    update: (id: string, data: Record<string, any>) => apiClient.patch(`/users/${id}`, data),
+    update: (id: string, data: Record<string, any>) =>
+      apiClient.patch(`/users/${id}`, data),
     delete: (id: string) => apiClient.delete(`/users/${id}`),
     assignRoles: (userId: string, roleIds: string[]) =>
       apiClient.post(`/users/${userId}/roles`, { role_ids: roleIds }),
@@ -372,42 +398,75 @@ export const devopsAPI = {
     list: (params?: Record<string, any>) => apiClient.get('/roles', params),
     get: (id: string) => apiClient.get(`/roles/${id}`),
     create: (data: Record<string, any>) => apiClient.post('/roles', data),
-    update: (id: string, data: Record<string, any>) => apiClient.patch(`/roles/${id}`, data),
+    update: (id: string, data: Record<string, any>) =>
+      apiClient.patch(`/roles/${id}`, data),
     delete: (id: string) => apiClient.delete(`/roles/${id}`),
   },
 
   // MinIO
   minio: {
-    listBuckets: (instanceId: string) => apiClient.get(`/minio/instances/${instanceId}/buckets`),
+    listBuckets: (instanceId: string) =>
+      apiClient.get(`/minio/instances/${instanceId}/buckets`),
     createBucket: (instanceId: string, bucketName: string, region?: string) =>
-      apiClient.post(`/minio/instances/${instanceId}/buckets`, { bucket_name: bucketName, region }),
+      apiClient.post(`/minio/instances/${instanceId}/buckets`, {
+        bucket_name: bucketName,
+        region,
+      }),
     deleteBucket: (instanceId: string, bucketName: string) =>
       apiClient.delete(`/minio/instances/${instanceId}/buckets/${bucketName}`),
     listObjects: (instanceId: string, bucketName: string, prefix?: string) => {
-      const params = new URLSearchParams();
-      if (prefix) params.append('prefix', prefix);
-      return apiClient.get(`/minio/instances/${instanceId}/buckets/${bucketName}/objects?${params.toString()}`);
+      const params = new URLSearchParams()
+      if (prefix) params.append('prefix', prefix)
+      return apiClient.get(
+        `/minio/instances/${instanceId}/buckets/${bucketName}/objects?${params.toString()}`
+      )
     },
-    uploadObject: (instanceId: string, bucketName: string, objectName: string, file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('object_name', objectName);
-      return fetch(`${API_BASE_URL}/minio/instances/${instanceId}/buckets/${bucketName}/objects`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
+    uploadObject: (
+      instanceId: string,
+      bucketName: string,
+      objectName: string,
+      file: File
+    ) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('object_name', objectName)
+      return fetch(
+        `${API_BASE_URL}/minio/instances/${instanceId}/buckets/${bucketName}/objects`,
+        {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        }
+      )
     },
-    deleteObject: (instanceId: string, bucketName: string, objectName: string) =>
-      apiClient.delete(`/minio/instances/${instanceId}/buckets/${bucketName}/objects/${objectName}`),
-    getObjectUrl: (instanceId: string, bucketName: string, objectName: string) =>
-      apiClient.get(`/minio/instances/${instanceId}/buckets/${bucketName}/objects/${objectName}/url`),
+    deleteObject: (
+      instanceId: string,
+      bucketName: string,
+      objectName: string
+    ) =>
+      apiClient.delete(
+        `/minio/instances/${instanceId}/buckets/${bucketName}/objects/${objectName}`
+      ),
+    getObjectUrl: (
+      instanceId: string,
+      bucketName: string,
+      objectName: string
+    ) =>
+      apiClient.get(
+        `/minio/instances/${instanceId}/buckets/${bucketName}/objects/${objectName}/url`
+      ),
   },
 
   // Database
   database: {
-    listDatabases: (instanceId: string) => apiClient.get(`/database/instances/${instanceId}/databases`),
-    createDatabase: (instanceId: string, dbName: string, charset?: string, collation?: string) =>
+    listDatabases: (instanceId: string) =>
+      apiClient.get(`/database/instances/${instanceId}/databases`),
+    createDatabase: (
+      instanceId: string,
+      dbName: string,
+      charset?: string,
+      collation?: string
+    ) =>
       apiClient.post(`/database/instances/${instanceId}/databases`, {
         database_name: dbName,
         charset,
@@ -415,8 +474,14 @@ export const devopsAPI = {
       }),
     deleteDatabase: (instanceId: string, dbName: string) =>
       apiClient.delete(`/database/instances/${instanceId}/databases/${dbName}`),
-    listUsers: (instanceId: string) => apiClient.get(`/database/instances/${instanceId}/users`),
-    createUser: (instanceId: string, username: string, password: string, host?: string) =>
+    listUsers: (instanceId: string) =>
+      apiClient.get(`/database/instances/${instanceId}/users`),
+    createUser: (
+      instanceId: string,
+      username: string,
+      password: string,
+      host?: string
+    ) =>
       apiClient.post(`/database/instances/${instanceId}/users`, {
         username,
         password,
@@ -424,11 +489,19 @@ export const devopsAPI = {
       }),
     deleteUser: (instanceId: string, username: string) =>
       apiClient.delete(`/database/instances/${instanceId}/users/${username}`),
-    grantPermissions: (instanceId: string, username: string, database: string, privileges: string[]) =>
-      apiClient.post(`/database/instances/${instanceId}/users/${username}/grant`, {
-        database,
-        privileges,
-      }),
+    grantPermissions: (
+      instanceId: string,
+      username: string,
+      database: string,
+      privileges: string[]
+    ) =>
+      apiClient.post(
+        `/database/instances/${instanceId}/users/${username}/grant`,
+        {
+          database,
+          privileges,
+        }
+      ),
     executeQuery: (instanceId: string, database: string, query: string) =>
       apiClient.post(`/database/instances/${instanceId}/query`, {
         database,
@@ -443,26 +516,32 @@ export const devopsAPI = {
       list: () => apiClient.get('/vms/hosts'),
       get: (id: string) => apiClient.get(`/vms/hosts/${id}`),
       create: (data: Record<string, any>) => apiClient.post('/vms/hosts', data),
-      update: (id: string, data: Record<string, any>) => apiClient.put(`/vms/hosts/${id}`, data),
+      update: (id: string, data: Record<string, any>) =>
+        apiClient.put(`/vms/hosts/${id}`, data),
       delete: (id: string) => apiClient.delete(`/vms/hosts/${id}`),
-      getCurrentState: (id: string) => apiClient.get(`/vms/hosts/${id}/state/current`),
+      getCurrentState: (id: string) =>
+        apiClient.get(`/vms/hosts/${id}/state/current`),
       getHistoryState: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/hosts/${id}/state/history`, params),
       getActivities: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/hosts/${id}/activities`, params),
-      regenerateSecretKey: (id: string) => apiClient.post(`/vms/hosts/${id}/regenerate-key`),
-      getAgentInstallCommand: (id: string) => apiClient.get(`/vms/hosts/${id}/agent-command`),
+      regenerateSecretKey: (id: string) =>
+        apiClient.post(`/vms/hosts/${id}/regenerate-key`),
+      getAgentInstallCommand: (id: string) =>
+        apiClient.get(`/vms/hosts/${id}/agent-command`),
     },
 
     // Service monitors
     serviceMonitors: {
       list: () => apiClient.get('/vms/service-monitors'),
       get: (id: string) => apiClient.get(`/vms/service-monitors/${id}`),
-      create: (data: Record<string, any>) => apiClient.post('/vms/service-monitors', data),
+      create: (data: Record<string, any>) =>
+        apiClient.post('/vms/service-monitors', data),
       update: (id: string, data: Record<string, any>) =>
         apiClient.put(`/vms/service-monitors/${id}`, data),
       delete: (id: string) => apiClient.delete(`/vms/service-monitors/${id}`),
-      trigger: (id: string) => apiClient.post(`/vms/service-monitors/${id}/trigger`, {}),
+      trigger: (id: string) =>
+        apiClient.post(`/vms/service-monitors/${id}/trigger`, {}),
       getAvailability: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/service-monitors/${id}/availability`, params),
     },
@@ -471,7 +550,8 @@ export const devopsAPI = {
     alertRules: {
       list: () => apiClient.get('/alerts/rules'),
       get: (id: string) => apiClient.get(`/alerts/rules/${id}`),
-      create: (data: Record<string, any>) => apiClient.post('/alerts/rules', data),
+      create: (data: Record<string, any>) =>
+        apiClient.post('/alerts/rules', data),
       update: (id: string, data: Record<string, any>) =>
         apiClient.put(`/alerts/rules/${id}`, data),
       delete: (id: string) => apiClient.delete(`/alerts/rules/${id}`),
@@ -481,7 +561,8 @@ export const devopsAPI = {
 
     // Alert events
     alertEvents: {
-      list: (params?: Record<string, any>) => apiClient.get('/alerts/events', params),
+      list: (params?: Record<string, any>) =>
+        apiClient.get('/alerts/events', params),
       get: (id: string) => apiClient.get(`/alerts/events/${id}`),
       acknowledge: (id: string, note?: string) =>
         apiClient.post(`/alerts/events/${id}/acknowledge`, { note }),
@@ -491,14 +572,19 @@ export const devopsAPI = {
 
     // WebSSH
     webssh: {
-      createSession: (data: { host_id: string; username?: string; password?: string }) =>
-        apiClient.post('/vms/webssh/sessions', data),
+      createSession: (data: {
+        host_id: string
+        username?: string
+        password?: string
+      }) => apiClient.post('/vms/webssh/sessions', data),
       listSessions: () => apiClient.get('/vms/webssh/sessions'),
       listAllSessions: (params?: Record<string, any>) =>
         apiClient.get('/vms/webssh/sessions/all', params),
       getSession: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}`),
-      getRecording: (id: string) => apiClient.get(`/vms/webssh/sessions/${id}/playback`),
-      closeSession: (id: string) => apiClient.delete(`/vms/webssh/sessions/${id}`),
+      getRecording: (id: string) =>
+        apiClient.get(`/vms/webssh/sessions/${id}/playback`),
+      closeSession: (id: string) =>
+        apiClient.delete(`/vms/webssh/sessions/${id}`),
     },
   },
-};
+}

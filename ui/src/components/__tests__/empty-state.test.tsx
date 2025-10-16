@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+
 import { EmptyState } from '../empty-state'
 
 describe('EmptyState', () => {
@@ -13,7 +14,9 @@ describe('EmptyState', () => {
     )
 
     expect(screen.getByText('No instances found')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /create instance/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /create instance/i })
+    ).toBeInTheDocument()
   })
 
   it('calls onAction when button is clicked', () => {
@@ -48,11 +51,7 @@ describe('EmptyState', () => {
   })
 
   it('renders without action button when onAction is not provided', () => {
-    render(
-      <EmptyState
-        message="Read-only empty state"
-      />
-    )
+    render(<EmptyState message="Read-only empty state" />)
 
     expect(screen.getByText('Read-only empty state')).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()

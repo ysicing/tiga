@@ -1,26 +1,26 @@
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+} from 'recharts'
 
 interface MetricDataPoint {
-  timestamp: string;
-  value: number;
+  timestamp: string
+  value: number
 }
 
 interface MonitorChartProps {
-  data: MetricDataPoint[];
-  title: string;
-  dataKey?: string;
-  unit?: string;
-  color?: string;
-  height?: number;
+  data: MetricDataPoint[]
+  title: string
+  dataKey?: string
+  unit?: string
+  color?: string
+  height?: number
 }
 
 export function MonitorChart({
@@ -31,8 +31,11 @@ export function MonitorChart({
   color = '#3b82f6',
   height = 300,
 }: MonitorChartProps) {
-  const formatTime = (value: string, format: 'short' | 'full' = 'short'): string => {
-    const date = new Date(value);
+  const formatTime = (
+    value: string,
+    format: 'short' | 'full' = 'short'
+  ): string => {
+    const date = new Date(value)
 
     if (format === 'short') {
       return new Intl.DateTimeFormat('zh-CN', {
@@ -40,7 +43,7 @@ export function MonitorChart({
         minute: '2-digit',
         hour12: false,
         timeZone: 'Asia/Shanghai',
-      }).format(date);
+      }).format(date)
     }
 
     return new Intl.DateTimeFormat('zh-CN', {
@@ -55,8 +58,8 @@ export function MonitorChart({
     })
       .format(date)
       .replace(/\//g, '-')
-      .replace(',', '');
-  };
+      .replace(',', '')
+  }
 
   return (
     <div className="w-full">
@@ -94,5 +97,5 @@ export function MonitorChart({
         </LineChart>
       </ResponsiveContainer>
     </div>
-  );
+  )
 }

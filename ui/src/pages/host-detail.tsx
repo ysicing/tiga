@@ -1,27 +1,34 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from 'react'
 import {
-  ArrowLeft,
-  Database,
-  Server,
   Activity,
   AlertTriangle,
-  Settings,
+  ArrowLeft,
   BarChart3,
-  RefreshCw,
+  Database,
   Play,
+  RefreshCw,
+  Server,
+  Settings,
   Square,
   Trash2,
-} from 'lucide-react';
+} from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function InstanceDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // TODO: Fetch real data from API
   const instance = {
@@ -50,13 +57,13 @@ export default function InstanceDetailPage() {
     },
     createdAt: '2024-01-15T10:30:00Z',
     updatedAt: '2024-03-01T14:20:00Z',
-  };
+  }
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
+    setIsRefreshing(true)
     // TODO: Call API to refresh instance status
-    setTimeout(() => setIsRefreshing(false), 1000);
-  };
+    setTimeout(() => setIsRefreshing(false), 1000)
+  }
 
   const getHealthColor = (health: string) => {
     const colors: Record<string, string> = {
@@ -64,9 +71,9 @@ export default function InstanceDetailPage() {
       unhealthy: 'bg-red-500',
       degraded: 'bg-yellow-500',
       unknown: 'bg-gray-500',
-    };
-    return colors[health] || colors.unknown;
-  };
+    }
+    return colors[health] || colors.unknown
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -77,29 +84,52 @@ export default function InstanceDetailPage() {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              {instance.type === 'mysql' || instance.type === 'postgres' || instance.type === 'redis' ? (
+              {instance.type === 'mysql' ||
+              instance.type === 'postgres' ||
+              instance.type === 'redis' ? (
                 <Database className="h-6 w-6" />
               ) : (
                 <Server className="h-6 w-6" />
               )}
-              <h2 className="text-3xl font-bold tracking-tight">{instance.name}</h2>
+              <h2 className="text-3xl font-bold tracking-tight">
+                {instance.name}
+              </h2>
               <Badge variant="outline">{instance.type.toUpperCase()}</Badge>
               <div className="flex items-center gap-2">
-                <div className={`h-3 w-3 rounded-full ${getHealthColor(instance.health)}`} />
+                <div
+                  className={`h-3 w-3 rounded-full ${getHealthColor(instance.health)}`}
+                />
                 <span className="text-sm capitalize">{instance.health}</span>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{instance.description}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {instance.description}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
           </Button>
           <Button variant="outline" size="icon">
-            {instance.status === 'running' ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {instance.status === 'running' ? (
+              <Square className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
           </Button>
-          <Button variant="outline" size="icon" onClick={() => navigate(`/dbs/${id}/edit`)}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate(`/dbs/instances/${id}`)}
+          >
             <Settings className="h-4 w-4" />
           </Button>
           <Button variant="destructive" size="icon">
@@ -115,7 +145,9 @@ export default function InstanceDetailPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{instance.metrics.cpu_usage}%</div>
+            <div className="text-2xl font-bold">
+              {instance.metrics.cpu_usage}%
+            </div>
             <p className="text-xs text-muted-foreground">Current utilization</p>
           </CardContent>
         </Card>
@@ -125,7 +157,9 @@ export default function InstanceDetailPage() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{instance.metrics.memory_usage}%</div>
+            <div className="text-2xl font-bold">
+              {instance.metrics.memory_usage}%
+            </div>
             <p className="text-xs text-muted-foreground">Of allocated memory</p>
           </CardContent>
         </Card>
@@ -135,7 +169,9 @@ export default function InstanceDetailPage() {
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{instance.metrics.disk_usage}%</div>
+            <div className="text-2xl font-bold">
+              {instance.metrics.disk_usage}%
+            </div>
             <p className="text-xs text-muted-foreground">Storage capacity</p>
           </CardContent>
         </Card>
@@ -145,7 +181,9 @@ export default function InstanceDetailPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{instance.metrics.connections}</div>
+            <div className="text-2xl font-bold">
+              {instance.metrics.connections}
+            </div>
             <p className="text-xs text-muted-foreground">Active connections</p>
           </CardContent>
         </Card>
@@ -169,7 +207,9 @@ export default function InstanceDetailPage() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Instance ID:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{instance.id}</span>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {instance.id}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Type:</span>
@@ -177,19 +217,27 @@ export default function InstanceDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Environment:</span>
-                  <span className="text-sm capitalize">{instance.environment}</span>
+                  <span className="text-sm capitalize">
+                    {instance.environment}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Version:</span>
-                  <span className="text-sm text-muted-foreground">{instance.version}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {instance.version}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Host:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{instance.host}</span>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {instance.host}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Port:</span>
-                  <span className="text-sm text-muted-foreground font-mono">{instance.port}</span>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {instance.port}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Tags:</span>
@@ -212,8 +260,12 @@ export default function InstanceDetailPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Overall Health:</span>
                   <div className="flex items-center gap-2">
-                    <div className={`h-3 w-3 rounded-full ${getHealthColor(instance.health)}`} />
-                    <span className="text-sm capitalize">{instance.health}</span>
+                    <div
+                      className={`h-3 w-3 rounded-full ${getHealthColor(instance.health)}`}
+                    />
+                    <span className="text-sm capitalize">
+                      {instance.health}
+                    </span>
                   </div>
                 </div>
                 <div className="flex justify-between">
@@ -222,11 +274,15 @@ export default function InstanceDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Last Checked:</span>
-                  <span className="text-sm text-muted-foreground">2 minutes ago</span>
+                  <span className="text-sm text-muted-foreground">
+                    2 minutes ago
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Uptime:</span>
-                  <span className="text-sm text-muted-foreground">45 days, 12 hours</span>
+                  <span className="text-sm text-muted-foreground">
+                    45 days, 12 hours
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">Response Time:</span>
@@ -239,7 +295,9 @@ export default function InstanceDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Performance Metrics</CardTitle>
-              <CardDescription>Real-time performance indicators</CardDescription>
+              <CardDescription>
+                Real-time performance indicators
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
@@ -267,7 +325,9 @@ export default function InstanceDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Alert Rules</CardTitle>
-              <CardDescription>Configure alert rules for this instance</CardDescription>
+              <CardDescription>
+                Configure alert rules for this instance
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -276,7 +336,9 @@ export default function InstanceDetailPage() {
                     <AlertTriangle className="h-5 w-5 text-yellow-500" />
                     <div>
                       <p className="font-medium">High CPU Usage</p>
-                      <p className="text-sm text-muted-foreground">Trigger when CPU &gt; 80%</p>
+                      <p className="text-sm text-muted-foreground">
+                        Trigger when CPU &gt; 80%
+                      </p>
                     </div>
                   </div>
                   <Badge>Active</Badge>
@@ -286,7 +348,9 @@ export default function InstanceDetailPage() {
                     <AlertTriangle className="h-5 w-5 text-red-500" />
                     <div>
                       <p className="font-medium">Memory Exhaustion</p>
-                      <p className="text-sm text-muted-foreground">Trigger when memory &gt; 90%</p>
+                      <p className="text-sm text-muted-foreground">
+                        Trigger when memory &gt; 90%
+                      </p>
                     </div>
                   </div>
                   <Badge>Active</Badge>
@@ -300,22 +364,47 @@ export default function InstanceDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Audit Logs</CardTitle>
-              <CardDescription>Activity history for this instance</CardDescription>
+              <CardDescription>
+                Activity history for this instance
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {[
-                  { action: 'Instance Started', user: 'system', time: '2 hours ago' },
-                  { action: 'Configuration Updated', user: 'admin', time: '5 hours ago' },
-                  { action: 'Health Check Passed', user: 'system', time: '1 day ago' },
-                  { action: 'Instance Created', user: 'admin', time: '45 days ago' },
+                  {
+                    action: 'Instance Started',
+                    user: 'system',
+                    time: '2 hours ago',
+                  },
+                  {
+                    action: 'Configuration Updated',
+                    user: 'admin',
+                    time: '5 hours ago',
+                  },
+                  {
+                    action: 'Health Check Passed',
+                    user: 'system',
+                    time: '1 day ago',
+                  },
+                  {
+                    action: 'Instance Created',
+                    user: 'admin',
+                    time: '45 days ago',
+                  },
                 ].map((log, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-3 border rounded">
+                  <div
+                    key={idx}
+                    className="flex justify-between items-center p-3 border rounded"
+                  >
                     <div>
                       <p className="font-medium text-sm">{log.action}</p>
-                      <p className="text-xs text-muted-foreground">by {log.user}</p>
+                      <p className="text-xs text-muted-foreground">
+                        by {log.user}
+                      </p>
                     </div>
-                    <span className="text-sm text-muted-foreground">{log.time}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {log.time}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -332,9 +421,14 @@ export default function InstanceDetailPage() {
             <CardContent>
               <div className="space-y-3">
                 {Object.entries(instance.config).map(([key, value]) => (
-                  <div key={key} className="flex justify-between p-3 border rounded">
+                  <div
+                    key={key}
+                    className="flex justify-between p-3 border rounded"
+                  >
                     <span className="font-medium font-mono text-sm">{key}</span>
-                    <span className="text-sm text-muted-foreground font-mono">{value}</span>
+                    <span className="text-sm text-muted-foreground font-mono">
+                      {value}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -343,5 +437,5 @@ export default function InstanceDetailPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

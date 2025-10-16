@@ -10,8 +10,6 @@ import (
 	"io"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/ysicing/tiga/pkg/common"
 )
 
 func HashPassword(password string) (string, error) {
@@ -23,8 +21,13 @@ func CheckPasswordHash(password, hash string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
-func EncryptString(input string) string {
-	keyHash := sha256.Sum256([]byte(common.GetEncryptKey()))
+// EncryptStringWithKey encrypts a string using the provided encryption key
+func EncryptStringWithKey(input, encryptionKey string) string {
+	if encryptionKey == "" {
+		return fmt.Sprintf("encryption_error: empty encryption key")
+	}
+
+	keyHash := sha256.Sum256([]byte(encryptionKey))
 	block, err := aes.NewCipher(keyHash[:])
 	if err != nil {
 		return fmt.Sprintf("encryption_error: %v", err)
@@ -42,8 +45,13 @@ func EncryptString(input string) string {
 	return base64.StdEncoding.EncodeToString(ciphertext)
 }
 
-func DecryptString(encrypted string) (string, error) {
-	keyHash := sha256.Sum256([]byte(common.GetEncryptKey()))
+// DecryptStringWithKey decrypts a string using the provided encryption key
+func DecryptStringWithKey(encrypted, encryptionKey string) (string, error) {
+	if encryptionKey == "" {
+		return "", fmt.Errorf("empty encryption key")
+	}
+
+	keyHash := sha256.Sum256([]byte(encryptionKey))
 	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode base64: %w", err)

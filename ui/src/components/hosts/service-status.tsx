@@ -1,13 +1,14 @@
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ServiceMonitor } from '@/stores/host-store';
-import { CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ServiceMonitor } from '@/stores/host-store'
+import { CheckCircle2, Clock, XCircle } from 'lucide-react'
+
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface ServiceStatusProps {
-  monitor: ServiceMonitor;
-  lastProbeSuccess?: boolean;
-  lastProbeTime?: string;
-  uptime?: number; // Percentage 0-100
+  monitor: ServiceMonitor
+  lastProbeSuccess?: boolean
+  lastProbeTime?: string
+  uptime?: number // Percentage 0-100
 }
 
 export function ServiceStatus({
@@ -18,25 +19,25 @@ export function ServiceStatus({
 }: ServiceStatusProps) {
   const getStatusIcon = () => {
     if (lastProbeSuccess === undefined) {
-      return <Clock className="h-5 w-5 text-yellow-500" />;
+      return <Clock className="h-5 w-5 text-yellow-500" />
     }
     return lastProbeSuccess ? (
       <CheckCircle2 className="h-5 w-5 text-green-500" />
     ) : (
       <XCircle className="h-5 w-5 text-red-500" />
-    );
-  };
+    )
+  }
 
   const getStatusText = () => {
-    if (lastProbeSuccess === undefined) return '等待探测';
-    return lastProbeSuccess ? '正常' : '异常';
-  };
+    if (lastProbeSuccess === undefined) return '等待探测'
+    return lastProbeSuccess ? '正常' : '异常'
+  }
 
   const getUptimeColor = () => {
-    if (uptime >= 99) return 'text-green-600';
-    if (uptime >= 95) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+    if (uptime >= 99) return 'text-green-600'
+    if (uptime >= 95) return 'text-yellow-600'
+    return 'text-red-600'
+  }
 
   return (
     <Card>
@@ -87,5 +88,5 @@ export function ServiceStatus({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

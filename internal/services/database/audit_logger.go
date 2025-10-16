@@ -9,20 +9,25 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/models"
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 )
 
 type contextKey string
 
 const contextKeyClientIP contextKey = "client_ip"
 
+// AuditLogRepository defines the interface for audit log persistence.
+type AuditLogRepository interface {
+	Create(ctx context.Context, log *models.DatabaseAuditLog) error
+	List(ctx context.Context, page, pageSize int) ([]*models.DatabaseAuditLog, int64, error)
+}
+
 // AuditLogger records database management actions.
 type AuditLogger struct {
-	repo *dbrepo.AuditLogRepository
+	repo AuditLogRepository
 }
 
 // NewAuditLogger constructs an AuditLogger.
-func NewAuditLogger(repo *dbrepo.AuditLogRepository) *AuditLogger {
+func NewAuditLogger(repo AuditLogRepository) *AuditLogger {
 	return &AuditLogger{repo: repo}
 }
 

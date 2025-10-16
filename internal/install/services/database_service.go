@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/install/models"
 
+	_ "github.com/glebarez/go-sqlite"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "github.com/glebarez/go-sqlite"
 
 	mainmodels "github.com/ysicing/tiga/internal/models"
 )
@@ -45,7 +45,7 @@ func (s *DatabaseService) TestConnection(config models.DatabaseConfig) error {
 	case "postgresql":
 		sqlDB, err = sql.Open("postgres", dsn)
 	case "sqlite":
-		sqlDB, err = sql.Open("sqlite3", dsn)
+		sqlDB, err = sql.Open("sqlite", dsn)
 	default:
 		return fmt.Errorf("unsupported database type: %s", config.Type)
 	}

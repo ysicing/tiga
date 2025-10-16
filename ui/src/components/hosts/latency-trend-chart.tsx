@@ -1,27 +1,28 @@
+import { ServiceProbeResult } from '@/services/service-monitor'
 import {
-  LineChart,
+  CartesianGrid,
   Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ServiceProbeResult } from '@/services/service-monitor';
+} from 'recharts'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface LatencyTrendChartProps {
-  data: ServiceProbeResult[];
-  title?: string;
-  height?: number;
-  threshold?: number; // Warning threshold in ms
+  data: ServiceProbeResult[]
+  title?: string
+  height?: number
+  threshold?: number // Warning threshold in ms
 }
 
 interface ChartDataPoint {
-  timestamp: string;
-  latency: number;
-  success: boolean;
+  timestamp: string
+  latency: number
+  success: boolean
 }
 
 export function LatencyTrendChart({
@@ -35,42 +36,42 @@ export function LatencyTrendChart({
     timestamp: result.timestamp,
     latency: result.latency,
     success: result.success,
-  }));
+  }))
 
   // Format time
   const formatTime = (value: string): string => {
-    const date = new Date(value);
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  };
+    const date = new Date(value)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${hours}:${minutes}`
+  }
 
   const formatFullTime = (value: string): string => {
-    const date = new Date(value);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-  };
+    const date = new Date(value)
+    const year = date.getFullYear()
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const day = date.getDate().toString().padStart(2, '0')
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  }
 
   const formatLatency = (value: number): string => {
-    return `${value.toFixed(2)}ms`;
-  };
+    return `${value.toFixed(2)}ms`
+  }
 
   // Calculate statistics
   const stats = chartData.reduce(
     (acc, point) => {
       if (point.success) {
-        acc.successCount++;
-        acc.totalLatency += point.latency;
-        acc.minLatency = Math.min(acc.minLatency, point.latency);
-        acc.maxLatency = Math.max(acc.maxLatency, point.latency);
+        acc.successCount++
+        acc.totalLatency += point.latency
+        acc.minLatency = Math.min(acc.minLatency, point.latency)
+        acc.maxLatency = Math.max(acc.maxLatency, point.latency)
       } else {
-        acc.failureCount++;
+        acc.failureCount++
       }
-      return acc;
+      return acc
     },
     {
       successCount: 0,
@@ -79,12 +80,12 @@ export function LatencyTrendChart({
       minLatency: Infinity,
       maxLatency: 0,
     }
-  );
+  )
 
-  const avgLatency = stats.successCount > 0 ? stats.totalLatency / stats.successCount : 0;
-  const uptimePercentage = chartData.length > 0
-    ? (stats.successCount / chartData.length) * 100
-    : 0;
+  const avgLatency =
+    stats.successCount > 0 ? stats.totalLatency / stats.successCount : 0
+  const uptimePercentage =
+    chartData.length > 0 ? (stats.successCount / chartData.length) * 100 : 0
 
   if (chartData.length === 0) {
     return (
@@ -98,7 +99,7 @@ export function LatencyTrendChart({
           </div>
         </CardContent>
       </Card>
-    );
+    )
   }
 
   return (
@@ -108,16 +109,31 @@ export function LatencyTrendChart({
           <span>{title}</span>
           <div className="flex gap-4 text-sm font-normal">
             <span className="text-muted-foreground">
-              Avg: <span className="font-medium text-foreground">{avgLatency.toFixed(2)}ms</span>
+              Avg:{' '}
+              <span className="font-medium text-foreground">
+                {avgLatency.toFixed(2)}ms
+              </span>
             </span>
             <span className="text-muted-foreground">
-              Min: <span className="font-medium text-foreground">{stats.minLatency === Infinity ? '-' : stats.minLatency.toFixed(2)}ms</span>
+              Min:{' '}
+              <span className="font-medium text-foreground">
+                {stats.minLatency === Infinity
+                  ? '-'
+                  : stats.minLatency.toFixed(2)}
+                ms
+              </span>
             </span>
             <span className="text-muted-foreground">
-              Max: <span className="font-medium text-foreground">{stats.maxLatency.toFixed(2)}ms</span>
+              Max:{' '}
+              <span className="font-medium text-foreground">
+                {stats.maxLatency.toFixed(2)}ms
+              </span>
             </span>
             <span className="text-muted-foreground">
-              Uptime: <span className="font-medium text-foreground">{uptimePercentage.toFixed(1)}%</span>
+              Uptime:{' '}
+              <span className="font-medium text-foreground">
+                {uptimePercentage.toFixed(1)}%
+              </span>
             </span>
           </div>
         </CardTitle>
@@ -134,7 +150,11 @@ export function LatencyTrendChart({
             <YAxis
               tick={{ fontSize: 12 }}
               tickFormatter={formatLatency}
-              label={{ value: 'Latency (ms)', angle: -90, position: 'insideLeft' }}
+              label={{
+                value: 'Latency (ms)',
+                angle: -90,
+                position: 'insideLeft',
+              }}
             />
             <Tooltip
               contentStyle={{
@@ -144,15 +164,17 @@ export function LatencyTrendChart({
               }}
               labelFormatter={formatFullTime}
               formatter={(value: number, _name: string, props: any) => {
-                const status = props.payload.success ? 'Success' : 'Failed';
-                const statusColor = props.payload.success ? 'text-green-600' : 'text-red-600';
+                const status = props.payload.success ? 'Success' : 'Failed'
+                const statusColor = props.payload.success
+                  ? 'text-green-600'
+                  : 'text-red-600'
                 return [
                   <div key="tooltip">
                     <div>{formatLatency(value)}</div>
                     <div className={`text-xs ${statusColor}`}>{status}</div>
                   </div>,
                   'Latency',
-                ];
+                ]
               }}
             />
             {threshold && (
@@ -174,8 +196,10 @@ export function LatencyTrendChart({
               stroke="hsl(var(--primary))"
               strokeWidth={2}
               dot={(props: any) => {
-                const { cx, cy, payload } = props;
-                const color = payload.success ? 'hsl(var(--primary))' : 'hsl(var(--destructive))';
+                const { cx, cy, payload } = props
+                const color = payload.success
+                  ? 'hsl(var(--primary))'
+                  : 'hsl(var(--destructive))'
                 return (
                   <circle
                     cx={cx}
@@ -185,7 +209,7 @@ export function LatencyTrendChart({
                     stroke="white"
                     strokeWidth={1}
                   />
-                );
+                )
               }}
               connectNulls
             />
@@ -193,5 +217,5 @@ export function LatencyTrendChart({
         </ResponsiveContainer>
       </CardContent>
     </Card>
-  );
+  )
 }

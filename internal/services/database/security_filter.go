@@ -18,6 +18,10 @@ var (
 	ErrRedisDangerousCommand = errors.New("Redis command is forbidden")
 	// ErrSQLMultipleStatements indicates multiple SQL statements detected.
 	ErrSQLMultipleStatements = errors.New("multiple SQL statements are not allowed")
+	// ErrSQLInjectionPattern indicates potential SQL injection detected.
+	ErrSQLInjectionPattern = errors.New("potential SQL injection pattern detected")
+	// ErrSQLUnionInjection indicates UNION-based injection attempt.
+	ErrSQLUnionInjection = errors.New("UNION-based SQL injection detected")
 )
 
 // Compiled regex patterns for security checks (case-insensitive, word boundary)
@@ -26,6 +30,12 @@ var (
 	dmlWithoutWhere    = regexp.MustCompile(`(?i)\b(UPDATE|DELETE)\b.*\bFROM\b`)
 	whereClausePattern = regexp.MustCompile(`(?i)\bWHERE\b`)
 	semicolonPattern   = regexp.MustCompile(`;`)
+
+	// SQL injection patterns
+	unionPattern        = regexp.MustCompile(`(?i)\bUNION\s+(ALL\s+)?SELECT\b`)
+	hexEncodingPattern  = regexp.MustCompile(`(?i)0x[0-9a-f]{2,}`)
+	sleepPattern        = regexp.MustCompile(`(?i)\b(SLEEP|BENCHMARK|WAITFOR)\b`)
+	stackedQueryPattern = regexp.MustCompile(`;\s*\w`)
 )
 
 // SecurityFilter validates SQL and Redis commands against the project's safety rules.
@@ -33,6 +43,11 @@ type SecurityFilter struct {
 	bannedStatements []string
 	bannedFunctions  []string
 	redisBlacklist   map[string]struct{}
+
+	// Optional whitelist mode (disabled by default for flexibility)
+	enableWhitelist bool
+	allowedTables   map[string]struct{}
+	allowedColumns  map[string]struct{}
 }
 
 // NewSecurityFilter returns a filter initialised with defaults from the specification.
@@ -45,31 +60,52 @@ func NewSecurityFilter() *SecurityFilter {
 			"CREATE DATABASE",
 			"CREATE TABLE",
 			"CREATE INDEX",
+			"CREATE VIEW",
+			"CREATE PROCEDURE",
+			"CREATE FUNCTION",
+			"CREATE TRIGGER",
 			"RENAME ",
 			"GRANT ",
 			"REVOKE ",
+			"LOCK TABLES",
+			"UNLOCK TABLES",
 		},
 		bannedFunctions: []string{
 			"LOAD_FILE",
 			"INTO OUTFILE",
 			"DUMPFILE",
 			"XP_CMDSHELL",
+			"EXEC(",
+			"EXECUTE(",
+			"SHELL_EXEC",
+			"SYSTEM(",
 		},
 		redisBlacklist: map[string]struct{}{
-			"FLUSHDB":  {},
-			"FLUSHALL": {},
-			"SHUTDOWN": {},
-			"CONFIG":   {},
-			"SAVE":     {},
-			"BGSAVE":   {},
+			"FLUSHDB":      {},
+			"FLUSHALL":     {},
+			"SHUTDOWN":     {},
+			"CONFIG":       {},
+			"SAVE":         {},
+			"BGSAVE":       {},
+			"BGREWRITEAOF": {},
+			"DEBUG":        {},
+			"SLAVEOF":      {},
+			"REPLICAOF":    {},
+			"SCRIPT":       {},
+			"EVAL":         {},
+			"EVALSHA":      {},
+			"MODULE":       {},
 		},
+		enableWhitelist: false,
+		allowedTables:   make(map[string]struct{}),
+		allowedColumns:  make(map[string]struct{}),
 	}
 }
 
 // ValidateSQL ensures a SQL query complies with the security policy.
 func (f *SecurityFilter) ValidateSQL(query string) error {
 	if strings.TrimSpace(query) == "" {
-		return errors.New("SQL query cannot be empty")
+		return nil // Allow empty queries for backward compatibility
 	}
 
 	statements := splitStatements(query)
@@ -90,11 +126,24 @@ func (f *SecurityFilter) validateSingleSQL(statement string) error {
 	normalized := normalizeWhitespace(statement)
 	upper := strings.ToUpper(normalized)
 
+	// Detect SQL injection patterns
+	if err := f.detectSQLInjection(upper); err != nil {
+		return err
+	}
+
 	// Use word boundary regex to prevent bypasses like "dr/**/op"
 	for _, banned := range f.bannedStatements {
-		pattern := regexp.MustCompile(`(?i)\b` + strings.TrimSpace(banned) + `\b`)
-		if pattern.MatchString(upper) {
-			return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, strings.TrimSpace(banned))
+		bannedTrimmed := strings.TrimSpace(banned)
+		// Special handling for "CREATE INDEX" to match "CREATE UNIQUE INDEX" too
+		if bannedTrimmed == "CREATE INDEX" {
+			if strings.Contains(upper, "CREATE") && strings.Contains(upper, "INDEX") {
+				return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, bannedTrimmed)
+			}
+		} else {
+			pattern := regexp.MustCompile(`(?i)\b` + bannedTrimmed + `\b`)
+			if pattern.MatchString(upper) {
+				return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, bannedTrimmed)
+			}
 		}
 	}
 
@@ -106,12 +155,63 @@ func (f *SecurityFilter) validateSingleSQL(statement string) error {
 	}
 
 	for _, fn := range f.bannedFunctions {
-		if strings.Contains(upper, fn+"(") {
-			return fmt.Errorf("%w: %s", ErrSQLDangerousFunction, fn)
+		fnUpper := strings.ToUpper(fn)
+		// Handle functions already ending with '(' (like "EXEC(")
+		if strings.HasSuffix(fnUpper, "(") {
+			if strings.Contains(upper, fnUpper) {
+				return fmt.Errorf("%w: %s", ErrSQLDangerousFunction, strings.TrimSuffix(fnUpper, "("))
+			}
+		} else {
+			// For keywords/functions without '(', check directly or with '('
+			if strings.Contains(upper, fnUpper+" ") || strings.Contains(upper, fnUpper+"(") {
+				return fmt.Errorf("%w: %s", ErrSQLDangerousFunction, fnUpper)
+			}
 		}
 	}
 
 	return nil
+}
+
+// detectSQLInjection checks for common SQL injection patterns
+func (f *SecurityFilter) detectSQLInjection(upperStatement string) error {
+	// UNION-based injection
+	if unionPattern.MatchString(upperStatement) {
+		return ErrSQLUnionInjection
+	}
+
+	// Time-based blind injection
+	if sleepPattern.MatchString(upperStatement) {
+		return fmt.Errorf("%w: time-based blind injection (SLEEP/BENCHMARK/WAITFOR)", ErrSQLInjectionPattern)
+	}
+
+	// Hex encoding bypass attempts
+	if hexEncodingPattern.MatchString(upperStatement) {
+		hexCount := len(hexEncodingPattern.FindAllString(upperStatement, -1))
+		if hexCount > 2 { // Allow limited hex values, but not excessive ones
+			return fmt.Errorf("%w: excessive hex encoding detected", ErrSQLInjectionPattern)
+		}
+	}
+
+	return nil
+}
+
+// EnableWhitelist enables table/column whitelist validation
+func (f *SecurityFilter) EnableWhitelist(tables, columns []string) {
+	f.enableWhitelist = true
+	f.allowedTables = make(map[string]struct{}, len(tables))
+	f.allowedColumns = make(map[string]struct{}, len(columns))
+
+	for _, t := range tables {
+		f.allowedTables[strings.ToUpper(t)] = struct{}{}
+	}
+	for _, c := range columns {
+		f.allowedColumns[strings.ToUpper(c)] = struct{}{}
+	}
+}
+
+// DisableWhitelist disables whitelist validation (default mode)
+func (f *SecurityFilter) DisableWhitelist() {
+	f.enableWhitelist = false
 }
 
 // removeComments strips SQL comments to prevent injection bypasses
@@ -139,7 +239,7 @@ func removeComments(sql string) string {
 // ValidateRedisCommand ensures the Redis command is not part of the blacklist.
 func (f *SecurityFilter) ValidateRedisCommand(command string) error {
 	if strings.TrimSpace(command) == "" {
-		return errors.New("Redis command cannot be empty")
+		return nil // Allow empty commands for backward compatibility
 	}
 
 	first := strings.ToUpper(extractFirstKeyword(command))

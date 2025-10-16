@@ -1,162 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Save } from 'lucide-react';
-import { devopsAPI } from '@/lib/api-client';
+import React, { useEffect, useState } from 'react'
+import { ArrowLeft, Save } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+
+import { devopsAPI } from '@/lib/api-client'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 interface RoleFormData {
-  name: string;
-  description: string;
-  permissions: string[];
+  name: string
+  description: string
+  permissions: string[]
 }
 
 const AVAILABLE_PERMISSIONS = [
-  { category: 'Instances', permissions: [
-    { id: 'instances:read', label: 'View Instances' },
-    { id: 'instances:create', label: 'Create Instances' },
-    { id: 'instances:update', label: 'Update Instances' },
-    { id: 'instances:delete', label: 'Delete Instances' },
-  ]},
-  { category: 'Metrics', permissions: [
-    { id: 'metrics:read', label: 'View Metrics' },
-    { id: 'metrics:create', label: 'Create Metrics' },
-  ]},
-  { category: 'Alerts', permissions: [
-    { id: 'alerts:read', label: 'View Alerts' },
-    { id: 'alerts:create', label: 'Create Alert Rules' },
-    { id: 'alerts:update', label: 'Update Alert Rules' },
-    { id: 'alerts:delete', label: 'Delete Alert Rules' },
-    { id: 'alerts:acknowledge', label: 'Acknowledge Alerts' },
-    { id: 'alerts:resolve', label: 'Resolve Alerts' },
-  ]},
-  { category: 'Users', permissions: [
-    { id: 'users:read', label: 'View Users' },
-    { id: 'users:create', label: 'Create Users' },
-    { id: 'users:update', label: 'Update Users' },
-    { id: 'users:delete', label: 'Delete Users' },
-  ]},
-  { category: 'Roles', permissions: [
-    { id: 'roles:read', label: 'View Roles' },
-    { id: 'roles:create', label: 'Create Roles' },
-    { id: 'roles:update', label: 'Update Roles' },
-    { id: 'roles:delete', label: 'Delete Roles' },
-  ]},
-  { category: 'Audit', permissions: [
-    { id: 'audit:read', label: 'View Audit Logs' },
-  ]},
-];
+  {
+    category: 'Instances',
+    permissions: [
+      { id: 'instances:read', label: 'View Instances' },
+      { id: 'instances:create', label: 'Create Instances' },
+      { id: 'instances:update', label: 'Update Instances' },
+      { id: 'instances:delete', label: 'Delete Instances' },
+    ],
+  },
+  {
+    category: 'Metrics',
+    permissions: [
+      { id: 'metrics:read', label: 'View Metrics' },
+      { id: 'metrics:create', label: 'Create Metrics' },
+    ],
+  },
+  {
+    category: 'Alerts',
+    permissions: [
+      { id: 'alerts:read', label: 'View Alerts' },
+      { id: 'alerts:create', label: 'Create Alert Rules' },
+      { id: 'alerts:update', label: 'Update Alert Rules' },
+      { id: 'alerts:delete', label: 'Delete Alert Rules' },
+      { id: 'alerts:acknowledge', label: 'Acknowledge Alerts' },
+      { id: 'alerts:resolve', label: 'Resolve Alerts' },
+    ],
+  },
+  {
+    category: 'Users',
+    permissions: [
+      { id: 'users:read', label: 'View Users' },
+      { id: 'users:create', label: 'Create Users' },
+      { id: 'users:update', label: 'Update Users' },
+      { id: 'users:delete', label: 'Delete Users' },
+    ],
+  },
+  {
+    category: 'Roles',
+    permissions: [
+      { id: 'roles:read', label: 'View Roles' },
+      { id: 'roles:create', label: 'Create Roles' },
+      { id: 'roles:update', label: 'Update Roles' },
+      { id: 'roles:delete', label: 'Delete Roles' },
+    ],
+  },
+  {
+    category: 'Audit',
+    permissions: [{ id: 'audit:read', label: 'View Audit Logs' }],
+  },
+]
 
 export default function RoleFormPage() {
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const isEdit = !!id;
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const isEdit = !!id
 
   const [formData, setFormData] = useState<RoleFormData>({
     name: '',
     description: '',
     permissions: [],
-  });
+  })
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (isEdit) {
       const fetchRole = async () => {
         try {
-          const response: any = await devopsAPI.roles.get(id!);
-          const role = response.data;
+          const response: any = await devopsAPI.roles.get(id!)
+          const role = response.data
           setFormData({
             name: role.name,
             description: role.description || '',
             permissions: role.permissions || [],
-          });
+          })
         } catch (error) {
-          console.error('Failed to fetch role:', error);
+          console.error('Failed to fetch role:', error)
         }
-      };
+      }
 
-      fetchRole();
+      fetchRole()
     }
-  }, [id, isEdit]);
+  }, [id, isEdit])
 
   const handlePermissionToggle = (permissionId: string) => {
     const newPermissions = formData.permissions.includes(permissionId)
       ? formData.permissions.filter((p) => p !== permissionId)
-      : [...formData.permissions, permissionId];
+      : [...formData.permissions, permissionId]
 
-    setFormData({ ...formData, permissions: newPermissions });
-  };
+    setFormData({ ...formData, permissions: newPermissions })
+  }
 
-  const handleSelectAll = (categoryPermissions: { id: string; label: string }[]) => {
-    const categoryIds = categoryPermissions.map((p) => p.id);
-    const allSelected = categoryIds.every((id) => formData.permissions.includes(id));
+  const handleSelectAll = (
+    categoryPermissions: { id: string; label: string }[]
+  ) => {
+    const categoryIds = categoryPermissions.map((p) => p.id)
+    const allSelected = categoryIds.every((id) =>
+      formData.permissions.includes(id)
+    )
 
     if (allSelected) {
       // Deselect all in this category
       setFormData({
         ...formData,
-        permissions: formData.permissions.filter((p) => !categoryIds.includes(p)),
-      });
+        permissions: formData.permissions.filter(
+          (p) => !categoryIds.includes(p)
+        ),
+      })
     } else {
       // Select all in this category
-      const newPermissions = [...new Set([...formData.permissions, ...categoryIds])];
-      setFormData({ ...formData, permissions: newPermissions });
+      const newPermissions = [
+        ...new Set([...formData.permissions, ...categoryIds]),
+      ]
+      setFormData({ ...formData, permissions: newPermissions })
     }
-  };
+  }
 
   const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Role name is required';
+      newErrors.name = 'Role name is required'
     } else if (formData.name.length < 3) {
-      newErrors.name = 'Role name must be at least 3 characters';
+      newErrors.name = 'Role name must be at least 3 characters'
     }
 
     if (formData.permissions.length === 0) {
-      newErrors.permissions = 'At least one permission must be selected';
+      newErrors.permissions = 'At least one permission must be selected'
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (!validateForm()) {
-      return;
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
 
     try {
       const data = {
         name: formData.name,
         description: formData.description,
         permissions: formData.permissions,
-      };
-
-      if (isEdit) {
-        await devopsAPI.roles.update(id!, data);
-      } else {
-        await devopsAPI.roles.create(data);
       }
 
-      navigate('/roles');
+      if (isEdit) {
+        await devopsAPI.roles.update(id!, data)
+      } else {
+        await devopsAPI.roles.create(data)
+      }
+
+      navigate('/roles')
     } catch (error: any) {
-      console.error('Failed to save role:', error);
-      setErrors({ submit: error.message || 'Failed to save role' });
+      console.error('Failed to save role:', error)
+      setErrors({ submit: error.message || 'Failed to save role' })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -182,7 +213,9 @@ export default function RoleFormPage() {
                 id="name"
                 placeholder="developer"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className={errors.name ? 'border-red-500' : ''}
               />
               {errors.name && (
@@ -196,7 +229,9 @@ export default function RoleFormPage() {
                 id="description"
                 placeholder="Describe the purpose and scope of this role"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 rows={3}
               />
             </div>
@@ -210,8 +245,10 @@ export default function RoleFormPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {AVAILABLE_PERMISSIONS.map((category) => {
-              const categoryIds = category.permissions.map((p) => p.id);
-              const allSelected = categoryIds.every((id) => formData.permissions.includes(id));
+              const categoryIds = category.permissions.map((p) => p.id)
+              const allSelected = categoryIds.every((id) =>
+                formData.permissions.includes(id)
+              )
 
               return (
                 <div key={category.category} className="space-y-3">
@@ -228,11 +265,16 @@ export default function RoleFormPage() {
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {category.permissions.map((permission) => (
-                      <div key={permission.id} className="flex items-center space-x-2">
+                      <div
+                        key={permission.id}
+                        className="flex items-center space-x-2"
+                      >
                         <Checkbox
                           id={permission.id}
                           checked={formData.permissions.includes(permission.id)}
-                          onCheckedChange={() => handlePermissionToggle(permission.id)}
+                          onCheckedChange={() =>
+                            handlePermissionToggle(permission.id)
+                          }
                         />
                         <label
                           htmlFor={permission.id}
@@ -244,7 +286,7 @@ export default function RoleFormPage() {
                     ))}
                   </div>
                 </div>
-              );
+              )
             })}
             {errors.permissions && (
               <p className="text-sm text-red-500">{errors.permissions}</p>
@@ -259,15 +301,23 @@ export default function RoleFormPage() {
         )}
 
         <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" onClick={() => navigate('/roles')}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate('/roles')}
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             <Save className="mr-2 h-4 w-4" />
-            {isSubmitting ? 'Saving...' : isEdit ? 'Update Role' : 'Create Role'}
+            {isSubmitting
+              ? 'Saving...'
+              : isEdit
+                ? 'Update Role'
+                : 'Create Role'}
           </Button>
         </div>
       </form>
     </div>
-  );
+  )
 }

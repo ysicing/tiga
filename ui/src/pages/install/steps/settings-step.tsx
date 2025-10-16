@@ -1,6 +1,13 @@
-import { useForm } from 'react-hook-form'
+import { useInstall } from '@/contexts/install-context'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+
+import {
+  getDefaultSystemSettings,
+  SystemSettingsSchema,
+  type SystemSettings,
+} from '@/lib/schemas/install-schemas'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -20,8 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { SystemSettingsSchema, type SystemSettings, getDefaultSystemSettings } from '@/lib/schemas/install-schemas'
-import { useInstall } from '@/contexts/install-context'
 
 export function SettingsStep() {
   const { t } = useTranslation()
@@ -41,7 +46,9 @@ export function SettingsStep() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{t('install.settings.title')}</h2>
-        <p className="text-muted-foreground">{t('install.settings.description')}</p>
+        <p className="text-muted-foreground">
+          {t('install.settings.description')}
+        </p>
       </div>
 
       <Form {...form}>
@@ -56,7 +63,9 @@ export function SettingsStep() {
                 <FormControl>
                   <Input placeholder="Tiga Dashboard" {...field} />
                 </FormControl>
-                <FormDescription>{t('install.settings.appNameHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.settings.appNameHelp')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -70,9 +79,14 @@ export function SettingsStep() {
               <FormItem>
                 <FormLabel>{t('install.settings.appSubtitle')}</FormLabel>
                 <FormControl>
-                  <Input placeholder="Access your DevOps dashboard" {...field} />
+                  <Input
+                    placeholder="Access your DevOps dashboard"
+                    {...field}
+                  />
                 </FormControl>
-                <FormDescription>{t('install.settings.appSubtitleHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.settings.appSubtitleHelp')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -88,7 +102,9 @@ export function SettingsStep() {
                 <FormControl>
                   <Input placeholder="tiga.example.com" {...field} />
                 </FormControl>
-                <FormDescription>{t('install.settings.domainHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.settings.domainHelp')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -106,10 +122,62 @@ export function SettingsStep() {
                     type="number"
                     placeholder="12306"
                     {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value, 10))
+                    }
                   />
                 </FormControl>
-                <FormDescription>{t('install.settings.httpPortHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.settings.httpPortHelp')}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* gRPC Domain */}
+          <FormField
+            control={form.control}
+            name="grpc_domain"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('install.settings.grpcDomain')}</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="grpc.example.com (可选，默认与 HTTP 域名相同)"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  {t('install.settings.grpcDomainHelp')}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* gRPC Port */}
+          <FormField
+            control={form.control}
+            name="grpc_port"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('install.settings.grpcPort')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="12307"
+                    {...field}
+                    value={field.value || ''}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      field.onChange(val ? parseInt(val, 10) : undefined)
+                    }}
+                  />
+                </FormControl>
+                <FormDescription>
+                  {t('install.settings.grpcPortHelp')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -122,7 +190,10 @@ export function SettingsStep() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t('install.settings.language')}</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
@@ -133,7 +204,9 @@ export function SettingsStep() {
                     <SelectItem value="en-US">English</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>{t('install.settings.languageHelp')}</FormDescription>
+                <FormDescription>
+                  {t('install.settings.languageHelp')}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -152,9 +225,7 @@ export function SettingsStep() {
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel>
-                    {t('install.settings.enableAnalytics')}
-                  </FormLabel>
+                  <FormLabel>{t('install.settings.enableAnalytics')}</FormLabel>
                   <FormDescription>
                     {t('install.settings.enableAnalyticsHelp')}
                   </FormDescription>

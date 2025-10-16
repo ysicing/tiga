@@ -1,167 +1,6 @@
 basePath: /api/v1
 definitions:
-  handlers.AcknowledgeAlertEventRequest:
-    properties:
-      eventID:
-        type: string
-      note:
-        type: string
-    required:
-    - eventID
-    type: object
-  handlers.AssignRoleRequest:
-    properties:
-      role_id:
-        type: string
-      userID:
-        type: string
-    required:
-    - role_id
-    - userID
-    type: object
-  handlers.ChangePasswordRequest:
-    properties:
-      new_password:
-        minLength: 8
-        type: string
-      old_password:
-        type: string
-    required:
-    - new_password
-    - old_password
-    type: object
-  handlers.CreateAlertRuleRequest:
-    properties:
-      description:
-        type: string
-      enabled:
-        type: boolean
-      instance_id:
-        type: string
-      name:
-        type: string
-      notification_channels:
-        items:
-          type: string
-        type: array
-      notification_config:
-        additionalProperties: true
-        type: object
-      rule_config:
-        additionalProperties: true
-        type: object
-      rule_type:
-        enum:
-        - threshold
-        - anomaly
-        - rate
-        type: string
-      severity:
-        enum:
-        - critical
-        - warning
-        - info
-        type: string
-    required:
-    - name
-    - rule_config
-    - rule_type
-    - severity
-    type: object
-  handlers.CreateInstanceRequest:
-    properties:
-      config:
-        additionalProperties: true
-        type: object
-      description:
-        type: string
-      environment:
-        enum:
-        - dev
-        - test
-        - staging
-        - production
-        type: string
-      host:
-        type: string
-      name:
-        type: string
-      port:
-        maximum: 65535
-        minimum: 1
-        type: integer
-      service_type:
-        type: string
-      tags:
-        items:
-          type: string
-        type: array
-      version:
-        type: string
-    required:
-    - host
-    - name
-    - port
-    - service_type
-    type: object
-  handlers.CreateMetricRequest:
-    properties:
-      instance_id:
-        type: string
-      labels:
-        additionalProperties: true
-        type: object
-      metric_name:
-        type: string
-      metric_type:
-        type: string
-      timestamp:
-        description: RFC3339 format, defaults to now
-        type: string
-      value:
-        type: number
-    required:
-    - instance_id
-    - metric_name
-    - metric_type
-    - value
-    type: object
-  handlers.CreateMetricsBatchRequest:
-    properties:
-      metrics:
-        items:
-          $ref: '#/definitions/handlers.CreateMetricRequest'
-        maxItems: 1000
-        minItems: 1
-        type: array
-    required:
-    - metrics
-    type: object
-  handlers.CreateUserRequest:
-    properties:
-      email:
-        type: string
-      full_name:
-        type: string
-      password:
-        minLength: 8
-        type: string
-      status:
-        enum:
-        - active
-        - suspended
-        type: string
-      username:
-        maxLength: 32
-        minLength: 3
-        type: string
-    required:
-    - email
-    - full_name
-    - password
-    - username
-    type: object
-  handlers.ErrorResponse:
+  github_com_ysicing_tiga_internal_api_handlers.ErrorResponse:
     properties:
       details: {}
       error:
@@ -171,80 +10,7 @@ definitions:
       success:
         type: boolean
     type: object
-  handlers.LoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  handlers.ManageTagsRequest:
-    properties:
-      instanceID:
-        type: string
-      tags:
-        items:
-          type: string
-        type: array
-    required:
-    - instanceID
-    - tags
-    type: object
-  handlers.OAuthLoginRequest:
-    properties:
-      code:
-        type: string
-      provider:
-        description: google, github, oidc
-        type: string
-      state:
-        type: string
-    required:
-    - code
-    - provider
-    - state
-    type: object
-  handlers.PaginatedResponse:
-    properties:
-      data: {}
-      pagination:
-        $ref: '#/definitions/handlers.Pagination'
-      success:
-        type: boolean
-    type: object
-  handlers.Pagination:
-    properties:
-      page:
-        type: integer
-      page_size:
-        type: integer
-      total:
-        type: integer
-      total_pages:
-        type: integer
-    type: object
-  handlers.PublicConfigResponse:
-    properties:
-      app_name:
-        type: string
-      app_subtitle:
-        type: string
-      enable_analytics:
-        type: boolean
-      language:
-        type: string
-    type: object
-  handlers.RefreshTokenRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-    - refresh_token
-    type: object
-  handlers.SuccessResponse:
+  github_com_ysicing_tiga_internal_api_handlers.SuccessResponse:
     properties:
       data: {}
       message:
@@ -252,164 +18,7 @@ definitions:
       success:
         type: boolean
     type: object
-  handlers.ToggleAlertRuleRequest:
-    properties:
-      enabled:
-        type: boolean
-      ruleID:
-        type: string
-    required:
-    - enabled
-    - ruleID
-    type: object
-  handlers.UpdateAlertRuleRequest:
-    properties:
-      description:
-        type: string
-      enabled:
-        type: boolean
-      name:
-        type: string
-      notification_channels:
-        items:
-          type: string
-        type: array
-      notification_config:
-        additionalProperties: true
-        type: object
-      rule_config:
-        additionalProperties: true
-        type: object
-      ruleID:
-        type: string
-      severity:
-        enum:
-        - critical
-        - warning
-        - info
-        type: string
-    required:
-    - ruleID
-    type: object
-  handlers.UpdateInstanceHealthRequest:
-    properties:
-      health:
-        enum:
-        - healthy
-        - unhealthy
-        - degraded
-        - unknown
-        type: string
-      health_message:
-        type: string
-      instanceID:
-        type: string
-    required:
-    - health
-    - instanceID
-    type: object
-  handlers.UpdateInstanceRequest:
-    properties:
-      config:
-        additionalProperties: true
-        type: object
-      description:
-        type: string
-      environment:
-        enum:
-        - dev
-        - test
-        - staging
-        - production
-        type: string
-      host:
-        type: string
-      instanceID:
-        type: string
-      name:
-        type: string
-      port:
-        maximum: 65535
-        minimum: 1
-        type: integer
-      tags:
-        items:
-          type: string
-        type: array
-      version:
-        type: string
-    required:
-    - instanceID
-    type: object
-  handlers.UpdateInstanceStatusRequest:
-    properties:
-      instanceID:
-        type: string
-      status:
-        enum:
-        - pending
-        - running
-        - stopped
-        - failed
-        type: string
-    required:
-    - instanceID
-    - status
-    type: object
-  handlers.UpdateSystemConfigRequest:
-    properties:
-      app_name:
-        type: string
-      app_subtitle:
-        type: string
-      enable_analytics:
-        type: boolean
-      language:
-        type: string
-    type: object
-  handlers.UpdateUserRequest:
-    properties:
-      avatar_url:
-        type: string
-      email:
-        type: string
-      full_name:
-        type: string
-      status:
-        enum:
-        - active
-        - suspended
-        type: string
-      userID:
-        type: string
-    required:
-    - userID
-    type: object
-  managers.HealthStatus:
-    properties:
-      details:
-        additionalProperties: true
-        type: object
-      healthy:
-        type: boolean
-      last_check_time:
-        type: string
-      message:
-        type: string
-      response_time_ms:
-        type: integer
-    type: object
-  managers.ServiceMetrics:
-    properties:
-      instance_id:
-        type: string
-      metrics:
-        additionalProperties: true
-        type: object
-      timestamp:
-        type: string
-    type: object
-  models.AlertSeverity:
+  github_com_ysicing_tiga_internal_models.AlertSeverity:
     enum:
     - info
     - warning
@@ -419,7 +28,7 @@ definitions:
     - AlertSeverityInfo
     - AlertSeverityWarning
     - AlertSeverityCritical
-  models.AlertType:
+  github_com_ysicing_tiga_internal_models.AlertType:
     enum:
     - host
     - service
@@ -427,7 +36,7 @@ definitions:
     x-enum-varnames:
     - AlertTypeHost
     - AlertTypeService
-  models.HostInfo:
+  github_com_ysicing_tiga_internal_models.HostInfo:
     properties:
       agent_version:
         description: Agent information
@@ -478,7 +87,7 @@ definitions:
         description: Virtualization type (kvm/docker/none)
         type: string
     type: object
-  models.HostNode:
+  github_com_ysicing_tiga_internal_models.HostNode:
     properties:
       auto_renew:
         description: 是否自动续费
@@ -500,7 +109,7 @@ definitions:
         type: boolean
       host_info:
         allOf:
-        - $ref: '#/definitions/models.HostInfo'
+        - $ref: '#/definitions/github_com_ysicing_tiga_internal_models.HostInfo'
         description: Relationships
       id:
         type: string
@@ -533,7 +142,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  models.MonitorAlertRule:
+  github_com_ysicing_tiga_internal_models.MonitorAlertRule:
     properties:
       condition:
         description: |-
@@ -566,7 +175,7 @@ definitions:
           Example: {"email": ["admin@example.com"], "webhook": "https://hooks.example.com"}
         type: string
       severity:
-        $ref: '#/definitions/models.AlertSeverity'
+        $ref: '#/definitions/github_com_ysicing_tiga_internal_models.AlertSeverity'
       target_id:
         description: HostNode ID or ServiceMonitor ID
         type: string
@@ -574,10 +183,419 @@ definitions:
         type: integer
       type:
         allOf:
-        - $ref: '#/definitions/models.AlertType'
+        - $ref: '#/definitions/github_com_ysicing_tiga_internal_models.AlertType'
         description: host/service
       updated_at:
         type: string
+    type: object
+  github_com_ysicing_tiga_internal_services_managers.HealthStatus:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      healthy:
+        type: boolean
+      last_check_time:
+        type: string
+      message:
+        type: string
+      response_time_ms:
+        type: integer
+    type: object
+  github_com_ysicing_tiga_internal_services_managers.ServiceMetrics:
+    properties:
+      instance_id:
+        type: string
+      metrics:
+        additionalProperties: true
+        type: object
+      timestamp:
+        type: string
+    type: object
+  internal_api_handlers.AcknowledgeAlertEventRequest:
+    properties:
+      eventID:
+        type: string
+      note:
+        type: string
+    required:
+    - eventID
+    type: object
+  internal_api_handlers.AssignRoleRequest:
+    properties:
+      role_id:
+        type: string
+      userID:
+        type: string
+    required:
+    - role_id
+    - userID
+    type: object
+  internal_api_handlers.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  internal_api_handlers.CreateAlertRuleRequest:
+    properties:
+      description:
+        type: string
+      enabled:
+        type: boolean
+      instance_id:
+        type: string
+      name:
+        type: string
+      notification_channels:
+        items:
+          type: string
+        type: array
+      notification_config:
+        additionalProperties: true
+        type: object
+      rule_config:
+        additionalProperties: true
+        type: object
+      rule_type:
+        enum:
+        - threshold
+        - anomaly
+        - rate
+        type: string
+      severity:
+        enum:
+        - critical
+        - warning
+        - info
+        type: string
+    required:
+    - name
+    - rule_config
+    - rule_type
+    - severity
+    type: object
+  internal_api_handlers.CreateInstanceRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      environment:
+        enum:
+        - dev
+        - test
+        - staging
+        - production
+        type: string
+      host:
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      service_type:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - host
+    - name
+    - port
+    - service_type
+    type: object
+  internal_api_handlers.CreateMetricRequest:
+    properties:
+      instance_id:
+        type: string
+      labels:
+        additionalProperties: true
+        type: object
+      metric_name:
+        type: string
+      metric_type:
+        type: string
+      timestamp:
+        description: RFC3339 format, defaults to now
+        type: string
+      value:
+        type: number
+    required:
+    - instance_id
+    - metric_name
+    - metric_type
+    - value
+    type: object
+  internal_api_handlers.CreateMetricsBatchRequest:
+    properties:
+      metrics:
+        items:
+          $ref: '#/definitions/internal_api_handlers.CreateMetricRequest'
+        maxItems: 1000
+        minItems: 1
+        type: array
+    required:
+    - metrics
+    type: object
+  internal_api_handlers.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      status:
+        enum:
+        - active
+        - suspended
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    - username
+    type: object
+  internal_api_handlers.ErrorResponse:
+    properties:
+      details: {}
+      error:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  internal_api_handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  internal_api_handlers.ManageTagsRequest:
+    properties:
+      instanceID:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    required:
+    - instanceID
+    - tags
+    type: object
+  internal_api_handlers.OAuthLoginRequest:
+    properties:
+      code:
+        type: string
+      provider:
+        description: google, github, oidc
+        type: string
+      state:
+        type: string
+    required:
+    - code
+    - provider
+    - state
+    type: object
+  internal_api_handlers.PaginatedResponse:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/internal_api_handlers.Pagination'
+      success:
+        type: boolean
+    type: object
+  internal_api_handlers.Pagination:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  internal_api_handlers.PublicConfigResponse:
+    properties:
+      app_name:
+        type: string
+      app_subtitle:
+        type: string
+      enable_analytics:
+        type: boolean
+      language:
+        type: string
+    type: object
+  internal_api_handlers.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  internal_api_handlers.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  internal_api_handlers.ToggleAlertRuleRequest:
+    properties:
+      enabled:
+        type: boolean
+      ruleID:
+        type: string
+    required:
+    - enabled
+    - ruleID
+    type: object
+  internal_api_handlers.UpdateAlertRuleRequest:
+    properties:
+      description:
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      notification_channels:
+        items:
+          type: string
+        type: array
+      notification_config:
+        additionalProperties: true
+        type: object
+      rule_config:
+        additionalProperties: true
+        type: object
+      ruleID:
+        type: string
+      severity:
+        enum:
+        - critical
+        - warning
+        - info
+        type: string
+    required:
+    - ruleID
+    type: object
+  internal_api_handlers.UpdateInstanceHealthRequest:
+    properties:
+      health:
+        enum:
+        - healthy
+        - unhealthy
+        - degraded
+        - unknown
+        type: string
+      health_message:
+        type: string
+      instanceID:
+        type: string
+    required:
+    - health
+    - instanceID
+    type: object
+  internal_api_handlers.UpdateInstanceRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      environment:
+        enum:
+        - dev
+        - test
+        - staging
+        - production
+        type: string
+      host:
+        type: string
+      instanceID:
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      tags:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - instanceID
+    type: object
+  internal_api_handlers.UpdateInstanceStatusRequest:
+    properties:
+      instanceID:
+        type: string
+      status:
+        enum:
+        - pending
+        - running
+        - stopped
+        - failed
+        type: string
+    required:
+    - instanceID
+    - status
+    type: object
+  internal_api_handlers.UpdateSystemConfigRequest:
+    properties:
+      app_name:
+        type: string
+      app_subtitle:
+        type: string
+      enable_analytics:
+        type: boolean
+      language:
+        type: string
+    type: object
+  internal_api_handlers.UpdateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      status:
+        enum:
+        - active
+        - suspended
+        type: string
+      userID:
+        type: string
+    required:
+    - userID
     type: object
 host: localhost:8080
 info:
@@ -613,24 +631,24 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.LoginRequest'
+          $ref: '#/definitions/internal_api_handlers.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "204":
           description: No Content - Login successful (cookie set)
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       summary: User login
       tags:
       - auth
@@ -645,11 +663,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: User logout
@@ -680,22 +698,22 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/handlers.RefreshTokenRequest'
+          $ref: '#/definitions/internal_api_handlers.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       summary: Refresh access token
       tags:
       - auth
@@ -713,7 +731,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get current user
@@ -730,7 +748,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.PublicConfigResponse'
+            $ref: '#/definitions/internal_api_handlers.PublicConfigResponse'
       summary: Get public system configuration
       tags:
       - system
@@ -744,7 +762,7 @@ paths:
         name: config
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateSystemConfigRequest'
+          $ref: '#/definitions/internal_api_handlers.UpdateSystemConfigRequest'
       produces:
       - application/json
       responses:
@@ -756,19 +774,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - Bearer: []
       summary: Update system configuration (admin only)
@@ -790,15 +808,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - Bearer: []
       summary: Get full system configuration (admin only)
@@ -984,7 +1002,7 @@ paths:
         name: rule
         required: true
         schema:
-          $ref: '#/definitions/models.MonitorAlertRule'
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.MonitorAlertRule'
       produces:
       - application/json
       responses:
@@ -1075,7 +1093,7 @@ paths:
         name: rule
         required: true
         schema:
-          $ref: '#/definitions/models.MonitorAlertRule'
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.MonitorAlertRule'
       produces:
       - application/json
       responses:
@@ -1146,11 +1164,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.PaginatedResponse'
+            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List alert events
@@ -1171,15 +1189,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get alert event
@@ -1201,22 +1219,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.AcknowledgeAlertEventRequest'
+          $ref: '#/definitions/internal_api_handlers.AcknowledgeAlertEventRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Acknowledge alert event
@@ -1237,11 +1255,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Resolve alert event
@@ -1256,11 +1274,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get active alert events
@@ -1302,11 +1320,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.PaginatedResponse'
+            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List alert rules
@@ -1322,18 +1340,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateAlertRuleRequest'
+          $ref: '#/definitions/internal_api_handlers.CreateAlertRuleRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create alert rule
@@ -1356,11 +1374,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete alert rule
@@ -1380,15 +1398,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get alert rule
@@ -1409,22 +1427,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateAlertRuleRequest'
+          $ref: '#/definitions/internal_api_handlers.UpdateAlertRuleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update alert rule
@@ -1446,18 +1464,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ToggleAlertRuleRequest'
+          $ref: '#/definitions/internal_api_handlers.ToggleAlertRuleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Toggle alert rule
@@ -1472,11 +1490,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get alert statistics
@@ -1538,11 +1556,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.PaginatedResponse'
+            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List audit logs
@@ -1563,15 +1581,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get audit log
@@ -1586,11 +1604,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get distinct actions
@@ -1611,11 +1629,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List failed actions
@@ -1636,11 +1654,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List recent audit logs
@@ -1655,11 +1673,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get distinct resource types
@@ -1685,11 +1703,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List resource audit logs
@@ -1715,11 +1733,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Search audit logs
@@ -1734,11 +1752,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get audit statistics
@@ -1769,11 +1787,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get activity timeline
@@ -1790,22 +1808,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ChangePasswordRequest'
+          $ref: '#/definitions/internal_api_handlers.ChangePasswordRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Change password
@@ -1822,22 +1840,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.OAuthLoginRequest'
+          $ref: '#/definitions/internal_api_handlers.OAuthLoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       summary: OAuth login
       tags:
       - auth
@@ -1856,11 +1874,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       summary: Get OAuth authorization URL
       tags:
       - auth
@@ -1873,11 +1891,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user profile
@@ -1892,11 +1910,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get active sessions
@@ -1917,15 +1935,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Invalidate session
@@ -1971,11 +1989,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.PaginatedResponse'
+            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List database instances
@@ -1991,22 +2009,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateInstanceRequest'
+          $ref: '#/definitions/internal_api_handlers.CreateInstanceRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create database instance
@@ -2029,11 +2047,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete database instance
@@ -2053,15 +2071,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance
@@ -2082,22 +2100,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateInstanceRequest'
+          $ref: '#/definitions/internal_api_handlers.UpdateInstanceRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update database instance
@@ -2119,23 +2137,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.SuccessResponse'
+            - $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/managers.HealthStatus'
+                  $ref: '#/definitions/github_com_ysicing_tiga_internal_services_managers.HealthStatus'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance health
@@ -2156,18 +2174,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateInstanceHealthRequest'
+          $ref: '#/definitions/internal_api_handlers.UpdateInstanceHealthRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update database instance health
@@ -2189,23 +2207,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.SuccessResponse'
+            - $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/managers.ServiceMetrics'
+                  $ref: '#/definitions/github_com_ysicing_tiga_internal_services_managers.ServiceMetrics'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance metrics
@@ -2226,11 +2244,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get all latest metrics
@@ -2251,11 +2269,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get metric names
@@ -2277,18 +2295,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateInstanceStatusRequest'
+          $ref: '#/definitions/internal_api_handlers.UpdateInstanceStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update database instance status
@@ -2310,18 +2328,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ManageTagsRequest'
+          $ref: '#/definitions/internal_api_handlers.ManageTagsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove tags
@@ -2342,18 +2360,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.ManageTagsRequest'
+          $ref: '#/definitions/internal_api_handlers.ManageTagsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Add tags
@@ -2368,11 +2386,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance statistics
@@ -2421,7 +2439,7 @@ paths:
         name: host
         required: true
         schema:
-          $ref: '#/definitions/models.HostNode'
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.HostNode'
       produces:
       - application/json
       responses:
@@ -2484,7 +2502,7 @@ paths:
         name: host
         required: true
         schema:
-          $ref: '#/definitions/models.HostNode'
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.HostNode'
       produces:
       - application/json
       responses:
@@ -2592,11 +2610,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Query metrics
@@ -2612,18 +2630,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateMetricRequest'
+          $ref: '#/definitions/internal_api_handlers.CreateMetricRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create metric
@@ -2664,11 +2682,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Aggregate metrics
@@ -2704,11 +2722,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Calculate average
@@ -2725,18 +2743,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateMetricsBatchRequest'
+          $ref: '#/definitions/internal_api_handlers.CreateMetricsBatchRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create metrics batch
@@ -2762,15 +2780,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get latest metric
@@ -2811,11 +2829,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Calculate percentile
@@ -2830,11 +2848,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get metrics statistics
@@ -2875,11 +2893,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get time series data
@@ -2917,11 +2935,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.PaginatedResponse'
+            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users
@@ -2937,22 +2955,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.CreateUserRequest'
+          $ref: '#/definitions/internal_api_handlers.CreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create user
@@ -2975,11 +2993,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete user
@@ -2999,15 +3017,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user
@@ -3028,22 +3046,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.UpdateUserRequest'
+          $ref: '#/definitions/internal_api_handlers.UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update user
@@ -3069,11 +3087,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List user audit logs
@@ -3094,15 +3112,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user roles
@@ -3123,18 +3141,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handlers.AssignRoleRequest'
+          $ref: '#/definitions/internal_api_handlers.AssignRoleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Assign role
@@ -3160,11 +3178,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SuccessResponse'
+            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.ErrorResponse'
+            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Revoke role

@@ -1,8 +1,18 @@
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
+import { useInstall } from '@/contexts/install-context'
+import { installApi } from '@/services/install-api'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+
+import {
+  DatabaseConfigSchema,
+  type DatabaseConfig,
+} from '@/lib/schemas/install-schemas'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
   FormControl,
@@ -20,12 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react'
-import { DatabaseConfigSchema, type DatabaseConfig } from '@/lib/schemas/install-schemas'
-import { useInstall } from '@/contexts/install-context'
-import { installApi } from '@/services/install-api'
-import { Checkbox } from '@/components/ui/checkbox'
 
 export function DatabaseStep() {
   const { t } = useTranslation()
@@ -67,9 +71,10 @@ export function DatabaseStep() {
 
     try {
       // 如果之前检测到存在数据且现在确认重新安装，则添加 confirm_reinstall 参数
-      const requestData = previousHasExistingData && confirmReinstall
-        ? { ...values, confirm_reinstall: true }
-        : values
+      const requestData =
+        previousHasExistingData && confirmReinstall
+          ? { ...values, confirm_reinstall: true }
+          : values
 
       const response = await installApi.checkDatabase(requestData)
 
@@ -77,15 +82,24 @@ export function DatabaseStep() {
         if (response.has_existing_data && !confirmReinstall) {
           setTestResult({
             success: false,
-            message: t('install.database.existingDataFound', 'Existing data found. Please confirm to reinstall.'),
+            message: t(
+              'install.database.existingDataFound',
+              'Existing data found. Please confirm to reinstall.'
+            ),
             hasExistingData: true,
           })
         } else {
           setTestResult({
             success: true,
             message: response.has_existing_data
-              ? t('install.database.willReinstall', 'Will reinstall with existing data')
-              : t('install.database.connectionSuccess', 'Connection successful'),
+              ? t(
+                  'install.database.willReinstall',
+                  'Will reinstall with existing data'
+                )
+              : t(
+                  'install.database.connectionSuccess',
+                  'Connection successful'
+                ),
             hasExistingData: response.has_existing_data,
           })
         }
@@ -98,7 +112,10 @@ export function DatabaseStep() {
     } catch (error) {
       setTestResult({
         success: false,
-        message: error instanceof Error ? error.message : t('install.database.connectionError'),
+        message:
+          error instanceof Error
+            ? error.message
+            : t('install.database.connectionError'),
       })
     } finally {
       setIsTesting(false)
@@ -114,7 +131,9 @@ export function DatabaseStep() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{t('install.database.title')}</h2>
-        <p className="text-muted-foreground">{t('install.database.description')}</p>
+        <p className="text-muted-foreground">
+          {t('install.database.description')}
+        </p>
       </div>
 
       <Form {...form}>
@@ -140,7 +159,9 @@ export function DatabaseStep() {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder={t('install.database.selectType')} />
+                      <SelectValue
+                        placeholder={t('install.database.selectType')}
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -184,7 +205,9 @@ export function DatabaseStep() {
                       type="number"
                       placeholder={dbType === 'mysql' ? '3306' : '5432'}
                       {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                      onChange={(e) =>
+                        field.onChange(parseInt(e.target.value, 10))
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -202,7 +225,9 @@ export function DatabaseStep() {
                 <FormLabel>{t('install.database.database')}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder={dbType === 'sqlite' ? '/path/to/tiga.db' : 'tiga'}
+                    placeholder={
+                      dbType === 'sqlite' ? '/path/to/tiga.db' : 'tiga'
+                    }
                     {...field}
                   />
                 </FormControl>
@@ -268,13 +293,18 @@ export function DatabaseStep() {
                       <Checkbox
                         id="confirm-reinstall"
                         checked={confirmReinstall}
-                        onCheckedChange={(checked) => setConfirmReinstall(!!checked)}
+                        onCheckedChange={(checked) =>
+                          setConfirmReinstall(!!checked)
+                        }
                       />
                       <label
                         htmlFor="confirm-reinstall"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        {t('install.database.confirmReinstall', 'I confirm to reinstall and overwrite existing data')}
+                        {t(
+                          'install.database.confirmReinstall',
+                          'I confirm to reinstall and overwrite existing data'
+                        )}
                       </label>
                     </div>
                   )}
