@@ -40,7 +40,11 @@ func SetupRoutes(
 	stateCollector *hostservices.StateCollector,
 	terminalManager *hostservices.TerminalManager,
 	probeScheduler *monitorservices.ServiceProbeScheduler,
+	cfg *config.Config,
 ) {
+	// Global middleware to inject config into context for all routes
+	router.Use(middleware.ConfigMiddleware(cfg))
+
 	// Global middleware to inject DB into context for all routes
 	router.Use(func(c *gin.Context) {
 		c.Set("db", db)

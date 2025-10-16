@@ -33,7 +33,6 @@ import (
 	"github.com/ysicing/tiga/internal/services/monitor"
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/scheduler"
-	"github.com/ysicing/tiga/pkg/common"
 	"github.com/ysicing/tiga/pkg/crypto"
 	"github.com/ysicing/tiga/proto"
 
@@ -119,6 +118,9 @@ func (a *Application) Initialize(ctx context.Context) error {
 		return err
 	}
 
+	// Set encryption key for models.SecretString
+	models.SetEncryptionKey(appEncryptionKey)
+
 	credentialKey, err := a.ensureDatabaseCredentialKey(ctx)
 	if err != nil {
 		return err
@@ -135,8 +137,6 @@ func (a *Application) Initialize(ctx context.Context) error {
 			return fmt.Errorf("failed to initialize database credential encryption: %w", err)
 		}
 	}
-
-	common.SetEncryptKey(appEncryptionKey)
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(a.db.DB)
@@ -269,6 +269,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 		a.stateCollector,
 		a.terminalManager,
 		a.probeScheduler,
+		a.config, // Pass full config for dependency injection
 	)
 
 	// Serve static files from embedded filesystem

@@ -10,8 +10,6 @@ import (
 	"io"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/ysicing/tiga/pkg/common"
 )
 
 func HashPassword(password string) (string, error) {
@@ -78,16 +76,4 @@ func DecryptStringWithKey(encrypted, encryptionKey string) (string, error) {
 		return "", fmt.Errorf("failed to decrypt: %w", err)
 	}
 	return string(plaintext), nil
-}
-
-// Deprecated: EncryptString uses global encryption key from pkg/common.
-// Use EncryptStringWithKey instead and pass config.Security.EncryptionKey explicitly.
-func EncryptString(input string) string {
-	return EncryptStringWithKey(input, common.GetEncryptKey())
-}
-
-// Deprecated: DecryptString uses global encryption key from pkg/common.
-// Use DecryptStringWithKey instead and pass config.Security.EncryptionKey explicitly.
-func DecryptString(encrypted string) (string, error) {
-	return DecryptStringWithKey(encrypted, common.GetEncryptKey())
 }

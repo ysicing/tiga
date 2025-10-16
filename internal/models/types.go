@@ -10,6 +10,16 @@ import (
 	"github.com/ysicing/tiga/pkg/utils"
 )
 
+// Package-level encryption key for SecretString
+var appEncryptionKey = "tiga-default-encryption-key-change-in-production"
+
+// SetEncryptionKey sets the application-level encryption key for SecretString
+func SetEncryptionKey(key string) {
+	if key != "" {
+		appEncryptionKey = key
+	}
+}
+
 // JSONB is stored as TEXT in all databases (JSON string)
 type JSONB map[string]interface{}
 
@@ -177,7 +187,7 @@ func (s *SecretString) Scan(value interface{}) error {
 	}
 
 	// Decrypt the string
-	decrypted, err := utils.DecryptString(encryptedStr)
+	decrypted, err := utils.DecryptStringWithKey(encryptedStr, appEncryptionKey)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt SecretString: %w", err)
 	}
@@ -190,7 +200,7 @@ func (s SecretString) Value() (driver.Value, error) {
 	if s == "" {
 		return "", nil
 	}
-	encrypted := utils.EncryptString(string(s))
+	encrypted := utils.EncryptStringWithKey(string(s), appEncryptionKey)
 	if len(encrypted) > 17 && encrypted[:17] == "encryption_error:" {
 		return nil, fmt.Errorf("encryption failed: %s", encrypted[17:])
 	}
