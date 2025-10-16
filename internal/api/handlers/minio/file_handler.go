@@ -11,6 +11,7 @@ import (
 	"github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
+
 	mrepo "github.com/ysicing/tiga/internal/repository/minio"
 	msvc "github.com/ysicing/tiga/internal/services/minio"
 )

@@ -32,9 +32,9 @@ var (
 	semicolonPattern   = regexp.MustCompile(`;`)
 
 	// SQL injection patterns
-	unionPattern       = regexp.MustCompile(`(?i)\bUNION\s+(ALL\s+)?SELECT\b`)
-	hexEncodingPattern = regexp.MustCompile(`(?i)0x[0-9a-f]{2,}`)
-	sleepPattern       = regexp.MustCompile(`(?i)\b(SLEEP|BENCHMARK|WAITFOR)\b`)
+	unionPattern        = regexp.MustCompile(`(?i)\bUNION\s+(ALL\s+)?SELECT\b`)
+	hexEncodingPattern  = regexp.MustCompile(`(?i)0x[0-9a-f]{2,}`)
+	sleepPattern        = regexp.MustCompile(`(?i)\b(SLEEP|BENCHMARK|WAITFOR)\b`)
 	stackedQueryPattern = regexp.MustCompile(`;\s*\w`)
 )
 
@@ -45,9 +45,9 @@ type SecurityFilter struct {
 	redisBlacklist   map[string]struct{}
 
 	// Optional whitelist mode (disabled by default for flexibility)
-	enableWhitelist  bool
-	allowedTables    map[string]struct{}
-	allowedColumns   map[string]struct{}
+	enableWhitelist bool
+	allowedTables   map[string]struct{}
+	allowedColumns  map[string]struct{}
 }
 
 // NewSecurityFilter returns a filter initialised with defaults from the specification.
@@ -81,20 +81,20 @@ func NewSecurityFilter() *SecurityFilter {
 			"SYSTEM(",
 		},
 		redisBlacklist: map[string]struct{}{
-			"FLUSHDB":   {},
-			"FLUSHALL":  {},
-			"SHUTDOWN":  {},
-			"CONFIG":    {},
-			"SAVE":      {},
-			"BGSAVE":    {},
+			"FLUSHDB":      {},
+			"FLUSHALL":     {},
+			"SHUTDOWN":     {},
+			"CONFIG":       {},
+			"SAVE":         {},
+			"BGSAVE":       {},
 			"BGREWRITEAOF": {},
-			"DEBUG":     {},
-			"SLAVEOF":   {},
-			"REPLICAOF": {},
-			"SCRIPT":    {},
-			"EVAL":      {},
-			"EVALSHA":   {},
-			"MODULE":    {},
+			"DEBUG":        {},
+			"SLAVEOF":      {},
+			"REPLICAOF":    {},
+			"SCRIPT":       {},
+			"EVAL":         {},
+			"EVALSHA":      {},
+			"MODULE":       {},
 		},
 		enableWhitelist: false,
 		allowedTables:   make(map[string]struct{}),

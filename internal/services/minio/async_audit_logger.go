@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/internal/models"
+
 	repo "github.com/ysicing/tiga/internal/repository/minio"
 )
 

@@ -127,12 +127,12 @@ type OAuthProviderRepositoryInterface interface {
 
 // Compile-time interface assertions
 var (
-	_ UserRepositoryInterface                = (*UserRepository)(nil)
-	_ InstanceRepositoryInterface            = (*InstanceRepository)(nil)
-	_ AlertRepositoryInterface               = (*AlertRepository)(nil)
-	_ MetricsRepositoryInterface             = (*MetricsRepository)(nil)
-	_ AuditLogRepositoryInterface            = (*AuditLogRepository)(nil)
-	_ ClusterRepositoryInterface             = (*ClusterRepository)(nil)
-	_ ResourceHistoryRepositoryInterface     = (*ResourceHistoryRepository)(nil)
-	_ OAuthProviderRepositoryInterface       = (*OAuthProviderRepository)(nil)
+	_ UserRepositoryInterface            = (*UserRepository)(nil)
+	_ InstanceRepositoryInterface        = (*InstanceRepository)(nil)
+	_ AlertRepositoryInterface           = (*AlertRepository)(nil)
+	_ MetricsRepositoryInterface         = (*MetricsRepository)(nil)
+	_ AuditLogRepositoryInterface        = (*AuditLogRepository)(nil)
+	_ ClusterRepositoryInterface         = (*ClusterRepository)(nil)
+	_ ResourceHistoryRepositoryInterface = (*ResourceHistoryRepository)(nil)
+	_ OAuthProviderRepositoryInterface   = (*OAuthProviderRepository)(nil)
 )

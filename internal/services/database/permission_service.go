@@ -9,8 +9,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/models"
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	"github.com/ysicing/tiga/pkg/dbdriver"
+
+	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 )
 
 // PermissionService manages database permission policies.

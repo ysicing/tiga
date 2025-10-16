@@ -9,8 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	dbservices "github.com/ysicing/tiga/internal/services/database"
 	"github.com/ysicing/tiga/pkg/dbdriver"
+
+	dbservices "github.com/ysicing/tiga/internal/services/database"
 )
 
 func TestQueryTimeoutLimit(t *testing.T) {

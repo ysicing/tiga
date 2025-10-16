@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // QuerySessionRepository persists query execution sessions.

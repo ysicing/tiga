@@ -5,22 +5,22 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
 	"github.com/ysicing/tiga/internal/api/handlers/instances"
 	"github.com/ysicing/tiga/internal/api/handlers/minio"
 	"github.com/ysicing/tiga/internal/api/middleware"
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/repository"
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	"github.com/ysicing/tiga/internal/services"
-	dbservices "github.com/ysicing/tiga/internal/services/database"
 	"github.com/ysicing/tiga/pkg/auth"
 	"github.com/ysicing/tiga/pkg/cluster"
 	"github.com/ysicing/tiga/pkg/handlers/resources"
 
+	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
+	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	alertservices "github.com/ysicing/tiga/internal/services/alert"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
+	dbservices "github.com/ysicing/tiga/internal/services/database"
 	hostservices "github.com/ysicing/tiga/internal/services/host"
 	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
 	websshservices "github.com/ysicing/tiga/internal/services/webssh"
@@ -363,35 +363,35 @@ func SetupRoutes(
 				databaseGroup.GET("/audit-logs", dbAuditHandler.ListAuditLogs)
 			}
 
-				// ==================== MinIO Subsystem ====================
-				minioGroup := protected.Group("/minio/instances/:id")
-				{
-            // Bucket operations
-            minioGroup.GET("/buckets", minioBucketHandler.ListBuckets)
-            minioGroup.POST("/buckets", minioBucketHandler.CreateBucket)
-            minioGroup.GET("/buckets/:bucket", minioBucketHandler.GetBucket)
-            minioGroup.PUT("/buckets/:bucket/policy", minioBucketHandler.UpdateBucketPolicy)
-            minioGroup.DELETE("/buckets/:bucket", minioBucketHandler.DeleteBucket)
+			// ==================== MinIO Subsystem ====================
+			minioGroup := protected.Group("/minio/instances/:id")
+			{
+				// Bucket operations
+				minioGroup.GET("/buckets", minioBucketHandler.ListBuckets)
+				minioGroup.POST("/buckets", minioBucketHandler.CreateBucket)
+				minioGroup.GET("/buckets/:bucket", minioBucketHandler.GetBucket)
+				minioGroup.PUT("/buckets/:bucket/policy", minioBucketHandler.UpdateBucketPolicy)
+				minioGroup.DELETE("/buckets/:bucket", minioBucketHandler.DeleteBucket)
 
-					// Object operations
-					minioGroup.GET("/buckets/:bucket/objects", minioObjectHandler.ListObjects)
-					minioGroup.GET("/buckets/:bucket/objects/:object", minioObjectHandler.GetObject)
-					minioGroup.POST("/buckets/:bucket/objects", minioObjectHandler.UploadObject)
-					minioGroup.DELETE("/buckets/:bucket/objects/:object", minioObjectHandler.DeleteObject)
+				// Object operations
+				minioGroup.GET("/buckets/:bucket/objects", minioObjectHandler.ListObjects)
+				minioGroup.GET("/buckets/:bucket/objects/:object", minioObjectHandler.GetObject)
+				minioGroup.POST("/buckets/:bucket/objects", minioObjectHandler.UploadObject)
+				minioGroup.DELETE("/buckets/:bucket/objects/:object", minioObjectHandler.DeleteObject)
 
-					// File operations (generic)
-					minioFileHandler := minio.NewFileHandler(*instanceRepo)
-					minioGroup.GET("/files", minioFileHandler.List)
-					minioGroup.POST("/files", minioFileHandler.Upload)
-					minioGroup.GET("/files/download", minioFileHandler.DownloadURL)
-					minioGroup.GET("/files/preview", minioFileHandler.PreviewURL)
-					minioGroup.DELETE("/files", minioFileHandler.Delete)
+				// File operations (generic)
+				minioFileHandler := minio.NewFileHandler(*instanceRepo)
+				minioGroup.GET("/files", minioFileHandler.List)
+				minioGroup.POST("/files", minioFileHandler.Upload)
+				minioGroup.GET("/files/download", minioFileHandler.DownloadURL)
+				minioGroup.GET("/files/preview", minioFileHandler.PreviewURL)
+				minioGroup.DELETE("/files", minioFileHandler.Delete)
 
-            // User operations
-            minioUserHandler := minio.NewUserHandler(*instanceRepo)
-            minioGroup.GET("/users", minioUserHandler.ListUsers)
-            minioGroup.POST("/users", minioUserHandler.CreateUser)
-            minioGroup.DELETE("/users/:username", minioUserHandler.DeleteUser)
+				// User operations
+				minioUserHandler := minio.NewUserHandler(*instanceRepo)
+				minioGroup.GET("/users", minioUserHandler.ListUsers)
+				minioGroup.POST("/users", minioUserHandler.CreateUser)
+				minioGroup.DELETE("/users/:username", minioUserHandler.DeleteUser)
 			}
 
 			// ==================== Alert Management Subsystem ====================

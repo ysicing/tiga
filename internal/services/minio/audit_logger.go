@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/models"
+
 	repo "github.com/ysicing/tiga/internal/repository/minio"
 )
 

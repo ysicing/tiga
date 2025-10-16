@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"sync"
 
-	sdk "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	sdk "github.com/minio/minio-go/v7"
 )
 
 type ClientManager struct {

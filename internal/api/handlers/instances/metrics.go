@@ -31,7 +31,7 @@ type GetInstanceMetricsRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
-// @Success 200 {object} handlers.SuccessResponse{data=managers.ServiceMetrics}
+// @Success 200 {object} handlers.SuccessResponse{data=github_com_ysicing_tiga_internal_services_managers.ServiceMetrics}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse

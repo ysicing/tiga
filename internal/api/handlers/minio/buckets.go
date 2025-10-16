@@ -8,6 +8,7 @@ import (
 
 	"github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/repository"
+
 	mrepo "github.com/ysicing/tiga/internal/repository/minio"
 	msvc "github.com/ysicing/tiga/internal/services/minio"
 	pkmn "github.com/ysicing/tiga/pkg/minio"

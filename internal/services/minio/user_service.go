@@ -7,9 +7,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/models"
+	"github.com/ysicing/tiga/internal/services/managers"
+
 	coreRepo "github.com/ysicing/tiga/internal/repository"
 	repo "github.com/ysicing/tiga/internal/repository/minio"
-	"github.com/ysicing/tiga/internal/services/managers"
 )
 
 type UserService struct {

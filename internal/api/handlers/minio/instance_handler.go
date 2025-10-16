@@ -6,10 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/managers"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 )
 
 type InstanceHandler struct {

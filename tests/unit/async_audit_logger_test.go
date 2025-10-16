@@ -13,8 +13,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/models"
-	dbservice "github.com/ysicing/tiga/internal/services/database"
+
 	dbrepo "github.com/ysicing/tiga/internal/repository/database"
+	dbservice "github.com/ysicing/tiga/internal/services/database"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {

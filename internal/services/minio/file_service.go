@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	sdkminio "github.com/minio/minio-go/v7"
 
-	coreRepo "github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/managers"
+
+	sdkminio "github.com/minio/minio-go/v7"
+	coreRepo "github.com/ysicing/tiga/internal/repository"
 )
 
 type FileService struct {

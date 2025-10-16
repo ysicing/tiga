@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/install/models"
 
+	_ "github.com/glebarez/go-sqlite"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
-	_ "github.com/glebarez/go-sqlite"
 
 	mainmodels "github.com/ysicing/tiga/internal/models"
 )

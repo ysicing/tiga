@@ -7,6 +7,7 @@ import (
 
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/db"
+
 	m "github.com/ysicing/tiga/internal/models"
 )
 

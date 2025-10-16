@@ -1,19 +1,19 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useAuth } from '@/contexts/auth-context'
+import type { MinioInstanceCreate } from '@/services/minio-api'
 import { Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { useMinioInstances } from '@/hooks/use-minio-instances'
-import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog'
 import { InstanceForm } from '@/components/minio/instance-form'
-import type { MinioInstanceCreate } from '@/services/minio-api'
 
 export default function MinioInstancesPage() {
   const { user } = useAuth()
@@ -118,9 +118,7 @@ export default function MinioInstancesPage() {
               credentials.
             </DialogDescription>
           </DialogHeader>
-          {user && (
-            <InstanceForm ownerId={user.id} onSubmit={handleCreate} />
-          )}
+          {user && <InstanceForm ownerId={user.id} onSubmit={handleCreate} />}
         </DialogContent>
       </Dialog>
     </div>
