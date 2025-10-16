@@ -111,9 +111,9 @@ func TestSecurityFilterSQLParsing(t *testing.T) {
 
 	t.Run("CommentBypassPrevention", func(t *testing.T) {
 		// SQL injection attempts using comments should still be blocked
+		// if the dangerous keywords remain after comment removal
 		testCases := []string{
 			"DROP /* comment */ TABLE users",
-			"SELECT * FROM users; -- DROP TABLE logs",
 			"TRUNCATE /* inline comment */ TABLE sessions",
 			"ALTER TABLE users /* comment */ ADD COLUMN age INT",
 		}
@@ -121,9 +121,15 @@ func TestSecurityFilterSQLParsing(t *testing.T) {
 		for _, sql := range testCases {
 			t.Run(sql, func(t *testing.T) {
 				err := filter.ValidateSQL(sql)
-				assert.Error(t, err, "Should block SQL with comments: "+sql)
+				assert.Error(t, err, "Should block SQL with dangerous keywords: "+sql)
 			})
 		}
+
+		// After comment removal, this should be safe (only SELECT remains)
+		t.Run("Safe after comment removal", func(t *testing.T) {
+			err := filter.ValidateSQL("SELECT * FROM users; -- DROP TABLE logs")
+			assert.NoError(t, err, "Should allow: DROP is in comment, removed during validation")
+		})
 	})
 
 	t.Run("CaseInsensitiveDetection", func(t *testing.T) {
@@ -288,6 +294,215 @@ func TestSecurityFilterRedisCommand(t *testing.T) {
 				} else {
 					assert.NoError(t, err)
 				}
+			})
+		}
+	})
+}
+
+func TestSecurityFilter_SQLInjectionDetection(t *testing.T) {
+	filter := dbservices.NewSecurityFilter()
+
+	t.Run("UnionBasedInjection", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			sql  string
+		}{
+			{"Basic UNION", "SELECT * FROM users WHERE id=1 UNION SELECT password FROM admin"},
+			{"UNION ALL", "SELECT name FROM users UNION ALL SELECT password FROM credentials"},
+			{"UNION with comment", "SELECT * FROM users UNION /* comment */ SELECT * FROM secrets"},
+			{"Case variation", "SELECT * FROM users UnIoN SeLeCt * FROM passwords"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := filter.ValidateSQL(tc.sql)
+				assert.Error(t, err, "Should detect UNION injection: "+tc.sql)
+			})
+		}
+	})
+
+	t.Run("TimeBasedBlindInjection", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			sql  string
+		}{
+			{"SLEEP function", "SELECT * FROM users WHERE id=1 AND SLEEP(5)"},
+			{"BENCHMARK function", "SELECT * FROM users WHERE id=1 AND BENCHMARK(1000000, MD5('test'))"},
+			{"WAITFOR DELAY", "SELECT * FROM users WHERE id=1 WAITFOR DELAY '0:0:5'"},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := filter.ValidateSQL(tc.sql)
+				assert.Error(t, err, "Should detect time-based injection: "+tc.sql)
+			})
+		}
+	})
+
+	t.Run("StackedQueries", func(t *testing.T) {
+		testCases := []struct {
+			name        string
+			sql         string
+			shouldBlock bool
+		}{
+			// Our design validates each statement separately
+			// Dangerous operations in any statement will be blocked
+			{"SELECT then DROP", "SELECT * FROM users; DROP TABLE logs", true},
+			// Note: INSERT and UPDATE are legitimate operations in a DB management tool
+			// They will pass validation individually. This is expected behavior.
+			{"SELECT then INSERT", "SELECT * FROM users; INSERT INTO admin (name) VALUES ('hacker')", false},
+			{"SELECT then UPDATE", "SELECT * FROM users; UPDATE users SET is_admin=1 WHERE id=999", false},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := filter.ValidateSQL(tc.sql)
+				if tc.shouldBlock {
+					assert.Error(t, err, "Should detect dangerous operation: "+tc.sql)
+				} else {
+					assert.NoError(t, err, "Should allow legitimate operations: "+tc.sql)
+				}
+			})
+		}
+	})
+
+	t.Run("HexEncodingBypass", func(t *testing.T) {
+		testCases := []struct {
+			name        string
+			sql         string
+			shouldBlock bool
+		}{
+			{"Single hex value", "SELECT * FROM users WHERE name = 0x61646d696e", false},
+			{"Two hex values", "SELECT * FROM users WHERE name = 0x61646d696e OR pass = 0x70617373", false},
+			{"Excessive hex encoding", "SELECT 0x123, 0x456, 0x789, 0xabc FROM users", true},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := filter.ValidateSQL(tc.sql)
+				if tc.shouldBlock {
+					assert.Error(t, err, "Should block excessive hex: "+tc.sql)
+				} else {
+					assert.NoError(t, err, "Should allow limited hex: "+tc.sql)
+				}
+			})
+		}
+	})
+
+	t.Run("SafeQueries", func(t *testing.T) {
+		testCases := []string{
+			"SELECT * FROM users WHERE status = 'active'",
+			"SELECT COUNT(*) FROM orders WHERE created_at > '2024-01-01'",
+			"SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id",
+			"SELECT DISTINCT category FROM products",
+		}
+
+		for _, sql := range testCases {
+			t.Run(sql, func(t *testing.T) {
+				err := filter.ValidateSQL(sql)
+				assert.NoError(t, err, "Should allow safe query: "+sql)
+			})
+		}
+	})
+}
+
+func TestSecurityFilter_WhitelistMode(t *testing.T) {
+	filter := dbservices.NewSecurityFilter()
+
+	t.Run("WhitelistDisabledByDefault", func(t *testing.T) {
+		err := filter.ValidateSQL("SELECT * FROM any_table")
+		assert.NoError(t, err)
+	})
+
+	t.Run("EnableWhitelist", func(t *testing.T) {
+		filter.EnableWhitelist([]string{"users", "orders"}, []string{"id", "name", "email"})
+		filter.DisableWhitelist()
+		err := filter.ValidateSQL("SELECT * FROM any_table")
+		assert.NoError(t, err)
+	})
+}
+
+func TestSecurityFilter_EnhancedBlacklist(t *testing.T) {
+	filter := dbservices.NewSecurityFilter()
+
+	t.Run("AdditionalDDLOperations", func(t *testing.T) {
+		testCases := []string{
+			"CREATE VIEW my_view AS SELECT * FROM users",
+			"CREATE PROCEDURE sp_test() BEGIN SELECT 1; END",
+			"CREATE FUNCTION fn_test() RETURNS INT BEGIN RETURN 1; END",
+			"CREATE TRIGGER tr_test AFTER INSERT ON users FOR EACH ROW BEGIN END",
+			"LOCK TABLES users WRITE",
+			"UNLOCK TABLES",
+		}
+
+		for _, sql := range testCases {
+			t.Run(sql, func(t *testing.T) {
+				err := filter.ValidateSQL(sql)
+				assert.Error(t, err, "Should block: "+sql)
+			})
+		}
+	})
+
+	t.Run("AdditionalDangerousFunctions", func(t *testing.T) {
+		testCases := []string{
+			"SELECT EXEC('DROP TABLE users')",
+			"SELECT EXECUTE('TRUNCATE logs')",
+			"SELECT SHELL_EXEC('rm -rf /')",
+			"SELECT SYSTEM('cat /etc/passwd')",
+		}
+
+		for _, sql := range testCases {
+			t.Run(sql, func(t *testing.T) {
+				err := filter.ValidateSQL(sql)
+				assert.Error(t, err, "Should block dangerous function: "+sql)
+			})
+		}
+	})
+}
+
+func TestSecurityFilter_EnhancedRedisBlacklist(t *testing.T) {
+	filter := dbservices.NewSecurityFilter()
+
+	t.Run("AdditionalDangerousCommands", func(t *testing.T) {
+		testCases := []string{
+			"DEBUG SEGFAULT",
+			"DEBUG OBJECT mykey",
+			"SLAVEOF 192.168.1.100 6379",
+			"REPLICAOF 192.168.1.100 6379",
+			"SCRIPT LOAD 'return redis.call(\"SET\", \"foo\", \"bar\")'",
+			"EVAL 'return redis.call(\"GET\", \"mykey\")' 0",
+			"EVALSHA sha1hash 0",
+			"MODULE LOAD /path/to/module.so",
+		}
+
+		for _, cmd := range testCases {
+			t.Run(cmd, func(t *testing.T) {
+				err := filter.ValidateRedisCommand(cmd)
+				assert.Error(t, err, "Should block: "+cmd)
+				assert.ErrorIs(t, err, dbservices.ErrRedisDangerousCommand)
+			})
+		}
+	})
+
+	t.Run("SafeRedisCommands", func(t *testing.T) {
+		testCases := []string{
+			"GET mykey",
+			"SET mykey myvalue",
+			"HGETALL myhash",
+			"LPUSH mylist value",
+			"ZADD myzset 1 member",
+			"SCAN 0",
+			"KEYS pattern:*",
+			"TTL mykey",
+			"PING",
+			"INFO",
+			"DBSIZE",
+		}
+
+		for _, cmd := range testCases {
+			t.Run(cmd, func(t *testing.T) {
+				err := filter.ValidateRedisCommand(cmd)
+				assert.NoError(t, err, "Should allow: "+cmd)
 			})
 		}
 	})

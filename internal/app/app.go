@@ -204,10 +204,13 @@ func (a *Application) Initialize(ctx context.Context) error {
 
 	logrus.Info("Application components initialized successfully")
 
-	// Get JWT secret from config (use a default if not set)
+	// Validate JWT secret from config
 	jwtSecret := a.config.JWT.Secret
 	if jwtSecret == "" {
-		jwtSecret = "default-secret-change-in-production"
+		return fmt.Errorf("JWT secret is not configured. Set JWT_SECRET environment variable or security.jwt_secret in config.yaml")
+	}
+	if len(jwtSecret) < 32 {
+		return fmt.Errorf("JWT secret must be at least 32 characters for security")
 	}
 
 	// Initialize JWT manager

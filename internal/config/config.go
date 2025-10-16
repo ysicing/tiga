@@ -145,7 +145,7 @@ func LoadFromFile(filename string) (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			Secret:    getOrDefault(configFile.Security.JWTSecret, getEnv("JWT_SECRET", "your-secret-key-change-in-production")),
+			Secret:    getOrDefault(configFile.Security.JWTSecret, getEnv("JWT_SECRET", "")),
 			ExpiresIn: getEnvAsDuration("JWT_EXPIRES_IN", 24*time.Hour),
 		},
 		OAuth: OAuthConfig{
@@ -244,7 +244,7 @@ func LoadFromEnv() *Config {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			Secret:    getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			Secret:    getEnv("JWT_SECRET", ""),
 			ExpiresIn: getEnvAsDuration("JWT_EXPIRES_IN", 24*time.Hour),
 		},
 		OAuth: OAuthConfig{
@@ -398,4 +398,45 @@ func (c *installChecker) IsInstalled() bool {
 	}
 
 	return config.Server.InstallLock
+}
+
+// Validate validates the configuration and returns errors for critical missing values
+func (c *Config) Validate() error {
+	var errors []string
+
+	// Validate JWT Secret
+	if c.JWT.Secret == "" {
+		errors = append(errors, "JWT_SECRET is not set (required for authentication)")
+	} else if len(c.JWT.Secret) < 32 {
+		errors = append(errors, "JWT_SECRET must be at least 32 characters")
+	}
+
+	// Validate Encryption Key for database management
+	if c.Security.EncryptionKey != "" && len(c.Security.EncryptionKey) != 44 {
+		// Base64-encoded 32-byte key is 44 characters
+		errors = append(errors, "ENCRYPTION_KEY must be a base64-encoded 32-byte key (44 characters)")
+	}
+
+	if c.DatabaseManagement.CredentialKey != "" && len(c.DatabaseManagement.CredentialKey) != 44 {
+		errors = append(errors, "CREDENTIAL_KEY must be a base64-encoded 32-byte key (44 characters)")
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("configuration validation failed:\n- %s",
+			fmt.Sprintf("%s", errors))
+	}
+
+	return nil
+}
+
+// ValidateOrExit validates the configuration and exits if validation fails
+func (c *Config) ValidateOrExit() {
+	if err := c.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Configuration Error:\n%v\n\n", err)
+		fmt.Fprintf(os.Stderr, "🔑 To generate secure keys, run:\n")
+		fmt.Fprintf(os.Stderr, "  JWT_SECRET:       openssl rand -base64 48\n")
+		fmt.Fprintf(os.Stderr, "  ENCRYPTION_KEY:   openssl rand -base64 32\n")
+		fmt.Fprintf(os.Stderr, "\nThen set them in config.yaml or as environment variables.\n")
+		os.Exit(1)
+	}
 }

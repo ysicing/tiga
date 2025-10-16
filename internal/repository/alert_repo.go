@@ -99,7 +99,7 @@ type ListRulesFilter struct {
 
 // ListRules retrieves a paginated list of alert rules with filters
 func (r *AlertRepository) ListRules(ctx context.Context, filter *ListRulesFilter) ([]*models.Alert, int64, error) {
-	query := r.db.WithContext(ctx).Model(&models.Alert{})
+	query := r.db.WithContext(ctx).Model(&models.Alert{}).Preload("Instance")
 
 	// Apply filters
 	if filter.InstanceID != nil {
@@ -144,6 +144,7 @@ func (r *AlertRepository) ListRules(ctx context.Context, filter *ListRulesFilter
 func (r *AlertRepository) ListEnabledRules(ctx context.Context) ([]*models.Alert, error) {
 	var rules []*models.Alert
 	err := r.db.WithContext(ctx).
+		Preload("Instance").
 		Where("enabled = ?", true).
 		Order("name ASC").
 		Find(&rules).Error
@@ -159,6 +160,7 @@ func (r *AlertRepository) ListEnabledRules(ctx context.Context) ([]*models.Alert
 func (r *AlertRepository) ListRulesByInstance(ctx context.Context, instanceID uuid.UUID) ([]*models.Alert, error) {
 	var rules []*models.Alert
 	err := r.db.WithContext(ctx).
+		Preload("Instance").
 		Where("instance_id = ?", instanceID).
 		Order("name ASC").
 		Find(&rules).Error
