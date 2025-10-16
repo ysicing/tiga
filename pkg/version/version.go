@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ysicing/tiga/pkg/common"
+	"github.com/ysicing/tiga/internal/config"
 )
 
 var (
@@ -29,7 +29,15 @@ func GetVersion(c *gin.Context) {
 		CommitID:  CommitID,
 	}
 
-	if !common.DisableVersionCheck {
+	// Get config from context
+	disableVersionCheck := false
+	if cfg, exists := c.Get("config"); exists {
+		if appCfg, ok := cfg.(*config.Config); ok {
+			disableVersionCheck = appCfg.Features.DisableVersionCheck
+		}
+	}
+
+	if !disableVersionCheck {
 		r := checkForUpdate(c.Request.Context(), Version)
 		versionInfo.HasNew = r.hasNew
 		if versionInfo.HasNew {
