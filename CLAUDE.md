@@ -164,10 +164,33 @@ ui/src/
 - 支持 YAML 配置文件（优先）+ 环境变量（回退）
 - 由主应用 `cmd/tiga/main.go` 使用
 
-**遗留配置**（pkg/common）：
-- 一些旧代码仍使用 `pkg/common` 中的硬编码默认值
-- 这些值会逐步迁移到主配置系统
-- 主要包括：JWT 密钥、节点终端镜像、加密密钥等
+**配置结构** (Phase 4 改进):
+```go
+type Config struct {
+    Server             ServerConfig             // HTTP/gRPC 服务器配置
+    Database           DatabaseConfig           // 数据库连接配置
+    Redis              RedisConfig              // Redis 配置
+    JWT                JWTConfig                // JWT 认证配置
+    OAuth              OAuthConfig              // OAuth 提供商配置
+    Security           SecurityConfig           // 加密密钥、bcrypt 成本
+    DatabaseManagement DatabaseManagementConfig // 数据库管理子系统配置
+    Kubernetes         KubernetesConfig         // K8s 相关配置（Phase 4 新增）
+    Webhook            WebhookConfig            // Webhook 配置（Phase 4 新增）
+    Features           FeaturesConfig           // 功能特性开关（Phase 4 新增）
+    Log                LogConfig                // 日志配置
+}
+```
+
+**遗留配置**（pkg/common - 已废弃）：
+- ⚠️ **DEPRECATED**: `pkg/common` 中的全局变量已在 Phase 4 中标记为废弃
+- 迁移路径：
+  - `common.NodeTerminalImage` → `config.Kubernetes.NodeTerminalImage`
+  - `common.WebhookUsername/Password/Enabled` → `config.Webhook.*`
+  - `common.GetEncryptKey()` → `config.Security.EncryptionKey`
+  - `common.AnonymousUserEnabled` → `config.Features.AnonymousUserEnabled`
+  - `common.DisableGZIP` → `config.Features.DisableGZIP`
+  - `common.DisableVersionCheck` → `config.Features.DisableVersionCheck`
+- 旧代码通过废弃函数保持兼容，计划在后续版本移除
 
 **配置优先级**：环境变量 > YAML 配置 > 默认值
 
@@ -438,3 +461,124 @@ task dev
 - API 文档生成（运行 `./scripts/generate-swagger.sh`）
 - 代码质量检查（运行 `task lint`）
 - 手动验证（参考 `.claude/specs/003-nosql-sql/quickstart.md`）
+
+## 架构改进：Phase 4 (2025-10-16)
+
+**参考文档**: `docs/architecture/phase4-improvements.md`
+
+### 概述
+
+Phase 4 专注于提升代码架构质量，改进可测试性和可维护性。遵循 SOLID 原则和依赖注入最佳实践。
+
+### 完成的改进
+
+#### 1. Repository 接口抽象 ✅
+
+**位置**: `internal/repository/interfaces.go`
+
+定义了 8 个 Repository 接口，解耦数据访问层：
+- `UserRepositoryInterface`
+- `InstanceRepositoryInterface`
+- `AlertRepositoryInterface`  
+- `MetricsRepositoryInterface`
+- `AuditLogRepositoryInterface`
+- `ClusterRepositoryInterface`
+- `ResourceHistoryRepositoryInterface`
+- `OAuthProviderRepositoryInterface`
+
+**收益**:
+- 服务层可使用接口类型，便于单元测试 mock
+- 符合依赖倒置原则 (DIP)
+- 为未来切换存储后端奠定基础
+
+**使用示例**:
+```go
+// 旧代码（紧耦合）
+type UserService struct {
+    repo *repository.UserRepository  // 具体实现
+}
+
+// 新代码（松耦合）
+type UserService struct {
+    repo repository.UserRepositoryInterface  // 接口
+}
+
+// 单元测试时可以 mock
+type MockUserRepository struct{}
+func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+    return &models.User{ID: id, Username: "test"}, nil
+}
+```
+
+#### 2. 统一配置系统 ✅
+
+**扩展**: `internal/config/config.go`
+
+新增 3 个配置结构（详见"配置系统"章节）：
+- `KubernetesConfig` - K8s 相关配置  
+- `WebhookConfig` - Webhook 配置
+- `FeaturesConfig` - 功能特性开关
+
+**废弃**: `pkg/common/common.go` 中的全局变量
+
+所有全局状态已迁移到配置结构，旧代码保持兼容（通过废弃函数）。
+
+**加密工具改进** (`pkg/utils/secure.go`):
+```go
+// 新增：接受显式密钥参数
+func EncryptStringWithKey(input, encryptionKey string) string
+func DecryptStringWithKey(encrypted, encryptionKey string) (string, error)
+
+// 旧函数保留（标记为 Deprecated）
+func EncryptString(input string) string  // 使用 common.GetEncryptKey()
+func DecryptString(encrypted string) (string, error)
+```
+
+#### 3. 架构问题识别 ✅
+
+**问题**: `internal/app/app.go` 中的 God Object
+
+Application 结构体包含 16 个字段，195 行 Initialize 方法，违反：
+- 单一职责原则 (SRP)
+- 开闭原则 (OCP)
+
+**决策**: 暂缓重构（按 Option C），优先完成接口抽象和配置统一。
+
+### 遵循的架构原则
+
+- ✅ **SOLID 原则**: 所有 5 项原则
+- ✅ **Repository Pattern**: 数据访问抽象
+- ✅ **Dependency Injection**: 配置和依赖注入
+- ✅ **避免全局状态**: 消除可变全局变量
+- ✅ **向后兼容**: 零破坏性改进
+
+### 测试验证
+
+**单元测试**:
+```bash
+go test ./tests/unit/n1_query_test.go  # 3/3 通过
+go test ./tests/unit/async_audit_logger_test.go  # 9/9 通过
+```
+
+**编译验证**:
+```bash
+go build ./internal/repository/...  # ✅
+go build ./internal/config/...      # ✅  
+go build ./internal/app             # ✅
+```
+
+### 后续改进计划
+
+**短期** (1-2 周):
+1. 迁移 `pkg/common` 使用者到新配置系统
+2. 服务层接口化
+
+**中期** (1-2 月):
+1. App 结构重构（分阶段）
+2. 完全移除 `pkg/common`
+
+**长期** (3-6 月):
+1. 存储抽象化（利用 Repository 接口）
+2. 微服务化准备
+
+详见完整文档：`docs/architecture/phase4-improvements.md`

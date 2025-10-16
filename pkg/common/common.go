@@ -13,7 +13,18 @@ const (
 )
 
 // Legacy configuration variables
-// TODO: Migrate to internal/config system for unified configuration management
+// DEPRECATED: These variables are deprecated and will be removed in a future version.
+// Use internal/config.Config instead:
+//   - Host -> No longer needed
+//   - NodeTerminalImage -> config.Kubernetes.NodeTerminalImage
+//   - WebhookUsername/WebhookPassword/WebhookEnabled -> config.Webhook.*
+//   - tigaEncryptKey (via Get/SetEncryptKey) -> config.Security.EncryptionKey
+//   - AnonymousUserEnabled -> config.Features.AnonymousUserEnabled
+//   - CookieExpirationSeconds -> config.JWT.ExpiresIn * 2
+//   - DisableGZIP -> config.Features.DisableGZIP
+//   - DisableVersionCheck -> config.Features.DisableVersionCheck
+//
+// TODO: Migrate all usages to internal/config system and remove this package
 var (
 	Host = ""
 
@@ -32,16 +43,18 @@ var (
 	DisableVersionCheck = false
 )
 
-// SetEncryptKey sets the encryption key from configuration
-// This should be called once during application initialization
+// Deprecated: SetEncryptKey sets the encryption key from configuration.
+// Use config.Security.EncryptionKey directly instead.
+// This function will be removed in a future version.
 func SetEncryptKey(key string) {
 	if key != "" {
 		tigaEncryptKey = key
 	}
 }
 
-// GetEncryptKey returns the encryption key
-// Use SetEncryptKey() during initialization to set from config
+// Deprecated: GetEncryptKey returns the encryption key.
+// Use config.Security.EncryptionKey directly instead.
+// This function will be removed in a future version.
 func GetEncryptKey() string {
 	return tigaEncryptKey
 }

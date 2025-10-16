@@ -18,6 +18,9 @@ type Config struct {
 	OAuth              OAuthConfig
 	Security           SecurityConfig
 	DatabaseManagement DatabaseManagementConfig
+	Kubernetes         KubernetesConfig
+	Webhook            WebhookConfig
+	Features           FeaturesConfig
 	Log                LogConfig
 }
 
@@ -83,6 +86,26 @@ type OAuthProvider struct {
 type SecurityConfig struct {
 	EncryptionKey string
 	BcryptCost    int
+}
+
+// KubernetesConfig holds Kubernetes-related configuration
+type KubernetesConfig struct {
+	NodeTerminalImage   string // Docker image for node terminal pods
+	NodeTerminalPodName string // Name prefix for node terminal pods
+}
+
+// WebhookConfig holds webhook configuration
+type WebhookConfig struct {
+	Enabled  bool
+	Username string
+	Password string
+}
+
+// FeaturesConfig holds feature flags
+type FeaturesConfig struct {
+	AnonymousUserEnabled bool
+	DisableGZIP          bool
+	DisableVersionCheck  bool
 }
 
 // LogConfig holds logging configuration
@@ -167,6 +190,20 @@ func LoadFromFile(filename string) (*Config, error) {
 			QueryTimeoutSeconds: getIntOrDefault(configFile.DatabaseManagement.QueryTimeoutSeconds, 30),
 			MaxResultBytes:      getIntOrDefault(configFile.DatabaseManagement.MaxResultBytes, 10*1024*1024),
 			AuditRetentionDays:  getIntOrDefault(configFile.DatabaseManagement.AuditRetentionDays, 90),
+		},
+		Kubernetes: KubernetesConfig{
+			NodeTerminalImage:   getEnv("NODE_TERMINAL_IMAGE", "busybox:latest"),
+			NodeTerminalPodName: "tiga-node-terminal-agent",
+		},
+		Webhook: WebhookConfig{
+			Username: getEnv("WEBHOOK_USERNAME", ""),
+			Password: getEnv("WEBHOOK_PASSWORD", ""),
+			Enabled:  getEnv("WEBHOOK_USERNAME", "") != "" && getEnv("WEBHOOK_PASSWORD", "") != "",
+		},
+		Features: FeaturesConfig{
+			AnonymousUserEnabled: getEnvAsBool("ANONYMOUS_USER_ENABLED", false),
+			DisableGZIP:          getEnvAsBool("DISABLE_GZIP", true),
+			DisableVersionCheck:  getEnvAsBool("DISABLE_VERSION_CHECK", false),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
@@ -258,14 +295,28 @@ func LoadFromEnv() *Config {
 			},
 		},
 		Security: SecurityConfig{
-			EncryptionKey: "",
+			EncryptionKey: getEnv("ENCRYPTION_KEY", ""),
 			BcryptCost:    getEnvAsInt("BCRYPT_COST", 10),
 		},
 		DatabaseManagement: DatabaseManagementConfig{
-			CredentialKey:       "",
+			CredentialKey:       getEnv("CREDENTIAL_KEY", ""),
 			QueryTimeoutSeconds: getEnvAsInt("DB_MGMT_QUERY_TIMEOUT", 30),
 			MaxResultBytes:      getEnvAsInt("DB_MGMT_MAX_RESULT_BYTES", 10*1024*1024),
 			AuditRetentionDays:  getEnvAsInt("DB_MGMT_AUDIT_RETENTION_DAYS", 90),
+		},
+		Kubernetes: KubernetesConfig{
+			NodeTerminalImage:   getEnv("NODE_TERMINAL_IMAGE", "busybox:latest"),
+			NodeTerminalPodName: "tiga-node-terminal-agent",
+		},
+		Webhook: WebhookConfig{
+			Username: getEnv("WEBHOOK_USERNAME", ""),
+			Password: getEnv("WEBHOOK_PASSWORD", ""),
+			Enabled:  getEnv("WEBHOOK_USERNAME", "") != "" && getEnv("WEBHOOK_PASSWORD", "") != "",
+		},
+		Features: FeaturesConfig{
+			AnonymousUserEnabled: getEnvAsBool("ANONYMOUS_USER_ENABLED", false),
+			DisableGZIP:          getEnvAsBool("DISABLE_GZIP", true),
+			DisableVersionCheck:  getEnvAsBool("DISABLE_VERSION_CHECK", false),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "debug"),
