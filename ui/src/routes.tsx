@@ -15,7 +15,8 @@ import { VMsLayout } from './layouts/vms-layout'
 import { WebServerLayout } from './layouts/webserver-layout'
 // DevOps Platform Pages
 import AlertsPage from './pages/alerts'
-import { CRListPage } from './pages/cr-list-page'
+import { CRListPage } from './pages/k8s/cr-list-page'
+import { CRDYAMLEditorPage } from './pages/k8s/crd-yaml-editor-page'
 import DatabaseManagementPage from './pages/database-management'
 import { InstanceDetail } from './pages/database/instance-detail'
 import { InstanceForm } from './pages/database/instance-form'
@@ -40,11 +41,19 @@ import MinIOManagementPage from './pages/minio-management'
 import MinioFilesPage from './pages/minio/files-page'
 import MinioInstancesPage from './pages/minio/instances-page'
 import MinioUsersPage from './pages/minio/users-page'
-import { Overview } from './pages/overview'
+import { Overview } from './pages/k8s/overview'
 import { OverviewDashboard } from './pages/overview-dashboard-new'
-import { ResourceDetail } from './pages/resource-detail'
-import { ResourceList } from './pages/resource-list'
+import { ResourceDetail } from './pages/k8s/resource-detail'
+import { ResourceList } from './pages/k8s/resource-list'
 import RoleFormPage from './pages/role-form'
+// K8s Cluster Management Pages
+import { ClusterFormPage } from './pages/k8s/cluster-form-page'
+import { ClusterListPage } from './pages/k8s/cluster-list-page'
+import { ResourceHistoryPage } from './pages/k8s/resource-history-page'
+import { ResourceHistoryDetailPage } from './pages/k8s/resource-history-detail-page'
+import { CloneSetManagementPage } from './pages/k8s/cloneset-management-page'
+import { DaemonSetManagementPage } from './pages/k8s/daemonset-management-page'
+import { StatefulSetManagementPage } from './pages/k8s/statefulset-management-page'
 import RolesPage from './pages/roles'
 import { SettingsPage } from './pages/settings'
 import UserFormPage from './pages/user-form'
@@ -323,11 +332,49 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Navigate to="overview" replace />,
+        element: <Navigate to="clusters" replace />,
       },
       {
         path: 'overview',
         element: <Overview />,
+      },
+      // Cluster Management routes (must be before generic resource routes)
+      {
+        path: 'clusters',
+        element: <ClusterListPage />,
+      },
+      {
+        path: 'clusters/new',
+        element: <ClusterFormPage />,
+      },
+      {
+        path: 'clusters/:id',
+        element: <ClusterFormPage />,
+      },
+      {
+        path: 'clusters/:clusterId/resource-history',
+        element: <ResourceHistoryPage />,
+      },
+      {
+        path: 'clusters/:clusterId/resource-history/:historyId',
+        element: <ResourceHistoryDetailPage />,
+      },
+      {
+        path: 'clusters/:clusterId/yaml-editor',
+        element: <CRDYAMLEditorPage />,
+      },
+      // Workload Management routes
+      {
+        path: 'workloads/clonesets',
+        element: <CloneSetManagementPage />,
+      },
+      {
+        path: 'workloads/daemonsets',
+        element: <DaemonSetManagementPage />,
+      },
+      {
+        path: 'workloads/statefulsets',
+        element: <StatefulSetManagementPage />,
       },
       // CRD routes
       {
