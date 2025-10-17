@@ -11,16 +11,22 @@ import (
 	"github.com/ysicing/tiga/internal/repository"
 )
 
-// ClusterHandler handles cluster-related HTTP requests (Phase 0)
+// ClusterHandler handles cluster-related HTTP requests (Phase 3 更新)
 type ClusterHandler struct {
 	clusterRepo repository.ClusterRepositoryInterface
+	historyRepo repository.ResourceHistoryRepositoryInterface
 	cfg         *config.Config
 }
 
 // NewClusterHandler creates a new ClusterHandler instance
-func NewClusterHandler(clusterRepo repository.ClusterRepositoryInterface, cfg *config.Config) *ClusterHandler {
+func NewClusterHandler(
+	clusterRepo repository.ClusterRepositoryInterface,
+	historyRepo repository.ResourceHistoryRepositoryInterface,
+	cfg *config.Config,
+) *ClusterHandler {
 	return &ClusterHandler{
 		clusterRepo: clusterRepo,
+		historyRepo: historyRepo,
 		cfg:         cfg,
 	}
 }

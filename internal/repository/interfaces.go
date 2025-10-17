@@ -110,12 +110,35 @@ type ClusterRepositoryInterface interface {
 	ClearDefault(ctx context.Context) error
 }
 
-// ResourceHistoryRepositoryInterface defines the interface for Kubernetes resource history operations
+// ResourceHistoryRepositoryInterface defines the interface for Kubernetes resource history operations (Phase 3 扩展)
 type ResourceHistoryRepositoryInterface interface {
-	Create(history *models.ResourceHistory) error
-	GetByID(id uuid.UUID) (*models.ResourceHistory, error)
-	ListByResource(clusterName, resourceType, resourceName, namespace string, limit int) ([]*models.ResourceHistory, error)
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, history *models.ResourceHistory) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.ResourceHistory, error)
+
+	// List operations with various filters
+	ListByCluster(ctx context.Context, clusterID uuid.UUID, filter *ResourceHistoryFilter) ([]*models.ResourceHistory, int64, error)
+	ListByResource(ctx context.Context, clusterID uuid.UUID, resourceType, resourceName, namespace string, limit int) ([]*models.ResourceHistory, error)
+	ListByCRD(ctx context.Context, clusterID uuid.UUID, apiGroup, apiVersion, resourceType string, limit int) ([]*models.ResourceHistory, error)
+	ListByOperationType(ctx context.Context, clusterID uuid.UUID, operationType string, limit int) ([]*models.ResourceHistory, error)
+
+	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteOldRecords(ctx context.Context, olderThan time.Time) (int64, error)
+}
+
+// ResourceHistoryFilter defines filter for resource history queries
+type ResourceHistoryFilter struct {
+	ResourceType  string
+	ResourceName  string
+	Namespace     string
+	APIGroup      string
+	APIVersion    string
+	OperationType string
+	OperatorID    *uuid.UUID
+	Success       *bool
+	StartTime     *time.Time
+	EndTime       *time.Time
+	Page          int
+	PageSize      int
 }
 
 // OAuthProviderRepositoryInterface defines the interface for OAuth provider operations

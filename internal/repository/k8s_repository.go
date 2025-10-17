@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -116,7 +116,7 @@ func (r *ClusterRepository) Disable(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Model(&models.Cluster{}).Where("id = ?", id).Update("enable", false).Error
 }
 
-// ResourceHistoryRepository handles resource history data operations
+// ResourceHistoryRepository handles resource history data operations (Phase 3 更新)
 type ResourceHistoryRepository struct {
 	db *gorm.DB
 }
@@ -127,55 +127,135 @@ func NewResourceHistoryRepository(db *gorm.DB) *ResourceHistoryRepository {
 }
 
 // Create creates a new resource history record
-func (r *ResourceHistoryRepository) Create(history *models.ResourceHistory) error {
-	return r.db.Create(history).Error
+func (r *ResourceHistoryRepository) Create(ctx context.Context, history *models.ResourceHistory) error {
+	return r.db.WithContext(ctx).Create(history).Error
 }
 
 // GetByID retrieves a resource history by ID
-func (r *ResourceHistoryRepository) GetByID(id uuid.UUID) (*models.ResourceHistory, error) {
+func (r *ResourceHistoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.ResourceHistory, error) {
 	var history models.ResourceHistory
-	if err := r.db.Preload("Operator").First(&history, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Cluster").Preload("Operator").First(&history, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &history, nil
 }
 
-// ListByResource retrieves resource history by resource identification
-func (r *ResourceHistoryRepository) ListByResource(clusterName, resourceType, resourceName, namespace string, limit int) ([]*models.ResourceHistory, error) {
+// ListByCluster retrieves resource history by cluster with comprehensive filtering
+func (r *ResourceHistoryRepository) ListByCluster(ctx context.Context, clusterID uuid.UUID, filter *ResourceHistoryFilter) ([]*models.ResourceHistory, int64, error) {
+	query := r.db.WithContext(ctx).Model(&models.ResourceHistory{}).Where("cluster_id = ?", clusterID)
+
+	// Apply filters
+	if filter.ResourceType != "" {
+		query = query.Where("resource_type = ?", filter.ResourceType)
+	}
+	if filter.ResourceName != "" {
+		query = query.Where("resource_name = ?", filter.ResourceName)
+	}
+	if filter.Namespace != "" {
+		query = query.Where("namespace = ?", filter.Namespace)
+	}
+	if filter.APIGroup != "" {
+		query = query.Where("api_group = ?", filter.APIGroup)
+	}
+	if filter.APIVersion != "" {
+		query = query.Where("api_version = ?", filter.APIVersion)
+	}
+	if filter.OperationType != "" {
+		query = query.Where("operation_type = ?", filter.OperationType)
+	}
+	if filter.OperatorID != nil {
+		query = query.Where("operator_id = ?", *filter.OperatorID)
+	}
+	if filter.Success != nil {
+		query = query.Where("success = ?", *filter.Success)
+	}
+	if filter.StartTime != nil {
+		query = query.Where("created_at >= ?", *filter.StartTime)
+	}
+	if filter.EndTime != nil {
+		query = query.Where("created_at <= ?", *filter.EndTime)
+	}
+
+	// Count total
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Apply pagination
+	if filter.PageSize > 0 {
+		offset := (filter.Page - 1) * filter.PageSize
+		query = query.Offset(offset).Limit(filter.PageSize)
+	}
+
+	// Retrieve records
 	var histories []*models.ResourceHistory
-	query := r.db.Where("cluster_name = ? AND resource_type = ? AND resource_name = ?", clusterName, resourceType, resourceName)
+	if err := query.Order("created_at DESC").Preload("Cluster").Preload("Operator").Find(&histories).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return histories, total, nil
+}
+
+// ListByResource retrieves resource history by specific resource
+func (r *ResourceHistoryRepository) ListByResource(ctx context.Context, clusterID uuid.UUID, resourceType, resourceName, namespace string, limit int) ([]*models.ResourceHistory, error) {
+	var histories []*models.ResourceHistory
+	query := r.db.WithContext(ctx).Where("cluster_id = ? AND resource_type = ? AND resource_name = ?", clusterID, resourceType, resourceName)
+
 	if namespace != "" {
 		query = query.Where("namespace = ?", namespace)
 	}
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	if err := query.Order("created_at DESC").Preload("Operator").Find(&histories).Error; err != nil {
+
+	if err := query.Order("created_at DESC").Preload("Cluster").Preload("Operator").Find(&histories).Error; err != nil {
 		return nil, err
 	}
 	return histories, nil
 }
 
-// ListByCluster retrieves resource history by cluster
-func (r *ResourceHistoryRepository) ListByCluster(clusterName string, limit int) ([]*models.ResourceHistory, error) {
+// ListByCRD retrieves resource history by CRD type
+func (r *ResourceHistoryRepository) ListByCRD(ctx context.Context, clusterID uuid.UUID, apiGroup, apiVersion, resourceType string, limit int) ([]*models.ResourceHistory, error) {
 	var histories []*models.ResourceHistory
-	query := r.db.Where("cluster_name = ?", clusterName)
+	query := r.db.WithContext(ctx).Where("cluster_id = ? AND api_group = ? AND api_version = ? AND resource_type = ?",
+		clusterID, apiGroup, apiVersion, resourceType)
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	if err := query.Order("created_at DESC").Preload("Operator").Find(&histories).Error; err != nil {
+
+	if err := query.Order("created_at DESC").Preload("Cluster").Preload("Operator").Find(&histories).Error; err != nil {
+		return nil, err
+	}
+	return histories, nil
+}
+
+// ListByOperationType retrieves resource history by operation type
+func (r *ResourceHistoryRepository) ListByOperationType(ctx context.Context, clusterID uuid.UUID, operationType string, limit int) ([]*models.ResourceHistory, error) {
+	var histories []*models.ResourceHistory
+	query := r.db.WithContext(ctx).Where("cluster_id = ? AND operation_type = ?", clusterID, operationType)
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if err := query.Order("created_at DESC").Preload("Cluster").Preload("Operator").Find(&histories).Error; err != nil {
 		return nil, err
 	}
 	return histories, nil
 }
 
 // Delete soft deletes a resource history record
-func (r *ResourceHistoryRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&models.ResourceHistory{}, "id = ?", id).Error
+func (r *ResourceHistoryRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.ResourceHistory{}, "id = ?", id).Error
 }
 
-// DeleteOlderThan deletes resource history records older than a certain time
-func (r *ResourceHistoryRepository) DeleteOlderThan(days int) error {
-	query := fmt.Sprintf("created_at < datetime('now', '-%d days')", days)
-	return r.db.Where(query).Delete(&models.ResourceHistory{}).Error
+// DeleteOldRecords deletes resource history records older than a certain time
+func (r *ResourceHistoryRepository) DeleteOldRecords(ctx context.Context, olderThan time.Time) (int64, error) {
+	result := r.db.WithContext(ctx).Where("created_at < ?", olderThan).Delete(&models.ResourceHistory{})
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
 }
