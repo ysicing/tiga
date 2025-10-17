@@ -201,6 +201,23 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
         { titleKey: 'nav.events', url: '/events', icon: IconBell },
         { titleKey: 'nav.crds', url: '/crds', icon: IconCode },
       ],
+      'sidebar.groups.workload-management': [
+        {
+          titleKey: 'nav.clonesets-management',
+          url: '/workloads/clonesets',
+          icon: IconRocket,
+        },
+        {
+          titleKey: 'nav.daemonsets-management',
+          url: '/workloads/daemonsets',
+          icon: IconTopologyBus,
+        },
+        {
+          titleKey: 'nav.statefulsets-management',
+          url: '/workloads/statefulsets',
+          icon: IconStack2,
+        },
+      ],
     }),
     []
   )

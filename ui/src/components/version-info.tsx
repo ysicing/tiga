@@ -3,7 +3,7 @@ import { useVersionInfo } from '@/lib/api'
 export function VersionInfo() {
   const { data: versionInfo } = useVersionInfo()
 
-  if (!versionInfo) return null
+  if (!versionInfo || !versionInfo.version || !versionInfo.commitId) return null
 
   const handleCommitClick = (e: React.MouseEvent) => {
     e.preventDefault()

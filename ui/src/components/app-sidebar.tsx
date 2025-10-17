@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import Logo from '@/assets/logo.png'
 import { useSidebarConfig } from '@/contexts/sidebar-config-context'
 import { CollapsibleContent } from '@radix-ui/react-collapsible'
-import { IconLayoutDashboard } from '@tabler/icons-react'
+import { IconCloud, IconLayoutDashboard } from '@tabler/icons-react'
 import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
@@ -177,6 +177,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <IconLayoutDashboard className="text-sidebar-primary" />
                   <span className="font-medium">
                     {t('nav.k8sOverview', 'K8s 概览')}
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip={t('nav.clusterManagement', '集群管理')}
+                asChild
+                isActive={isActive('/k8s/clusters')}
+                className="transition-all duration-200 hover:bg-accent/60 active:scale-95 data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:shadow-sm"
+              >
+                <Link to="/k8s/clusters" onClick={handleMenuItemClick}>
+                  <IconCloud className="text-sidebar-primary" />
+                  <span className="font-medium">
+                    {t('nav.clusterManagement', '集群管理')}
                   </span>
                 </Link>
               </SidebarMenuButton>
