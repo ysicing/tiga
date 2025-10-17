@@ -238,6 +238,7 @@ func newWireApplication(
 	terminalManager *host.TerminalManager,
 	hostService *host.HostService,
 	probeScheduler *monitor.ServiceProbeScheduler,
+	k8sService *services.K8sService,
 ) (*Application, error) {
 	app := &Application{
 		config:          cfg,
@@ -254,6 +255,7 @@ func newWireApplication(
 		terminalManager: terminalManager,
 		hostService:     hostService,
 		probeScheduler:  probeScheduler,
+		k8sService:      k8sService,
 	}
 
 	return app, nil

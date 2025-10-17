@@ -57,7 +57,7 @@ func (s *K8sService) ImportClustersFromKubeconfig(ctx context.Context, kubeconfi
 		}
 
 		// Check if cluster already exists
-		existing, err := s.clusterRepo.GetByName(contextName)
+		existing, err := s.clusterRepo.GetByName(ctx, contextName)
 		if err == nil && existing != nil {
 			logrus.Infof("Cluster %s already exists, skipping", contextName)
 			continue
@@ -71,7 +71,7 @@ func (s *K8sService) ImportClustersFromKubeconfig(ctx context.Context, kubeconfi
 			Enable:    true,
 		}
 
-		if err := s.clusterRepo.Create(cluster); err != nil {
+		if err := s.clusterRepo.Create(ctx, cluster); err != nil {
 			logrus.Warnf("Failed to import cluster %s: %v", contextName, err)
 			continue
 		}
@@ -86,41 +86,53 @@ func (s *K8sService) ImportClustersFromKubeconfig(ctx context.Context, kubeconfi
 
 // ListClusters lists all clusters
 func (s *K8sService) ListClusters(ctx context.Context) ([]*models.Cluster, error) {
-	return s.clusterRepo.List()
+	return s.clusterRepo.List(ctx)
 }
 
 // GetCluster gets a cluster by ID
 func (s *K8sService) GetCluster(ctx context.Context, name string) (*models.Cluster, error) {
-	return s.clusterRepo.GetByName(name)
+	return s.clusterRepo.GetByName(ctx, name)
 }
 
 // CreateCluster creates a new cluster
 func (s *K8sService) CreateCluster(ctx context.Context, cluster *models.Cluster) error {
 	// If this cluster should be default, clear existing default
 	if cluster.IsDefault {
-		if err := s.clusterRepo.ClearDefault(); err != nil {
+		if err := s.clusterRepo.ClearDefault(ctx); err != nil {
 			return fmt.Errorf("failed to clear default cluster: %w", err)
 		}
 	}
-	return s.clusterRepo.Create(cluster)
+	return s.clusterRepo.Create(ctx, cluster)
 }
 
 // UpdateCluster updates a cluster
 func (s *K8sService) UpdateCluster(ctx context.Context, cluster *models.Cluster) error {
 	// If setting as default, clear existing default
 	if cluster.IsDefault {
-		if err := s.clusterRepo.ClearDefault(); err != nil {
+		if err := s.clusterRepo.ClearDefault(ctx); err != nil {
 			return fmt.Errorf("failed to clear default cluster: %w", err)
 		}
 	}
-	return s.clusterRepo.Update(cluster)
+
+	// Build updates map
+	updates := map[string]interface{}{
+		"name":           cluster.Name,
+		"description":    cluster.Description,
+		"config":         cluster.Config,
+		"in_cluster":     cluster.InCluster,
+		"is_default":     cluster.IsDefault,
+		"prometheus_url": cluster.PrometheusURL,
+		"enable":         cluster.Enable,
+	}
+
+	return s.clusterRepo.Update(ctx, cluster.ID, updates)
 }
 
 // DeleteCluster deletes a cluster (soft delete)
 func (s *K8sService) DeleteCluster(ctx context.Context, id string) error {
-	cluster, err := s.clusterRepo.GetByName(id)
+	cluster, err := s.clusterRepo.GetByName(ctx, id)
 	if err != nil {
 		return fmt.Errorf("cluster not found: %w", err)
 	}
-	return s.clusterRepo.Delete(cluster.ID)
+	return s.clusterRepo.Delete(ctx, cluster.ID)
 }

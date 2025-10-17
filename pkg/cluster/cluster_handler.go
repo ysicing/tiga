@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -39,7 +40,8 @@ func (cm *ClusterManager) GetClusters(c *gin.Context) {
 }
 
 func (cm *ClusterManager) GetClusterList(c *gin.Context) {
-	clusters, err := cm.clusterRepo.List()
+	ctx := c.Request.Context()
+	clusters, err := cm.clusterRepo.List(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -69,6 +71,7 @@ func (cm *ClusterManager) GetClusterList(c *gin.Context) {
 }
 
 func (cm *ClusterManager) CreateCluster(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req struct {
 		Name          string `json:"name" binding:"required"`
 		Description   string `json:"description"`
@@ -83,7 +86,7 @@ func (cm *ClusterManager) CreateCluster(c *gin.Context) {
 		return
 	}
 
-	if _, err := cm.clusterRepo.GetByName(req.Name); err == nil {
+	if _, err := cm.clusterRepo.GetByName(ctx, req.Name); err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "cluster already exists"})
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -92,7 +95,7 @@ func (cm *ClusterManager) CreateCluster(c *gin.Context) {
 	}
 
 	if req.IsDefault {
-		if err := cm.clusterRepo.ClearDefault(); err != nil {
+		if err := cm.clusterRepo.ClearDefault(ctx); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -108,7 +111,7 @@ func (cm *ClusterManager) CreateCluster(c *gin.Context) {
 		Enable:        true,
 	}
 
-	if err := cm.clusterRepo.Create(cluster); err != nil {
+	if err := cm.clusterRepo.Create(ctx, cluster); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -122,6 +125,7 @@ func (cm *ClusterManager) CreateCluster(c *gin.Context) {
 }
 
 func (cm *ClusterManager) UpdateCluster(c *gin.Context) {
+	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -144,7 +148,7 @@ func (cm *ClusterManager) UpdateCluster(c *gin.Context) {
 		return
 	}
 
-	cluster, err := cm.clusterRepo.GetByID(id)
+	cluster, err := cm.clusterRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
@@ -155,7 +159,7 @@ func (cm *ClusterManager) UpdateCluster(c *gin.Context) {
 	}
 
 	if req.IsDefault && !cluster.IsDefault {
-		if err := cm.clusterRepo.ClearDefault(); err != nil {
+		if err := cm.clusterRepo.ClearDefault(ctx); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -177,7 +181,7 @@ func (cm *ClusterManager) UpdateCluster(c *gin.Context) {
 		updates["config"] = req.Config
 	}
 
-	if err := cm.clusterRepo.UpdateFields(id, updates); err != nil {
+	if err := cm.clusterRepo.Update(ctx, id, updates); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -188,6 +192,7 @@ func (cm *ClusterManager) UpdateCluster(c *gin.Context) {
 }
 
 func (cm *ClusterManager) DeleteCluster(c *gin.Context) {
+	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -195,7 +200,7 @@ func (cm *ClusterManager) DeleteCluster(c *gin.Context) {
 		return
 	}
 
-	cluster, err := cm.clusterRepo.GetByID(id)
+	cluster, err := cm.clusterRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "cluster not found"})
@@ -210,7 +215,7 @@ func (cm *ClusterManager) DeleteCluster(c *gin.Context) {
 		return
 	}
 
-	if err := cm.clusterRepo.Delete(cluster.ID); err != nil {
+	if err := cm.clusterRepo.Delete(ctx, cluster.ID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -221,6 +226,7 @@ func (cm *ClusterManager) DeleteCluster(c *gin.Context) {
 }
 
 func (cm *ClusterManager) ImportClustersFromKubeconfig(c *gin.Context) {
+	ctx := c.Request.Context()
 	var clusterReq common.ImportClustersRequest
 	if err := c.ShouldBindJSON(&clusterReq); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -232,7 +238,7 @@ func (cm *ClusterManager) ImportClustersFromKubeconfig(c *gin.Context) {
 		return
 	}
 
-	cc, err := cm.clusterRepo.Count()
+	cc, err := cm.clusterRepo.Count(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -251,7 +257,7 @@ func (cm *ClusterManager) ImportClustersFromKubeconfig(c *gin.Context) {
 			IsDefault:   true,
 			Enable:      true,
 		}
-		if err := cm.clusterRepo.Create(cluster); err != nil {
+		if err := cm.clusterRepo.Create(ctx, cluster); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -268,7 +274,7 @@ func (cm *ClusterManager) ImportClustersFromKubeconfig(c *gin.Context) {
 		return
 	}
 
-	importedCount := importClustersFromKubeconfigHelper(cm, kubeconfig)
+	importedCount := importClustersFromKubeconfigHelper(ctx, cm, kubeconfig)
 	syncNow <- struct{}{}
 	// wait for sync to complete
 	time.Sleep(1 * time.Second)
@@ -276,23 +282,23 @@ func (cm *ClusterManager) ImportClustersFromKubeconfig(c *gin.Context) {
 }
 
 // importClustersFromKubeconfigHelper imports clusters from a kubeconfig object
-func importClustersFromKubeconfigHelper(cm *ClusterManager, kubeconfig *clientcmdapi.Config) int64 {
+func importClustersFromKubeconfigHelper(ctx context.Context, cm *ClusterManager, kubeconfig *clientcmdapi.Config) int64 {
 	if len(kubeconfig.Contexts) == 0 {
 		return 0
 	}
 
 	importedCount := 0
-	for contextName, ctx := range kubeconfig.Contexts {
+	for contextName, kubeCtx := range kubeconfig.Contexts {
 		config := clientcmdapi.NewConfig()
 		config.Contexts = map[string]*clientcmdapi.Context{
-			contextName: ctx,
+			contextName: kubeCtx,
 		}
 		config.CurrentContext = contextName
 		config.Clusters = map[string]*clientcmdapi.Cluster{
-			ctx.Cluster: kubeconfig.Clusters[ctx.Cluster],
+			kubeCtx.Cluster: kubeconfig.Clusters[kubeCtx.Cluster],
 		}
 		config.AuthInfos = map[string]*clientcmdapi.AuthInfo{
-			ctx.AuthInfo: kubeconfig.AuthInfos[ctx.AuthInfo],
+			kubeCtx.AuthInfo: kubeconfig.AuthInfos[kubeCtx.AuthInfo],
 		}
 		configStr, err := clientcmd.Write(*config)
 		if err != nil {
@@ -303,9 +309,9 @@ func importClustersFromKubeconfigHelper(cm *ClusterManager, kubeconfig *clientcm
 			Config:    string(configStr),
 			IsDefault: contextName == kubeconfig.CurrentContext,
 		}
-		if _, err := cm.clusterRepo.GetByName(contextName); err != nil {
+		if _, err := cm.clusterRepo.GetByName(ctx, contextName); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				if err := cm.clusterRepo.Create(&cluster); err != nil {
+				if err := cm.clusterRepo.Create(ctx, &cluster); err != nil {
 					continue
 				}
 				importedCount++

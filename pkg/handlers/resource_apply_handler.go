@@ -86,7 +86,7 @@ func (h *ResourceApplyHandler) ApplyResource(c *gin.Context) {
 		// TODO: User.ID is uint but ResourceHistory.OperatorID is UUID
 		operatorUUID := uuid.NewSHA1(uuid.Nil, []byte(fmt.Sprintf("user-%d", user.ID)))
 		models.DB.Create(&models.ResourceHistory{
-			ClusterName:   cs.Name,
+			ClusterID:     cs.ClusterID,
 			ResourceType:  resource,
 			ResourceName:  obj.GetName(),
 			Namespace:     obj.GetNamespace(),
