@@ -1,9 +1,11 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -15,6 +17,7 @@ import (
 )
 
 type ClientSet struct {
+	ClusterID  uuid.UUID // Cluster UUID for database references
 	Name       string
 	Version    string // Kubernetes version
 	K8sClient  *kube.K8sClient
@@ -30,22 +33,22 @@ type ClusterManager struct {
 	clusterRepo    *repository.ClusterRepository
 }
 
-func createClientSetInCluster(name, prometheusURL string) (*ClientSet, error) {
+func createClientSetInCluster(clusterID uuid.UUID, name, prometheusURL string) (*ClientSet, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return newClientSet(name, config, prometheusURL)
+	return newClientSet(clusterID, name, config, prometheusURL)
 }
 
-func createClientSetFromConfig(name, content, prometheusURL string) (*ClientSet, error) {
+func createClientSetFromConfig(clusterID uuid.UUID, name, content, prometheusURL string) (*ClientSet, error) {
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(content))
 	if err != nil {
 		logrus.Warnf("Failed to create REST config for cluster %s: %v", name, err)
 		return nil, err
 	}
-	cs, err := newClientSet(name, restConfig, prometheusURL)
+	cs, err := newClientSet(clusterID, name, restConfig, prometheusURL)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +57,9 @@ func createClientSetFromConfig(name, content, prometheusURL string) (*ClientSet,
 	return cs, nil
 }
 
-func newClientSet(name string, k8sConfig *rest.Config, prometheusURL string) (*ClientSet, error) {
+func newClientSet(clusterID uuid.UUID, name string, k8sConfig *rest.Config, prometheusURL string) (*ClientSet, error) {
 	cs := &ClientSet{
+		ClusterID:     clusterID,
 		Name:          name,
 		prometheusURL: prometheusURL,
 	}
@@ -106,7 +110,7 @@ var (
 )
 
 func syncClusters(cm *ClusterManager) error {
-	clusters, err := cm.clusterRepo.List()
+	clusters, err := cm.clusterRepo.List(context.Background())
 	if err != nil {
 		logrus.Warnf("list cluster err: %v", err)
 		time.Sleep(5 * time.Second)
@@ -188,9 +192,9 @@ func shouldUpdateCluster(cs *ClientSet, cluster *models.Cluster) bool {
 
 func buildClientSet(cluster *models.Cluster) (*ClientSet, error) {
 	if cluster.InCluster {
-		return createClientSetInCluster(cluster.Name, cluster.PrometheusURL)
+		return createClientSetInCluster(cluster.ID, cluster.Name, cluster.PrometheusURL)
 	}
-	return createClientSetFromConfig(cluster.Name, string(cluster.Config), cluster.PrometheusURL)
+	return createClientSetFromConfig(cluster.ID, cluster.Name, string(cluster.Config), cluster.PrometheusURL)
 }
 
 func NewClusterManager() (*ClusterManager, error) {

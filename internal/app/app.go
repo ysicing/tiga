@@ -61,6 +61,9 @@ type Application struct {
 
 	// Service monitoring
 	probeScheduler *monitor.ServiceProbeScheduler
+
+	// K8s service (for kubeconfig import and cluster management)
+	k8sService *services.K8sService
 }
 
 // NewApplication creates a new application instance using Wire dependency injection
@@ -138,21 +141,14 @@ func (a *Application) Initialize(ctx context.Context) error {
 		}
 	}
 
-	// Try to import clusters from default kubeconfig (requires k8sService)
-	// NOTE: k8sService is created by wire but not injected into Application struct yet
-	// For now, we skip this or create it separately
-	// TODO: Add k8sService to Application struct if needed
+	// Try to import clusters from default kubeconfig
 	kubeconfigPath := os.Getenv("KUBECONFIG")
 	if kubeconfigPath == "" {
 		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
 	}
 	if _, err := os.Stat(kubeconfigPath); err == nil {
-		// Create a temporary k8sService for kubeconfig import
-		clusterRepo := repository.NewClusterRepository(a.db.DB)
-		resourceHistoryRepo := repository.NewResourceHistoryRepository(a.db.DB)
-		k8sService := services.NewK8sService(clusterRepo, resourceHistoryRepo)
-
-		if err := k8sService.ImportClustersFromKubeconfig(ctx, kubeconfigPath); err != nil {
+		// Use wire-injected k8sService for kubeconfig import
+		if err := a.k8sService.ImportClustersFromKubeconfig(ctx, kubeconfigPath); err != nil {
 			logrus.Warnf("Failed to import clusters from kubeconfig: %v", err)
 		}
 	}

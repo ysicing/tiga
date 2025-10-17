@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
+	clusterhandlers "github.com/ysicing/tiga/internal/api/handlers/cluster"
 	"github.com/ysicing/tiga/internal/api/handlers/instances"
 	"github.com/ysicing/tiga/internal/api/handlers/minio"
 	"github.com/ysicing/tiga/internal/api/middleware"
@@ -77,6 +78,10 @@ func SetupRoutes(
 	alertRepo := repository.NewAlertRepository(db)
 	auditRepo := repository.NewAuditLogRepository(db)
 
+	// K8s repositories (Phase 0-3)
+	clusterRepo := repository.NewClusterRepository(db)
+	resourceHistoryRepo := repository.NewResourceHistoryRepository(db)
+
 	// Host monitoring repositories
 	hostRepo := repository.NewHostRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
@@ -134,6 +139,9 @@ func SetupRoutes(
 	metricsHandler := instances.NewMetricsHandler(instanceService)
 	alertHandler := handlers.NewAlertHandler(alertRepo)
 	auditHandler := handlers.NewAuditLogHandler(auditRepo)
+
+	// K8s handlers (Phase 0-4)
+	k8sClusterHandler := clusterhandlers.NewClusterHandler(clusterRepo, resourceHistoryRepo, cfg)
 
 	// Database management handlers
 	dbInstanceHandler := databasehandlers.NewInstanceHandler(dbManager, dbAuditLogger)
@@ -259,6 +267,58 @@ func SetupRoutes(
 		protected := v1.Group("")
 		protected.Use(middleware.AuthRequired())
 		{
+			// ==================== New K8s Cluster Management API (Phase 0-4) ====================
+			k8sGroup := protected.Group("/k8s")
+			{
+				// Cluster management
+				clustersGroup := k8sGroup.Group("/clusters")
+				{
+					clustersGroup.GET("", k8sClusterHandler.List)
+					clustersGroup.POST("", k8sClusterHandler.Create)
+					clustersGroup.GET("/:id", k8sClusterHandler.Get)
+					clustersGroup.PUT("/:id", k8sClusterHandler.Update)
+					clustersGroup.DELETE("/:id", k8sClusterHandler.Delete)
+					clustersGroup.POST("/:id/test", k8sClusterHandler.TestConnection)
+					clustersGroup.POST("/:id/set-default", k8sClusterHandler.SetDefault)
+
+					// Prometheus discovery (Phase 1)
+					clustersGroup.POST("/:id/prometheus/rediscover", k8sClusterHandler.RediscoverPrometheus)
+
+					// CRD detection (Phase 2)
+					clustersGroup.GET("/:id/crds", k8sClusterHandler.DetectCRDs)
+
+					// CloneSet operations (Phase 2)
+					clustersGroup.GET("/:id/clonesets", k8sClusterHandler.ListCloneSets)
+					clustersGroup.PUT("/:id/clonesets/:name/scale", k8sClusterHandler.ScaleCloneSet)
+					clustersGroup.POST("/:id/clonesets/:name/restart", k8sClusterHandler.RestartCloneSet)
+
+					// DaemonSet operations (Phase 2)
+					clustersGroup.GET("/:id/daemonsets", k8sClusterHandler.ListDaemonSets)
+					clustersGroup.POST("/:id/daemonsets/:name/restart", k8sClusterHandler.RestartDaemonSet)
+
+					// StatefulSet operations (Phase 2)
+					clustersGroup.GET("/:id/statefulsets", k8sClusterHandler.ListStatefulSets)
+					clustersGroup.PUT("/:id/statefulsets/:name/scale", k8sClusterHandler.ScaleStatefulSet)
+					clustersGroup.POST("/:id/statefulsets/:name/restart", k8sClusterHandler.RestartStatefulSet)
+
+					// Resource history (Phase 3)
+					clustersGroup.GET("/:id/resource-history", k8sClusterHandler.ListResourceHistory)
+					clustersGroup.GET("/:id/resource-history/:history_id", k8sClusterHandler.GetResourceHistory)
+					clustersGroup.DELETE("/:id/resource-history/:history_id", k8sClusterHandler.DeleteResourceHistory)
+
+					// Generic CRD CRUD (Phase 3)
+					clustersGroup.GET("/:id/crd-resources", k8sClusterHandler.ListCRDResources)
+					clustersGroup.GET("/:id/crd-resources/:name", k8sClusterHandler.GetCRDResource)
+					clustersGroup.POST("/:id/crd-resources", k8sClusterHandler.CreateCRDResource)
+					clustersGroup.PUT("/:id/crd-resources/:name", k8sClusterHandler.UpdateCRDResource)
+					clustersGroup.DELETE("/:id/crd-resources/:name", k8sClusterHandler.DeleteCRDResource)
+					clustersGroup.POST("/:id/crd-resources/apply", k8sClusterHandler.ApplyCRDResourceYAML)
+
+					// WebSocket terminal (Phase 4)
+					clustersGroup.GET("/:id/terminal", k8sClusterHandler.PodTerminal)
+				}
+			}
+
 			// ==================== Kubernetes Resources & Operations ====================
 			// K8s resources (requires cluster middleware)
 			// All K8s routes are under /cluster/:clusterid prefix

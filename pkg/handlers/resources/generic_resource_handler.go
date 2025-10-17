@@ -86,7 +86,7 @@ func (h *GenericResourceHandler[T, V]) recordHistory(c *gin.Context, opType stri
 	operatorUUID := uuid.NewSHA1(uuid.Nil, []byte(fmt.Sprintf("user-%d", user.ID)))
 
 	history := models.ResourceHistory{
-		ClusterName:   cs.Name,
+		ClusterID:     cs.ClusterID,
 		ResourceType:  h.name,
 		ResourceName:  curr.GetName(),
 		Namespace:     curr.GetNamespace(),
@@ -458,14 +458,14 @@ func (h *GenericResourceHandler[T, V]) ListHistory(c *gin.Context) {
 
 	// Get total count
 	var total int64
-	if err := models.DB.Model(&models.ResourceHistory{}).Where("cluster_name = ? AND resource_type = ? AND resource_name = ? AND namespace = ?", cs.Name, h.name, resourceName, namespace).Count(&total).Error; err != nil {
+	if err := models.DB.Model(&models.ResourceHistory{}).Where("cluster_id = ? AND resource_type = ? AND resource_name = ? AND namespace = ?", cs.ClusterID, h.name, resourceName, namespace).Count(&total).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Get paginated history
 	history := []models.ResourceHistory{}
-	if err := models.DB.Preload("Operator").Where("cluster_name = ? AND resource_type = ? AND resource_name = ? AND namespace = ?", cs.Name, h.name, resourceName, namespace).Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&history).Error; err != nil {
+	if err := models.DB.Preload("Operator").Where("cluster_id = ? AND resource_type = ? AND resource_name = ? AND namespace = ?", cs.ClusterID, h.name, resourceName, namespace).Order("created_at DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&history).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

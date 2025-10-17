@@ -56,7 +56,10 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 	monitorAlertRepository := repository.NewMonitorAlertRepository(gormDB)
 	alertEngine := provideAlertEngine(monitorAlertRepository, hostRepository, serviceRepository)
 	serviceProbeScheduler := provideServiceProbeScheduler(serviceRepository, alertEngine)
-	application, err := newWireApplication(cfg, configPath, installMode, staticFS, database, schedulerScheduler, managerCoordinator, jwtManager, hostRepository, stateCollector, agentManager, terminalManager, hostService, serviceProbeScheduler)
+	clusterRepository := repository.NewClusterRepository(gormDB)
+	resourceHistoryRepository := repository.NewResourceHistoryRepository(gormDB)
+	k8sService := services.NewK8sService(clusterRepository, resourceHistoryRepository)
+	application, err := newWireApplication(cfg, configPath, installMode, staticFS, database, schedulerScheduler, managerCoordinator, jwtManager, hostRepository, stateCollector, agentManager, terminalManager, hostService, serviceProbeScheduler, k8sService)
 	if err != nil {
 		return nil, err
 	}
@@ -210,6 +213,7 @@ func newWireApplication(
 	terminalManager *host.TerminalManager,
 	hostService *host.HostService,
 	probeScheduler *monitor.ServiceProbeScheduler,
+	k8sService *services.K8sService,
 ) (*Application, error) {
 	app := &Application{
 		config:          cfg,
@@ -226,6 +230,7 @@ func newWireApplication(
 		terminalManager: terminalManager,
 		hostService:     hostService,
 		probeScheduler:  probeScheduler,
+		k8sService:      k8sService,
 	}
 
 	return app, nil
