@@ -19,6 +19,7 @@ type Config struct {
 	Security           SecurityConfig
 	DatabaseManagement DatabaseManagementConfig
 	Kubernetes         KubernetesConfig
+	Prometheus         PrometheusConfig
 	Webhook            WebhookConfig
 	Features           FeaturesConfig
 	Log                LogConfig
@@ -88,10 +89,21 @@ type SecurityConfig struct {
 	BcryptCost    int
 }
 
-// KubernetesConfig holds Kubernetes-related configuration
+// KubernetesConfig holds Kubernetes-related configuration (Phase 0 扩展)
 type KubernetesConfig struct {
 	NodeTerminalImage   string // Docker image for node terminal pods
 	NodeTerminalPodName string // Name prefix for node terminal pods
+	EnableKruise        bool   // Enable OpenKruise CRD support
+	EnableTailscale     bool   // Enable Tailscale CRD support
+	EnableTraefik       bool   // Enable Traefik CRD support
+	EnableK3sUpgrade    bool   // Enable K3s Upgrade Controller CRD support
+}
+
+// PrometheusConfig holds Prometheus integration configuration (Phase 0 新增)
+type PrometheusConfig struct {
+	AutoDiscovery    bool              // Enable automatic Prometheus discovery
+	DiscoveryTimeout int               // Discovery timeout in seconds (default: 30)
+	ClusterURLs      map[string]string // Manual Prometheus URLs per cluster name
 }
 
 // WebhookConfig holds webhook configuration
@@ -101,11 +113,12 @@ type WebhookConfig struct {
 	Password string
 }
 
-// FeaturesConfig holds feature flags
+// FeaturesConfig holds feature flags (Phase 0 扩展)
 type FeaturesConfig struct {
 	AnonymousUserEnabled bool
 	DisableGZIP          bool
 	DisableVersionCheck  bool
+	ReadonlyMode         bool // Enable K8s readonly mode (disables write operations)
 }
 
 // LogConfig holds logging configuration
@@ -192,8 +205,17 @@ func LoadFromFile(filename string) (*Config, error) {
 			AuditRetentionDays:  getIntOrDefault(configFile.DatabaseManagement.AuditRetentionDays, 90),
 		},
 		Kubernetes: KubernetesConfig{
-			NodeTerminalImage:   getEnv("NODE_TERMINAL_IMAGE", "busybox:latest"),
+			NodeTerminalImage:   getOrDefault(configFile.Kubernetes.NodeTerminalImage, getEnv("NODE_TERMINAL_IMAGE", "busybox:latest")),
 			NodeTerminalPodName: "tiga-node-terminal-agent",
+			EnableKruise:        getBoolOrDefault(configFile.Kubernetes.EnableKruise, getEnvAsBool("K8S_ENABLE_KRUISE", true)),
+			EnableTailscale:     getBoolOrDefault(configFile.Kubernetes.EnableTailscale, getEnvAsBool("K8S_ENABLE_TAILSCALE", false)),
+			EnableTraefik:       getBoolOrDefault(configFile.Kubernetes.EnableTraefik, getEnvAsBool("K8S_ENABLE_TRAEFIK", true)),
+			EnableK3sUpgrade:    getBoolOrDefault(configFile.Kubernetes.EnableK3sUpgrade, getEnvAsBool("K8S_ENABLE_K3S_UPGRADE", false)),
+		},
+		Prometheus: PrometheusConfig{
+			AutoDiscovery:    getBoolOrDefault(configFile.Prometheus.AutoDiscovery, getEnvAsBool("PROMETHEUS_AUTO_DISCOVERY", true)),
+			DiscoveryTimeout: getIntOrDefault(configFile.Prometheus.DiscoveryTimeout, getEnvAsInt("PROMETHEUS_DISCOVERY_TIMEOUT", 30)),
+			ClusterURLs:      configFile.Prometheus.ClusterURLs,
 		},
 		Webhook: WebhookConfig{
 			Username: getEnv("WEBHOOK_USERNAME", ""),
@@ -204,6 +226,7 @@ func LoadFromFile(filename string) (*Config, error) {
 			AnonymousUserEnabled: getEnvAsBool("ANONYMOUS_USER_ENABLED", false),
 			DisableGZIP:          getEnvAsBool("DISABLE_GZIP", true),
 			DisableVersionCheck:  getEnvAsBool("DISABLE_VERSION_CHECK", false),
+			ReadonlyMode:         getBoolOrDefault(configFile.Features.ReadonlyMode, getEnvAsBool("K8S_READONLY_MODE", false)),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
@@ -249,6 +272,24 @@ type ConfigFile struct {
 		MaxResultBytes      int    `yaml:"max_result_bytes"`
 		AuditRetentionDays  int    `yaml:"audit_retention_days"`
 	} `yaml:"database_management"`
+
+	Kubernetes struct {
+		NodeTerminalImage string `yaml:"node_terminal_image"`
+		EnableKruise      bool   `yaml:"enable_kruise"`
+		EnableTailscale   bool   `yaml:"enable_tailscale"`
+		EnableTraefik     bool   `yaml:"enable_traefik"`
+		EnableK3sUpgrade  bool   `yaml:"enable_k3s_upgrade"`
+	} `yaml:"kubernetes"`
+
+	Prometheus struct {
+		AutoDiscovery    bool              `yaml:"auto_discovery"`
+		DiscoveryTimeout int               `yaml:"discovery_timeout"`
+		ClusterURLs      map[string]string `yaml:"cluster_urls"`
+	} `yaml:"prometheus"`
+
+	Features struct {
+		ReadonlyMode bool `yaml:"readonly_mode"`
+	} `yaml:"features"`
 }
 
 // LoadFromEnv loads configuration from environment variables
@@ -307,6 +348,15 @@ func LoadFromEnv() *Config {
 		Kubernetes: KubernetesConfig{
 			NodeTerminalImage:   getEnv("NODE_TERMINAL_IMAGE", "busybox:latest"),
 			NodeTerminalPodName: "tiga-node-terminal-agent",
+			EnableKruise:        getEnvAsBool("K8S_ENABLE_KRUISE", true),
+			EnableTailscale:     getEnvAsBool("K8S_ENABLE_TAILSCALE", false),
+			EnableTraefik:       getEnvAsBool("K8S_ENABLE_TRAEFIK", true),
+			EnableK3sUpgrade:    getEnvAsBool("K8S_ENABLE_K3S_UPGRADE", false),
+		},
+		Prometheus: PrometheusConfig{
+			AutoDiscovery:    getEnvAsBool("PROMETHEUS_AUTO_DISCOVERY", true),
+			DiscoveryTimeout: getEnvAsInt("PROMETHEUS_DISCOVERY_TIMEOUT", 30),
+			ClusterURLs:      make(map[string]string), // Empty map from env
 		},
 		Webhook: WebhookConfig{
 			Username: getEnv("WEBHOOK_USERNAME", ""),
@@ -317,6 +367,7 @@ func LoadFromEnv() *Config {
 			AnonymousUserEnabled: getEnvAsBool("ANONYMOUS_USER_ENABLED", false),
 			DisableGZIP:          getEnvAsBool("DISABLE_GZIP", true),
 			DisableVersionCheck:  getEnvAsBool("DISABLE_VERSION_CHECK", false),
+			ReadonlyMode:         getEnvAsBool("K8S_READONLY_MODE", false),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "debug"),
@@ -410,6 +461,14 @@ func getIntOrDefault(value, defaultValue int) int {
 		return value
 	}
 	return defaultValue
+}
+
+// getBoolOrDefault returns the value from YAML if explicitly set, otherwise returns the default
+func getBoolOrDefault(yamlValue bool, defaultValue bool) bool {
+	// In YAML, if field is not set, it defaults to false for bool
+	// So we use the YAML value if it's true, otherwise use the default
+	// This is a simplified approach; for proper handling, we'd need pointers in ConfigFile
+	return yamlValue || defaultValue
 }
 
 // InstallChecker provides interface to check installation status

@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -126,4 +128,60 @@ func (k *K8sClient) Stop(name string) {
 // GetScheme returns the runtime scheme used by the client
 func GetScheme() *runtime.Scheme {
 	return runtimeScheme
+}
+
+// ClientCache manages K8s client instances for multiple clusters (Phase 0)
+// Thread-safe cache using cluster UUID as key
+type ClientCache struct {
+	mu      sync.RWMutex
+	clients map[uuid.UUID]*K8sClient
+}
+
+// NewClientCache creates a new ClientCache instance
+func NewClientCache() *ClientCache {
+	return &ClientCache{
+		clients: make(map[uuid.UUID]*K8sClient),
+	}
+}
+
+// Get retrieves a client from cache by cluster ID
+func (c *ClientCache) Get(clusterID uuid.UUID) (*K8sClient, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	client, exists := c.clients[clusterID]
+	return client, exists
+}
+
+// Set stores a client in cache by cluster ID
+func (c *ClientCache) Set(clusterID uuid.UUID, client *K8sClient) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.clients[clusterID] = client
+}
+
+// Delete removes a client from cache and stops it
+func (c *ClientCache) Delete(clusterID uuid.UUID) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if client, exists := c.clients[clusterID]; exists {
+		client.Stop(clusterID.String())
+		delete(c.clients, clusterID)
+	}
+}
+
+// Clear removes all clients from cache and stops them
+func (c *ClientCache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for id, client := range c.clients {
+		client.Stop(id.String())
+	}
+	c.clients = make(map[uuid.UUID]*K8sClient)
+}
+
+// Count returns the number of cached clients
+func (c *ClientCache) Count() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.clients)
 }
