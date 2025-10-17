@@ -11,27 +11,31 @@ import (
 
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
+	"github.com/ysicing/tiga/internal/services/prometheus"
 	"github.com/ysicing/tiga/pkg/kube"
 )
 
-// ClusterHealthService manages cluster health checks (Phase 0)
+// ClusterHealthService manages cluster health checks (Phase 0, enhanced in Phase 1)
 type ClusterHealthService struct {
-	clusterRepo repository.ClusterRepositoryInterface
-	clientCache *kube.ClientCache
-	interval    time.Duration
-	stopCh      chan struct{}
+	clusterRepo      repository.ClusterRepositoryInterface
+	clientCache      *kube.ClientCache
+	prometheusDiscov *prometheus.AutoDiscoveryService
+	interval         time.Duration
+	stopCh           chan struct{}
 }
 
 // NewClusterHealthService creates a new ClusterHealthService instance
 func NewClusterHealthService(
 	clusterRepo repository.ClusterRepositoryInterface,
 	clientCache *kube.ClientCache,
+	prometheusDiscov *prometheus.AutoDiscoveryService,
 ) *ClusterHealthService {
 	return &ClusterHealthService{
-		clusterRepo: clusterRepo,
-		clientCache: clientCache,
-		interval:    60 * time.Second, // Check every 60 seconds
-		stopCh:      make(chan struct{}),
+		clusterRepo:      clusterRepo,
+		clientCache:      clientCache,
+		prometheusDiscov: prometheusDiscov,
+		interval:         60 * time.Second, // Check every 60 seconds
+		stopCh:           make(chan struct{}),
 	}
 }
 
@@ -86,6 +90,7 @@ func (s *ClusterHealthService) checkAllClusters(ctx context.Context) {
 func (s *ClusterHealthService) checkClusterHealth(ctx context.Context, cluster *models.Cluster) {
 	clusterID := cluster.ID
 	clusterName := cluster.Name
+	previousStatus := cluster.HealthStatus
 
 	// Get or create K8s client
 	client, err := s.getOrCreateClient(cluster)
@@ -126,6 +131,12 @@ func (s *ClusterHealthService) checkClusterHealth(ctx context.Context, cluster *
 	// All checks passed - cluster is healthy
 	s.updateClusterStatus(ctx, clusterID, models.ClusterHealthHealthy, nodeCount, podCount)
 	logrus.Debugf("Cluster %s: healthy, %d nodes, %d pods", clusterName, nodeCount, podCount)
+
+	// Phase 1 enhancement: Trigger Prometheus discovery on first successful connection
+	if previousStatus != models.ClusterHealthHealthy && s.prometheusDiscov != nil {
+		logrus.Infof("Cluster %s became healthy, triggering Prometheus discovery", clusterName)
+		s.prometheusDiscov.TriggerDiscoveryAsync(cluster)
+	}
 }
 
 // getOrCreateClient gets an existing client from cache or creates a new one
