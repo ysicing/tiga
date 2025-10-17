@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -9,7 +10,7 @@ import (
 	"github.com/ysicing/tiga/internal/models"
 )
 
-// ClusterRepository handles cluster data operations
+// ClusterRepository handles cluster data operations (Phase 0 更新)
 type ClusterRepository struct {
 	db *gorm.DB
 }
@@ -20,69 +21,68 @@ func NewClusterRepository(db *gorm.DB) *ClusterRepository {
 }
 
 // Create creates a new cluster
-func (r *ClusterRepository) Create(cluster *models.Cluster) error {
-	return r.db.Create(cluster).Error
+func (r *ClusterRepository) Create(ctx context.Context, cluster *models.Cluster) error {
+	return r.db.WithContext(ctx).Create(cluster).Error
 }
 
 // GetByID retrieves a cluster by ID
-func (r *ClusterRepository) GetByID(id uuid.UUID) (*models.Cluster, error) {
+func (r *ClusterRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Cluster, error) {
 	var cluster models.Cluster
-	if err := r.db.First(&cluster, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&cluster, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &cluster, nil
 }
 
 // GetByName retrieves a cluster by name
-func (r *ClusterRepository) GetByName(name string) (*models.Cluster, error) {
+func (r *ClusterRepository) GetByName(ctx context.Context, name string) (*models.Cluster, error) {
 	var cluster models.Cluster
-	if err := r.db.Where("name = ?", name).First(&cluster).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("name = ?", name).First(&cluster).Error; err != nil {
 		return nil, err
 	}
 	return &cluster, nil
 }
 
-// Update updates a cluster
-func (r *ClusterRepository) Update(cluster *models.Cluster) error {
-	return r.db.Save(cluster).Error
-}
-
-// UpdateFields updates specific fields of a cluster
-func (r *ClusterRepository) UpdateFields(id uuid.UUID, updates map[string]interface{}) error {
-	return r.db.Model(&models.Cluster{}).Where("id = ?", id).Updates(updates).Error
+// Update updates specific fields of a cluster
+func (r *ClusterRepository) Update(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error {
+	return r.db.WithContext(ctx).Model(&models.Cluster{}).Where("id = ?", id).Updates(updates).Error
 }
 
 // Delete soft deletes a cluster
-func (r *ClusterRepository) Delete(id uuid.UUID) error {
-	return r.db.Delete(&models.Cluster{}, "id = ?", id).Error
+func (r *ClusterRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.Cluster{}, "id = ?", id).Error
 }
 
 // List retrieves all clusters
-func (r *ClusterRepository) List() ([]*models.Cluster, error) {
+func (r *ClusterRepository) List(ctx context.Context) ([]*models.Cluster, error) {
 	var clusters []*models.Cluster
-	if err := r.db.Find(&clusters).Error; err != nil {
+	if err := r.db.WithContext(ctx).Find(&clusters).Error; err != nil {
 		return nil, err
 	}
 	return clusters, nil
 }
 
-// Count counts all clusters
-func (r *ClusterRepository) Count() (int64, error) {
-	var count int64
-	if err := r.db.Model(&models.Cluster{}).Count(&count).Error; err != nil {
-		return 0, err
+// GetAllEnabled retrieves all enabled clusters (Phase 0 新增)
+func (r *ClusterRepository) GetAllEnabled(ctx context.Context) ([]*models.Cluster, error) {
+	var clusters []*models.Cluster
+	if err := r.db.WithContext(ctx).Where("enable = ?", true).Find(&clusters).Error; err != nil {
+		return nil, err
 	}
-	return count, nil
+	return clusters, nil
 }
 
-// ClearDefault clears the default flag from all clusters
-func (r *ClusterRepository) ClearDefault() error {
-	return r.db.Model(&models.Cluster{}).Where("is_default = ?", true).Update("is_default", false).Error
+// GetDefault retrieves the default cluster (Phase 0 新增)
+func (r *ClusterRepository) GetDefault(ctx context.Context) (*models.Cluster, error) {
+	var cluster models.Cluster
+	if err := r.db.WithContext(ctx).Where("is_default = ?", true).First(&cluster).Error; err != nil {
+		return nil, err
+	}
+	return &cluster, nil
 }
 
-// SetDefault sets a cluster as default
-func (r *ClusterRepository) SetDefault(id uuid.UUID) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+// SetDefault sets a cluster as default (Phase 0 更新 - 添加 context)
+func (r *ClusterRepository) SetDefault(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Clear existing default
 		if err := tx.Model(&models.Cluster{}).Where("is_default = ?", true).Update("is_default", false).Error; err != nil {
 			return err
@@ -92,14 +92,28 @@ func (r *ClusterRepository) SetDefault(id uuid.UUID) error {
 	})
 }
 
+// Count counts all clusters
+func (r *ClusterRepository) Count(ctx context.Context) (int64, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&models.Cluster{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// ClearDefault clears the default flag from all clusters
+func (r *ClusterRepository) ClearDefault(ctx context.Context) error {
+	return r.db.WithContext(ctx).Model(&models.Cluster{}).Where("is_default = ?", true).Update("is_default", false).Error
+}
+
 // Enable enables a cluster
-func (r *ClusterRepository) Enable(id uuid.UUID) error {
-	return r.db.Model(&models.Cluster{}).Where("id = ?", id).Update("enable", true).Error
+func (r *ClusterRepository) Enable(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&models.Cluster{}).Where("id = ?", id).Update("enable", true).Error
 }
 
 // Disable disables a cluster
-func (r *ClusterRepository) Disable(id uuid.UUID) error {
-	return r.db.Model(&models.Cluster{}).Where("id = ?", id).Update("enable", false).Error
+func (r *ClusterRepository) Disable(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&models.Cluster{}).Where("id = ?", id).Update("enable", false).Error
 }
 
 // ResourceHistoryRepository handles resource history data operations

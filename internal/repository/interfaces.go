@@ -96,14 +96,18 @@ type AuditLogRepositoryInterface interface {
 	GetStatistics(ctx context.Context) (*AuditLogStatistics, error)
 }
 
-// ClusterRepositoryInterface defines the interface for Kubernetes cluster operations
+// ClusterRepositoryInterface defines the interface for Kubernetes cluster operations (Phase 0 扩展)
 type ClusterRepositoryInterface interface {
-	Create(cluster *models.Cluster) error
-	GetByID(id uuid.UUID) (*models.Cluster, error)
-	GetByName(name string) (*models.Cluster, error)
-	Update(cluster *models.Cluster) error
-	Delete(id uuid.UUID) error
-	List() ([]*models.Cluster, error)
+	Create(ctx context.Context, cluster *models.Cluster) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Cluster, error)
+	GetByName(ctx context.Context, name string) (*models.Cluster, error)
+	Update(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	List(ctx context.Context) ([]*models.Cluster, error)
+	GetAllEnabled(ctx context.Context) ([]*models.Cluster, error)
+	GetDefault(ctx context.Context) (*models.Cluster, error)
+	SetDefault(ctx context.Context, id uuid.UUID) error
+	ClearDefault(ctx context.Context) error
 }
 
 // ResourceHistoryRepositoryInterface defines the interface for Kubernetes resource history operations
