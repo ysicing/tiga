@@ -16,8 +16,8 @@ type CRDDetectionService struct {
 
 // CRDGroup represents a group of related CRDs
 type CRDGroup struct {
-	Name        string   // Display name (e.g., "OpenKruise")
-	Group       string   // API group (e.g., "apps.kruise.io")
+	Name         string   // Display name (e.g., "OpenKruise")
+	Group        string   // API group (e.g., "apps.kruise.io")
 	ExpectedCRDs []string // Expected CRD names
 }
 

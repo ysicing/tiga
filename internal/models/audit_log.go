@@ -13,6 +13,10 @@ type AuditLog struct {
 	UserID   *uuid.UUID `gorm:"type:char(36);index" json:"user_id,omitempty"`
 	Username string     `gorm:"type:varchar(64)" json:"username"` // Snapshot, prevents loss if user is deleted
 
+	// Cluster context (Phase 4 enhancement)
+	ClusterID   *uint  `gorm:"index" json:"cluster_id,omitempty"`
+	ClusterName string `gorm:"type:varchar(255)" json:"cluster_name,omitempty"` // Snapshot
+
 	// Operation
 	Action       string     `gorm:"type:varchar(64);not null;index" json:"action"`        // create, update, delete, login, logout
 	ResourceType string     `gorm:"type:varchar(64);not null;index" json:"resource_type"` // user, instance, role, etc.
@@ -36,7 +40,8 @@ type AuditLog struct {
 	CreatedAt time.Time `gorm:"index" json:"created_at"`
 
 	// Associations
-	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	User    *User    `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Cluster *Cluster `gorm:"foreignKey:ClusterID" json:"cluster,omitempty"`
 }
 
 // TableName overrides the table name

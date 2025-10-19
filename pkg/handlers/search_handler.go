@@ -61,6 +61,19 @@ func (h *SearchHandler) Search(c *gin.Context, query string, limit int) ([]commo
 	return allResults, nil
 }
 
+// GlobalSearch godoc
+// @Summary Global search across resources
+// @Description Search across multiple Kubernetes resource types (Pods, Deployments, Services, etc.)
+// @Tags k8s-search
+// @Accept json
+// @Produce json
+// @Param q query string true "Search query (minimum 2 characters)"
+// @Param limit query int false "Maximum number of results (default 50, max 100)"
+// @Success 200 {object} SearchResponse "Search results"
+// @Failure 400 {object} map[string]interface{} "error=Query must be at least 2 characters long"
+// @Failure 500 {object} map[string]interface{} "error=Failed to perform search"
+// @Router /api/v1/k8s/clusters/:cluster_id/search [get]
+// @Security Bearer
 // GlobalSearch handles global search across multiple resource types
 func (h *SearchHandler) GlobalSearch(c *gin.Context) {
 	query := c.Query("q")

@@ -47,11 +47,11 @@ func ReadonlyMode(cfg *config.Config) gin.HandlerFunc {
 // even if it uses POST method (e.g., for complex queries)
 func isReadonlyEndpoint(path string) bool {
 	readonlyPaths := []string{
-		"/api/v1/auth/login",           // Allow login
-		"/api/v1/auth/refresh",         // Allow token refresh
-		"/api/v1/database/query",       // Query execution (read-only queries still allowed)
-		"/api/v1/prometheus/query",     // Prometheus query
-		"/api/v1/k8s/clusters/test",    // Test cluster connection
+		"/api/v1/auth/login",        // Allow login
+		"/api/v1/auth/refresh",      // Allow token refresh
+		"/api/v1/database/query",    // Query execution (read-only queries still allowed)
+		"/api/v1/prometheus/query",  // Prometheus query
+		"/api/v1/k8s/clusters/test", // Test cluster connection
 	}
 
 	for _, readonlyPath := range readonlyPaths {

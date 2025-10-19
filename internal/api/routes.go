@@ -265,7 +265,7 @@ func SetupRoutes(
 
 		// ==================== Protected Endpoints (Require Auth) ====================
 		protected := v1.Group("")
-		protected.Use(middleware.AuthRequired())
+		protected.Use(middleware.AuthRequired(), middleware.ReadonlyMode(cfg))
 		{
 			// ==================== New K8s Cluster Management API (Phase 0-4) ====================
 			k8sGroup := protected.Group("/k8s")

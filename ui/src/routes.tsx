@@ -49,8 +49,11 @@ import RoleFormPage from './pages/role-form'
 // K8s Cluster Management Pages
 import { ClusterFormPage } from './pages/k8s/cluster-form-page'
 import { ClusterListPage } from './pages/k8s/cluster-list-page'
+import { ClusterDetailPage } from './pages/k8s/clusters/cluster-detail-page'
 import { ResourceHistoryPage } from './pages/k8s/resource-history-page'
 import { ResourceHistoryDetailPage } from './pages/k8s/resource-history-detail-page'
+import { SearchPage } from './pages/k8s/search-page'
+import { MonitoringPage } from './pages/k8s/monitoring-page'
 import { OpenKruisePage as OpenKruiseOverviewPage } from './pages/k8s/openkruise-page'
 import { TailscalePage } from './pages/k8s/tailscale-page'
 import { SystemUpgradePage } from './pages/k8s/system-upgrade-page'
@@ -411,7 +414,20 @@ export const router = createBrowserRouter([
       },
       {
         path: 'clusters/:id',
+        element: <ClusterDetailPage />,
+      },
+      {
+        path: 'clusters/:id/edit',
         element: <ClusterFormPage />,
+      },
+      // Search and Monitoring routes
+      {
+        path: 'search',
+        element: <SearchPage />,
+      },
+      {
+        path: 'monitoring',
+        element: <MonitoringPage />,
       },
       {
         path: 'clusters/:clusterId/resource-history',

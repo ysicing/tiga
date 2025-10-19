@@ -19,10 +19,13 @@ import (
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
 	"github.com/ysicing/tiga/internal/services/host"
+	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
 	"github.com/ysicing/tiga/internal/services/monitor"
 	"github.com/ysicing/tiga/internal/services/notification"
+	"github.com/ysicing/tiga/internal/services/prometheus"
 	"github.com/ysicing/tiga/internal/services/scheduler"
+	"github.com/ysicing/tiga/pkg/kube"
 )
 
 // DatabaseSet provides database-related dependencies
@@ -82,13 +85,24 @@ var HostServiceSet = wire.NewSet(
 	provideHostMonitoringComponents, // Creates StateCollector and AgentManager with circular dependency
 	host.NewTerminalManager,
 	provideHostService,
-	provideStateCollector,  // Extract StateCollector from components
-	provideAgentManager,    // Extract AgentManager from components
+	provideStateCollector, // Extract StateCollector from components
+	provideAgentManager,   // Extract AgentManager from components
 )
 
 // MonitoringServiceSet provides monitoring services
 var MonitoringServiceSet = wire.NewSet(
 	provideServiceProbeScheduler,
+)
+
+// K8sServiceSet provides K8s cluster health and Prometheus discovery services
+var K8sServiceSet = wire.NewSet(
+	provideClientCache,
+	prometheus.NewAutoDiscoveryService,
+	k8s.NewClusterHealthService,
+	// Phase 3 services
+	k8s.NewCacheService,
+	k8s.NewRelationsService,
+	provideSearchService,
 )
 
 // AuthSet provides authentication services
@@ -181,6 +195,14 @@ func provideServiceProbeScheduler(
 	return monitor.NewServiceProbeScheduler(serviceRepo, alertEngine)
 }
 
+func provideClientCache() *kube.ClientCache {
+	return kube.NewClientCache()
+}
+
+func provideSearchService(cacheService *k8s.CacheService) *k8s.SearchService {
+	return k8s.NewSearchService(cacheService)
+}
+
 func provideJWTManager(cfg *config.Config) (*auth.JWTManager, error) {
 	jwtSecret := cfg.JWT.Secret
 	if jwtSecret == "" {
@@ -212,6 +234,7 @@ func InitializeApplication(
 		ServiceSet,
 		HostServiceSet,
 		MonitoringServiceSet,
+		K8sServiceSet,
 		AuthSet,
 		SchedulerSet,
 
@@ -239,23 +262,35 @@ func newWireApplication(
 	hostService *host.HostService,
 	probeScheduler *monitor.ServiceProbeScheduler,
 	k8sService *services.K8sService,
+	clusterHealthService *k8s.ClusterHealthService,
+	prometheusDiscovery *prometheus.AutoDiscoveryService,
+	// Phase 3 services
+	cacheService *k8s.CacheService,
+	relationsService *k8s.RelationsService,
+	searchService *k8s.SearchService,
 ) (*Application, error) {
 	app := &Application{
-		config:          cfg,
-		configPath:      configPath,
-		db:              database,
-		scheduler:       scheduler,
-		coordinator:     coordinator,
-		jwtManager:      jwtManager,
-		installMode:     installMode,
-		staticFS:        staticFS,
-		hostRepo:        hostRepo,
-		stateCollector:  stateCollector,
-		agentManager:    agentManager,
-		terminalManager: terminalManager,
-		hostService:     hostService,
-		probeScheduler:  probeScheduler,
-		k8sService:      k8sService,
+		config:               cfg,
+		configPath:           configPath,
+		db:                   database,
+		scheduler:            scheduler,
+		coordinator:          coordinator,
+		jwtManager:           jwtManager,
+		installMode:          installMode,
+		staticFS:             staticFS,
+		hostRepo:             hostRepo,
+		stateCollector:       stateCollector,
+		agentManager:         agentManager,
+		terminalManager:      terminalManager,
+		hostService:          hostService,
+		probeScheduler:       probeScheduler,
+		k8sService:           k8sService,
+		clusterHealthService: clusterHealthService,
+		prometheusDiscovery:  prometheusDiscovery,
+		// Phase 3 services
+		cacheService:     cacheService,
+		relationsService: relationsService,
+		searchService:    searchService,
 	}
 
 	return app, nil

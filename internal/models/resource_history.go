@@ -18,7 +18,7 @@ type ResourceHistory struct {
 	Namespace    string `gorm:"type:varchar(100);index" json:"namespace"`
 
 	// CRD support: API group and version
-	APIGroup   string `gorm:"type:varchar(100);index" json:"api_group"`   // e.g., "apps.kruise.io", "" for core
+	APIGroup   string `gorm:"type:varchar(100);index" json:"api_group"`  // e.g., "apps.kruise.io", "" for core
 	APIVersion string `gorm:"type:varchar(50);index" json:"api_version"` // e.g., "v1alpha1", "v1"
 
 	// Operation details
