@@ -661,3 +661,114 @@ export const useOpenKruiseStatus = () => {
   })
 }
 
+// ==================== Global Search ====================
+
+export interface SearchResult {
+  kind: string
+  name: string
+  namespace?: string
+  labels?: Record<string, string>
+  score: number
+  match_type: 'exact' | 'name' | 'label' | 'annotation'
+  created: string
+}
+
+export interface SearchFilters {
+  q: string // Search query
+  types?: string[] // Resource types to search (Pod, Deployment, Service, ConfigMap)
+  namespace?: string // Namespace filter
+  limit?: number // Max results (default 50)
+}
+
+/**
+ * Search resources across a cluster
+ */
+export const useClusterSearch = (
+  clusterId: string | undefined,
+  filters: SearchFilters,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ['k8s', 'cluster', clusterId, 'search', filters],
+    queryFn: async () => {
+      if (!clusterId) throw new Error('Cluster ID is required')
+
+      const params = new URLSearchParams()
+      params.append('q', filters.q)
+      if (filters.types && filters.types.length > 0) {
+        params.append('types', filters.types.join(','))
+      }
+      if (filters.namespace) {
+        params.append('namespace', filters.namespace)
+      }
+      if (filters.limit) {
+        params.append('limit', String(filters.limit))
+      }
+
+      const response = await apiClient.get<{ data: SearchResult[] }>(
+        `/k8s/clusters/${clusterId}/search?${params.toString()}`
+      )
+      return response.data
+    },
+    enabled: enabled && !!clusterId && !!filters.q && filters.q.length > 0,
+    staleTime: 30 * 1000, // 30 seconds
+  })
+}
+
+// ==================== Resource Relations ====================
+
+export interface ResourceRelation {
+  kind: string
+  name: string
+  namespace?: string
+  uid: string
+  type: 'owner' | 'owned' | 'reference'
+}
+
+/**
+ * Get related resources for a given resource
+ */
+export const useResourceRelations = (
+  clusterId: string | undefined,
+  namespace: string,
+  kind: string,
+  name: string,
+  enabled = true
+) => {
+  return useQuery({
+    queryKey: ['k8s', 'cluster', clusterId, 'relations', namespace, kind, name],
+    queryFn: async () => {
+      if (!clusterId) throw new Error('Cluster ID is required')
+
+      const response = await apiClient.get<{ data: ResourceRelation[] }>(
+        `/k8s/clusters/${clusterId}/relations/${kind}/${namespace}/${name}`
+      )
+      return response.data
+    },
+    enabled: enabled && !!clusterId && !!namespace && !!kind && !!name,
+    staleTime: 60 * 1000, // 1 minute
+  })
+}
+
+/**
+ * Trigger Prometheus auto-discovery for a cluster
+ */
+export const usePrometheusRediscover = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (clusterId: string) => {
+      const response = await apiClient.post(
+        `/k8s/clusters/${clusterId}/prometheus/rediscover`
+      )
+      return response
+    },
+    onSuccess: (_data, clusterId) => {
+      queryClient.invalidateQueries({
+        queryKey: ['k8s', 'cluster', clusterId],
+      })
+    },
+  })
+}
+
+

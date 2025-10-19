@@ -37,18 +37,18 @@ func TestClusterGetContract(t *testing.T) {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 			Data    struct {
-				ID               uint   `json:"id"`
-				Name             string `json:"name"`
-				Kubeconfig       string `json:"kubeconfig"`
-				IsDefault        bool   `json:"is_default"`
-				Enabled          bool   `json:"enabled"`
-				HealthStatus     string `json:"health_status"`
-				LastConnectedAt  string `json:"last_connected_at,omitempty"`
-				NodeCount        int    `json:"node_count"`
-				PodCount         int    `json:"pod_count"`
-				PrometheusURL    string `json:"prometheus_url,omitempty"`
-				CreatedAt        string `json:"created_at"`
-				UpdatedAt        string `json:"updated_at"`
+				ID              uint   `json:"id"`
+				Name            string `json:"name"`
+				Kubeconfig      string `json:"kubeconfig"`
+				IsDefault       bool   `json:"is_default"`
+				Enabled         bool   `json:"enabled"`
+				HealthStatus    string `json:"health_status"`
+				LastConnectedAt string `json:"last_connected_at,omitempty"`
+				NodeCount       int    `json:"node_count"`
+				PodCount        int    `json:"pod_count"`
+				PrometheusURL   string `json:"prometheus_url,omitempty"`
+				CreatedAt       string `json:"created_at"`
+				UpdatedAt       string `json:"updated_at"`
 			} `json:"data"`
 		}
 

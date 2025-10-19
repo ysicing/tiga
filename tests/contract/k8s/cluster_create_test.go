@@ -47,17 +47,17 @@ func TestClusterCreateContract(t *testing.T) {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 			Data    struct {
-				ID               uint   `json:"id"`
-				Name             string `json:"name"`
-				IsDefault        bool   `json:"is_default"`
-				Enabled          bool   `json:"enabled"`
-				HealthStatus     string `json:"health_status"`
-				LastConnectedAt  *string `json:"last_connected_at"` // nullable
-				NodeCount        int    `json:"node_count"`
-				PodCount         int    `json:"pod_count"`
-				PrometheusURL    string `json:"prometheus_url"`
-				CreatedAt        string `json:"created_at"`
-				UpdatedAt        string `json:"updated_at"`
+				ID              uint    `json:"id"`
+				Name            string  `json:"name"`
+				IsDefault       bool    `json:"is_default"`
+				Enabled         bool    `json:"enabled"`
+				HealthStatus    string  `json:"health_status"`
+				LastConnectedAt *string `json:"last_connected_at"` // nullable
+				NodeCount       int     `json:"node_count"`
+				PodCount        int     `json:"pod_count"`
+				PrometheusURL   string  `json:"prometheus_url"`
+				CreatedAt       string  `json:"created_at"`
+				UpdatedAt       string  `json:"updated_at"`
 			} `json:"data"`
 		}
 
@@ -84,21 +84,21 @@ func TestClusterCreateContract(t *testing.T) {
 			wantErr string
 		}{
 			{
-				name:    "MissingName",
+				name: "MissingName",
 				payload: map[string]any{
 					"kubeconfig": "YXBpVmVyc2lvbjog...",
 				},
 				wantErr: "name",
 			},
 			{
-				name:    "MissingKubeconfig",
+				name: "MissingKubeconfig",
 				payload: map[string]any{
 					"name": "test-cluster",
 				},
 				wantErr: "kubeconfig",
 			},
 			{
-				name:    "EmptyName",
+				name: "EmptyName",
 				payload: map[string]any{
 					"name":       "",
 					"kubeconfig": "YXBpVmVyc2lvbjog...",
@@ -106,7 +106,7 @@ func TestClusterCreateContract(t *testing.T) {
 				wantErr: "name",
 			},
 			{
-				name:    "NameTooLong",
+				name: "NameTooLong",
 				payload: map[string]any{
 					"name":       string(make([]byte, 101)), // > 100 characters
 					"kubeconfig": "YXBpVmVyc2lvbjog...",

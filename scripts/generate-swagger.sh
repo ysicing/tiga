@@ -12,12 +12,21 @@ if ! command -v swag &> /dev/null; then
 fi
 
 echo "📝 Generating Swagger documentation..."
+# Run swag init and capture output, but don't fail on parse warnings
 swag init \
-    --dir ./cmd/tiga,./internal/api/handlers,./internal/api/handlers/instances,./internal/api/handlers/minio,./internal/api/handlers/database,./internal/api/handlers/docker \
+    --dir ./cmd/tiga,./internal/api/handlers,./internal/api/handlers/instances,./internal/api/handlers/minio,./internal/api/handlers/database,./internal/api/handlers/docker,./internal/api/handlers/cluster,./pkg/handlers \
     --generalInfo main.go \
     --output ./docs/swagger \
     --parseDependency \
-    --parseInternal
+    --parseInternal || {
+    # Check if documentation was actually generated despite warnings
+    if [ -f docs/swagger/swagger.json ]; then
+        echo "⚠️  Swagger generation completed with warnings (non-critical)"
+    else
+        echo "❌ Swagger generation failed"
+        exit 1
+    fi
+}
 
 echo "✅ Swagger documentation generated successfully!"
 echo "📄 Files generated:"

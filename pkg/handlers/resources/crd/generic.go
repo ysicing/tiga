@@ -18,11 +18,12 @@ type GenericCRDHandler struct {
 }
 
 // NewGenericCRDHandler creates a new generic CRD handler
-// Example: NewGenericCRDHandler(client, schema.GroupVersionResource{
-//     Group:    "apps.kruise.io",
-//     Version:  "v1alpha1",
-//     Resource: "clonesets",
-// })
+//
+//	Example: NewGenericCRDHandler(client, schema.GroupVersionResource{
+//	    Group:    "apps.kruise.io",
+//	    Version:  "v1alpha1",
+//	    Resource: "clonesets",
+//	})
 func NewGenericCRDHandler(client *kube.K8sClient, gvr schema.GroupVersionResource) *GenericCRDHandler {
 	return &GenericCRDHandler{
 		client: client,

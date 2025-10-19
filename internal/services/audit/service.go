@@ -27,6 +27,8 @@ func NewService(repo *repository.AuditLogRepository) *Service {
 type LogEntry struct {
 	UserID       *uuid.UUID
 	Username     string
+	ClusterID    *uint  // Phase 4: Cluster context
+	ClusterName  string // Phase 4: Cluster snapshot
 	Action       string
 	ResourceType string
 	ResourceID   *uuid.UUID
@@ -49,6 +51,8 @@ func (s *Service) Log(ctx context.Context, entry *LogEntry) error {
 	auditLog := &models.AuditLog{
 		UserID:       entry.UserID,
 		Username:     entry.Username,
+		ClusterID:    entry.ClusterID,   // Phase 4
+		ClusterName:  entry.ClusterName, // Phase 4
 		Action:       entry.Action,
 		ResourceType: entry.ResourceType,
 		ResourceID:   entry.ResourceID,

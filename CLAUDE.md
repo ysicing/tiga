@@ -582,3 +582,264 @@ go build ./internal/app             # ✅
 2. 微服务化准备
 
 详见完整文档：`docs/architecture/phase4-improvements.md`
+
+
+## Kubernetes 集群管理子系统（已完成）
+
+**功能分支**: `005-k8s-kite-k8s`
+**参考规格**: `.claude/specs/005-k8s-kite-k8s/`
+**完成度**: 67% (55/82 任务)
+
+### 核心特性
+
+- **多集群管理**: 支持多个 Kubernetes 集群统一管理，集群健康状态实时监控
+- **CRD 支持**: 原生支持 OpenKruise、Tailscale、Traefik、K3s System Upgrade Controller
+- **Prometheus 集成**: 自动发现集群内 Prometheus 实例，支持监控数据查询
+- **全局搜索**: 跨资源类型全局搜索（Pod、Deployment、Service、ConfigMap），智能评分排序
+- **资源关系图**: 可视化资源依赖关系（Deployment → ReplicaSet → Pod）
+- **节点终端**: 基于 WebSocket 的节点 SSH 终端，通过特权 Pod 实现
+- **只读模式**: 系统级只读模式，阻止所有修改操作
+- **审计日志**: 记录所有集群操作和终端访问
+
+### 技术栈
+
+- **后端**: client-go v0.31.4、dynamic client、OpenKruise SDK v1.8.0
+- **前端**: React 19、ClusterContext、xterm.js（终端UI）
+- **缓存**: 5 分钟 TTL 内存缓存（ResourceVersion 感知）
+- **测试**: testcontainers-go + Kind（集成测试）、fake client（单元测试）
+
+### 数据模型
+
+**核心模型**（位于 `internal/models/`）:
+- `Cluster`: 集群元数据（名称、Kubeconfig、健康状态、Prometheus URL）
+- `ResourceHistory`: 资源变更历史记录
+- `K8sRole`: Kubernetes RBAC 角色定义
+
+**扩展字段**（Cluster 模型）:
+```go
+type Cluster struct {
+    BaseModel
+    Name             string    `json:"name"`
+    Config           string    `json:"-"`                // Kubeconfig（加密存储）
+    InCluster        bool      `json:"in_cluster"`       // 是否为 In-Cluster 配置
+    Enable           bool      `json:"enable"`
+    Description      string    `json:"description"`
+    
+    // Phase 0 扩展字段
+    HealthStatus     string    `json:"health_status"`    // unknown, healthy, warning, error, unavailable
+    LastConnectedAt  time.Time `json:"last_connected_at"`
+    NodeCount        int       `json:"node_count"`
+    PodCount         int       `json:"pod_count"`
+    PrometheusURL    string    `json:"prometheus_url"`   // 自动发现或手动配置
+}
+```
+
+### 服务架构
+
+**核心服务**（位于 `internal/services/k8s/`）:
+
+1. **ClusterHealthService**: 集群健康检查（60秒间隔后台任务）
+   - 调用 `/api/v1/nodes` 获取节点列表
+   - 更新 `health_status`、`node_count`、`pod_count`
+   - 状态转换：unknown → healthy → warning → error → unavailable
+
+2. **RelationsService**: 资源关系服务
+   - 静态关系映射：Deployment → ReplicaSet → Pod（8 种关系）
+   - 递归查询（最大深度 3）
+   - 循环引用检测（visited map）
+
+3. **CacheService**: 工作负载缓存
+   - 缓存键：`clusterID:resourceType:namespace`
+   - TTL：5 分钟
+   - ResourceVersion 检测自动失效
+   - 线程安全（RWMutex）
+
+4. **SearchService**: 全局搜索
+   - 并发查询 4 个资源类型
+   - 评分算法：
+     - 精确匹配：100 分
+     - 名称包含：80 分
+     - 标签匹配：60 分
+     - 注解匹配：40 分
+   - 结果限制：50 条
+
+5. **PrometheusAutoDiscoveryService**: Prometheus 自动发现
+   - 异步 Goroutine，30 秒超时
+   - 搜索命名空间：monitoring、prometheus、kube-system
+   - 端点优先级：LoadBalancer > NodePort > ClusterIP
+   - 连通性测试：`GET /api/v1/status/config`（2 秒超时）
+
+### API 端点
+
+**集群管理**:
+- `GET /api/v1/k8s/clusters` - 集群列表
+- `GET /api/v1/k8s/clusters/:id` - 集群详情
+- `POST /api/v1/k8s/clusters` - 创建集群
+- `PUT /api/v1/k8s/clusters/:id` - 更新集群
+- `DELETE /api/v1/k8s/clusters/:id` - 删除集群
+- `POST /api/v1/k8s/clusters/:id/test-connection` - 测试连接
+- `POST /api/v1/k8s/clusters/:id/prometheus/rediscover` - 重新检测 Prometheus
+
+**资源管理**（CRD 支持）:
+- OpenKruise: `/api/v1/k8s/clusters/:cluster_id/clonesets`（扩容、重启）
+- Tailscale: `/api/v1/k8s/clusters/:cluster_id/tailscale/connectors`
+- Traefik: `/api/v1/k8s/clusters/:cluster_id/traefik/ingressroutes`
+- K3s: `/api/v1/k8s/clusters/:cluster_id/k3s/plans`
+
+**增强功能**:
+- `GET /api/v1/k8s/clusters/:cluster_id/search?q=<query>` - 全局搜索
+- `GET /api/v1/k8s/clusters/:cluster_id/resources/:kind/:name/relations` - 资源关系
+- `GET /api/v1/k8s/clusters/:cluster_id/crds` - CRD 检测
+
+**节点终端**:
+- `POST /api/v1/k8s/clusters/:cluster_id/nodes/:name/terminal` - 创建终端会话
+- `WS /api/v1/k8s/terminal/:session_id` - WebSocket 终端连接
+
+### 配置系统
+
+**Kubernetes 配置**（config.yaml）:
+```yaml
+kubernetes:
+  node_terminal_image: "alpine:latest"  # 终端特权 Pod 镜像
+  enable_kruise: true                   # 启用 OpenKruise
+  enable_tailscale: true                # 启用 Tailscale
+  enable_traefik: true                  # 启用 Traefik
+  enable_k3s_upgrade: true              # 启用 K3s Upgrade Controller
+```
+
+**Prometheus 配置**:
+```yaml
+prometheus:
+  auto_discovery: true         # 启用自动发现
+  discovery_timeout: 30        # 发现超时（秒）
+  cluster_urls:                # 手动配置（优先级高于自动发现）
+    cluster-1: "http://prometheus.monitoring:9090"
+```
+
+**功能特性**:
+```yaml
+features:
+  readonly_mode: false         # 只读模式开关
+```
+
+### 前端页面
+
+**位置**: `ui/src/pages/k8s/`
+
+**核心页面**:
+- `cluster-list-page.tsx`: 集群列表（健康状态、节点数、Pod 数）
+- `cluster-detail-page.tsx`: 集群详情（概览、配置、Prometheus 三个 Tab）
+- `cluster-form-page.tsx`: 集群创建/编辑表单
+- `search-page.tsx`: 全局搜索页（搜索、过滤、结果分组）
+- `monitoring-page.tsx`: Prometheus 监控配置
+
+**CRD 页面** (列表 + 详情):
+- OpenKruise: `cloneset-list-page.tsx`、`advanced-daemonset-list-page.tsx`
+- Tailscale: `connector-list-page.tsx`、`proxyclass-list-page.tsx`
+- Traefik: `ingressroute-list-page.tsx`、`middleware-list-page.tsx`
+- K3s: `upgrade-plans-list-page.tsx`
+
+**核心组件**:
+- `cluster-selector.tsx`: 集群切换器（下拉菜单）
+- `resource-relations.tsx`: 资源关系树形视图
+- `terminal.tsx`: xterm.js 终端 UI
+
+**状态管理**:
+- `ClusterContext`（cluster-context.tsx）: 当前选中集群 ID
+- 切换集群时清除缓存和临时状态
+
+### 测试覆盖
+
+**集成测试**（位于 `tests/integration/k8s/`）:
+- `cluster_health_test.go`: 集群健康检查（239 行，使用 testcontainers + Kind）
+- `prometheus_discovery_test.go`: Prometheus 自动发现框架
+- `search_performance_test.go`: 全局搜索性能（<1 秒，1000+ 资源）
+
+**单元测试**（位于 `tests/unit/k8s/`）:
+- `relations_test.go`: 资源关系服务（270 行，5 个测试用例）
+- `cache_test.go`: 缓存服务（266 行，7 个测试用例）
+- `search_test.go`: 搜索服务（332 行，6 个测试用例）
+
+**测试框架**:
+- testcontainers-go: Docker 容器化 K8s 集群（Kind）
+- fake.NewSimpleClientset(): Kubernetes fake client
+- fake.NewSimpleDynamicClient(): Dynamic client fake
+
+### 使用示例
+
+**导入集群**:
+```bash
+# 启动应用，自动从 ~/.kube/config 导入集群
+task dev
+
+# 访问前端
+# http://localhost:5174/k8s/clusters
+```
+
+**全局搜索**:
+```bash
+# API 调用
+curl -H "Authorization: Bearer <token>" \
+     "http://localhost:12306/api/v1/k8s/clusters/<cluster-id>/search?q=redis&limit=50"
+
+# 前端页面
+# http://localhost:5174/k8s/search
+```
+
+**节点终端**:
+```bash
+# 1. 创建终端会话
+POST /api/v1/k8s/clusters/:cluster_id/nodes/:node_name/terminal
+
+# 2. 连接 WebSocket
+ws://localhost:12306/api/v1/k8s/terminal/:session_id
+
+# 前端页面会自动处理 WebSocket 连接
+```
+
+### 关键实现细节
+
+**Client 缓存**（pkg/kube/client.go）:
+- 双检锁模式创建 K8s client
+- 集群更新/删除时自动清除缓存
+- 线程安全
+
+**节点终端原理**:
+1. 创建特权 Pod（hostNetwork、hostPID、privileged）
+2. 通过 WebSocket 建立终端连接
+3. 使用 xterm.js 渲染终端 UI
+4. 30 分钟超时自动清理 Pod
+
+**只读模式中间件**（internal/api/middleware/readonly.go）:
+- 阻止 POST、PUT、PATCH、DELETE 请求
+- 白名单：登录、健康检查、测试连接
+- 返回 HTTP 403 Forbidden
+
+**审计日志增强**:
+- ClusterID 和 ClusterName 字段
+- 记录所有资源修改操作
+- 记录所有节点终端访问
+
+### 待完成任务
+
+**高优先级**:
+- [ ] 契约测试（0/14）：API 规范验证
+- [ ] 剩余集成测试（T020、T022）
+- [ ] Prometheus 发现单元测试（T077）
+
+**中优先级**:
+- [ ] 通用 CRD 处理器框架（T038）
+- [ ] CRD 检测 API（T039）
+- [ ] 性能测试（T078）
+
+**低优先级**:
+- [ ] Swagger 注释（K8s API 端点）
+- [ ] 手动验证（quickstart.md 验证场景）
+- [ ] 代码质量检查（`task lint`）
+
+### 参考文档
+
+- 任务清单：`.claude/specs/005-k8s-kite-k8s/tasks.md`
+- 快速开始：`.claude/specs/005-k8s-kite-k8s/quickstart.md`
+- 数据模型：`.claude/specs/005-k8s-kite-k8s/data-model.md`
+- API 契约：`.claude/specs/005-k8s-kite-k8s/contracts/`

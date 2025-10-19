@@ -28,8 +28,10 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/auth"
 	"github.com/ysicing/tiga/internal/services/host"
+	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
 	"github.com/ysicing/tiga/internal/services/monitor"
+	"github.com/ysicing/tiga/internal/services/prometheus"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/crypto"
 	"github.com/ysicing/tiga/proto"
@@ -64,6 +66,15 @@ type Application struct {
 
 	// K8s service (for kubeconfig import and cluster management)
 	k8sService *services.K8sService
+
+	// K8s cluster health and Prometheus discovery
+	clusterHealthService *k8s.ClusterHealthService
+	prometheusDiscovery  *prometheus.AutoDiscoveryService
+
+	// Phase 3 services: resource relations, caching, and search
+	cacheService     *k8s.CacheService
+	relationsService *k8s.RelationsService
+	searchService    *k8s.SearchService
 }
 
 // NewApplication creates a new application instance using Wire dependency injection
@@ -151,6 +162,12 @@ func (a *Application) Initialize(ctx context.Context) error {
 		if err := a.k8sService.ImportClustersFromKubeconfig(ctx, kubeconfigPath); err != nil {
 			logrus.Warnf("Failed to import clusters from kubeconfig: %v", err)
 		}
+	}
+
+	// Start cluster health check service (T062)
+	if a.clusterHealthService != nil {
+		logrus.Info("Starting cluster health check service...")
+		a.clusterHealthService.Start(ctx)
 	}
 
 	// Start monitoring (coordinator was created by wire)

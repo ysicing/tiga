@@ -122,9 +122,9 @@ func TestGlobalSearchContract(t *testing.T) {
 					MatchedFields []string `json:"matched_fields"`
 					Resource      any      `json:"resource"`
 				} `json:"results"`
-				Total   int    `json:"total"`
-				Query   string `json:"query"`
-				TookMs  int    `json:"took_ms"`
+				Total  int    `json:"total"`
+				Query  string `json:"query"`
+				TookMs int    `json:"took_ms"`
 			} `json:"data"`
 		}
 

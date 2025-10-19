@@ -41,7 +41,7 @@ func init() {
 // K8sClient holds the Kubernetes client instances
 type K8sClient struct {
 	client.Client
-	ClientSet     *kubernetes.Clientset
+	ClientSet     kubernetes.Interface // Changed to interface to support both real and fake clients
 	Configuration *rest.Config
 	MetricsClient *metricsclient.Clientset
 

@@ -33,6 +33,19 @@ tasks:
     generates:
       - internal/app/wire_gen.go
 
+  swagger:
+    desc: generate Swagger API documentation
+    cmds:
+      - command -v swag || go install github.com/swaggo/swag/cmd/swag@latest
+      - ./scripts/generate-swagger.sh
+    sources:
+      - cmd/tiga/main.go
+      - internal/api/handlers/**/*.go
+      - pkg/handlers/**/*.go
+    generates:
+      - docs/swagger/swagger.json
+      - docs/swagger/swagger.yaml
+
   lint:
     desc: lint code
     cmds:
