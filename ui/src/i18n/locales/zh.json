@@ -35,7 +35,82 @@
     "version": "版本",
     "desired": "期望",
     "current": "当前",
-    "done": "完成"
+    "done": "完成",
+    "available": "可用",
+    "unavailable": "不可用",
+    "installInstructions": "请安装所需组件以使用此功能",
+    "installGuide": "安装指南",
+    "learnMore": "了解更多",
+    "summary": "摘要",
+    "nodeSelector": "节点选择器",
+    "age": "运行时间",
+    "type": "类型",
+    "events": "事件",
+    "timeUnits": {
+      "days": "天",
+      "hours": "小时",
+      "minutes": "分钟"
+    },
+    "assign": "分配权限",
+    "availableReplicas": "可用副本",
+    "basicInfo": "基本信息",
+    "comingSoon": "即将推出",
+    "conditions": "条件",
+    "configuration": "配置",
+    "connection": "连接",
+    "containers": "容器",
+    "createdTime": "创建时间",
+    "deleteResourceError": "删除资源失败",
+    "disable": "禁用",
+    "disabled": "已禁用",
+    "enable": "启用",
+    "enabled": "已启用",
+    "errorLoading": "加载错误",
+    "errorLoadingResource": "加载资源错误",
+    "failedToLoad": "加载失败",
+    "false": "否",
+    "health": "健康状态",
+    "labelsAndAnnotations": "标签和注解",
+    "loadingResourceDetails": "加载资源详情中...",
+    "logs": "日志",
+    "monitor": "监控",
+    "none": "无",
+    "noOwner": "无所有者",
+    "notFound": "未找到",
+    "notReady": "未就绪",
+    "overview": "概览",
+    "owner": "所有者",
+    "password": "密码",
+    "pods": "容器组",
+    "ready": "就绪",
+    "readyReplicas": "就绪副本",
+    "related": "相关资源",
+    "resetPassword": "重置密码",
+    "resourceDeleted": "资源已删除",
+    "resourceNotFound": "资源未找到",
+    "restart": "重启",
+    "saveYamlError": "保存 YAML 失败",
+    "scale": "扩缩容",
+    "selector": "选择器",
+    "serviceAccount": "服务账户",
+    "services": "服务",
+    "statusOverview": "状态概览",
+    "strategy": "策略",
+    "terminal": "终端",
+    "true": "是",
+    "uid": "UID",
+    "unknown": "未知",
+    "unknownError": "发生未知错误",
+    "update": "更新",
+    "updatedReplicas": "已更新副本",
+    "version": "版本",
+    "viewAll": "查看全部",
+    "volumes": "卷",
+    "yaml": "YAML",
+    "yamlConfiguration": "YAML 配置",
+    "yamlSaved": "YAML 已保存",
+    "yamlSaveError": "YAML 保存失败",
+    "yamlSaveErrorr": "YAML 保存失败"
   },
   "install": {
     "title": "Tiga 安装向导",
@@ -170,7 +245,25 @@
     "rolebindings": "角色绑定",
     "clusterroles": "集群角色",
     "clusterrolebindings": "集群角色绑定",
-    "horizontalpodautoscalers": "Pod 水平自动扩缩"
+    "horizontalpodautoscalers": "Pod 水平自动扩缩",
+    "advanced-features": "高级特性",
+    "openkruise": "OpenKruise",
+    "tailscale": "Tailscale",
+    "system-upgrade": "系统升级",
+    "systemUpgrade": "系统升级",
+    "traefik": "Traefik",
+    "clonesets": "高级工作负载副本集",
+    "kruise-statefulsets": "高级有状态副本集",
+    "kruise-daemonsets": "高级守护进程集",
+    "broadcastjobs": "广播任务",
+    "advancedcronjobs": "高级定时任务",
+    "sidecarsets": "边车集",
+    "connectors": "连接器",
+    "proxyclasses": "代理类",
+    "upgrade-plans": "升级计划",
+    "ingressroutes": "七层路由",
+    "middlewares": "中间件",
+    "clusterManagement": "集群管理"
   },
   "sidebar": {
     "groups": {
@@ -178,7 +271,8 @@
       "storage": "存储",
       "config": "配置",
       "other": "其他",
-      "security": "安全"
+      "security": "安全",
+      "advanced-features": "高级特性"
     },
     "short": {
       "pvcs": "PVCs",
@@ -195,7 +289,10 @@
     "menuGroups": "菜单分组",
     "resetToDefault": "重置为默认",
     "expand": "展开",
-    "collapse": "折叠"
+    "collapse": "折叠",
+    "createGroup": "创建分组",
+    "moveUp": "上移",
+    "moveDown": "下移"
   },
   "overview": {
     "title": "概览",
@@ -203,6 +300,7 @@
     "clusterStats": "集群统计",
     "recentEvents": "最近事件",
     "resourceCharts": "资源图表",
+    "resourceChartsDesc": "集群资源请求和限制概览",
     "failedToLoad": "加载概览数据失败",
     "unknownError": "发生未知错误",
     "subsystem": {
@@ -364,9 +462,66 @@
     "accessDenied": "访问被拒绝",
     "insufficientPermissions": "您没有足够的权限执行此操作",
     "allNamespaces": "所有命名空间",
-    "get": "获取",
     "actions": {
-      "add": "添加角色"
+      "add": "添加角色",
+      "assign": "分配",
+      "unassign": "取消分配"
+    },
+    "assign": {
+      "title": "分配角色",
+      "subject": "主体",
+      "subjectType": "主体类型",
+      "user": "用户",
+      "group": "组"
+    },
+    "dialog": {
+      "add": {
+        "title": "添加角色"
+      },
+      "edit": {
+        "title": "编辑角色"
+      }
+    },
+    "empty": {
+      "title": "暂无角色配置"
+    },
+    "form": {
+      "name": {
+        "label": "名称"
+      },
+      "description": {
+        "label": "描述"
+      },
+      "clusters": {
+        "label": "集群"
+      },
+      "namespaces": {
+        "label": "命名空间"
+      },
+      "resources": {
+        "label": "资源"
+      },
+      "verbs": {
+        "label": "动作"
+      },
+      "permissions": {
+        "label": "权限"
+      }
+    },
+    "messages": {
+      "created": "角色创建成功",
+      "createError": "创建角色失败",
+      "updated": "角色更新成功",
+      "updateError": "更新角色失败",
+      "deleted": "角色删除成功",
+      "deleteError": "删除角色失败",
+      "assigned": "角色分配成功",
+      "assignError": "角色分配失败",
+      "unassigned": "角色取消分配成功",
+      "unassignError": "角色取消分配失败"
+    },
+    "errors": {
+      "loadFailed": "加载角色失败"
     },
     "verb": {
       "get": "获取",
@@ -406,13 +561,15 @@
     "actions": {
       "add": "添加集群",
       "edit": "编辑",
-      "delete": "删除"
+      "delete": "删除",
+      "save": "保存"
     },
     "table": {
       "name": "名称",
       "type": "类型",
       "status": "状态",
       "prometheus": "Prometheus",
+      "Prometheus": "Prometheus",
       "actions": "操作"
     },
     "type": {
@@ -440,6 +597,12 @@
     },
     "deleteConfirmation": "此操作只会移除 tiga 中的集群配置，不会删除任何集群资源。",
     "dialog": {
+      "add": {
+        "title": "添加集群"
+      },
+      "edit": {
+        "title": "编辑集群"
+      },
       "createTitle": "添加集群",
       "editTitle": "编辑集群",
       "name": "名称",
@@ -453,6 +616,24 @@
       "prometheusUrlPlaceholder": "https://prometheus.example.com",
       "enabled": "启用",
       "isDefault": "设为默认"
+    },
+    "form": {
+      "name": {
+        "label": "名称"
+      },
+      "description": {
+        "label": "描述"
+      },
+      "type": {
+        "label": "类型",
+        "inCluster": "集群内"
+      },
+      "config": {
+        "label": "配置"
+      },
+      "enabled": {
+        "label": "启用"
+      }
     }
   },
   "oauthManagement": {
@@ -510,7 +691,8 @@
   "userManagement": {
     "title": "用户管理",
     "actions": {
-      "add": "添加密码用户"
+      "add": "添加密码用户",
+      "editUser": "编辑用户"
     },
     "table": {
       "username": "用户名",
@@ -523,6 +705,7 @@
       "roles": "角色"
     },
     "dialog": {
+      "addTitle": "添加用户",
       "editTitle": "编辑用户",
       "resetPassword": "重置密码",
       "assignRoles": "分配角色"
@@ -530,6 +713,18 @@
     "empty": {
       "title": "暂无用户",
       "description": "添加您的第一个用户以开始使用"
+    },
+    "messages": {
+      "created": "用户创建成功",
+      "createError": "创建用户失败",
+      "updated": "用户更新成功",
+      "updateError": "更新用户失败",
+      "deleted": "用户删除成功",
+      "deleteError": "删除用户失败",
+      "resetPassword": "密码重置成功"
+    },
+    "errors": {
+      "loadFailed": "加载用户失败"
     }
   },
   "initialization": {
@@ -699,5 +894,179 @@
     "metrics": "监控",
     "metrics.description": "服务器性能监控",
     "comingSoon.description": "Caddy Web 服务器管理功能正在开发中，敬请期待。"
+  },
+  "openkruise": {
+    "title": "OpenKruise",
+    "description": "增强型工作负载管理，提供高级部署策略",
+    "notInstalled": "OpenKruise 未安装",
+    "notInstalledDescription": "此集群未安装 OpenKruise",
+    "availableWorkloads": "可用工作负载",
+    "totalInstances": "总实例数",
+    "supportedTypes": "支持的类型",
+    "categories": {
+      "advancedWorkloads": "高级工作负载",
+      "sidecarManagement": "边车管理",
+      "enhancedOperations": "增强操作",
+      "applicationProtection": "应用保护",
+      "multiDomainManagement": "多域管理"
+    },
+    "clonesets": {
+      "title": "CloneSets",
+      "detailedDescription": "CloneSet 是 OpenKruise 提供的增强型无状态工作负载，提供更灵活的 Pod 管理能力"
+    },
+    "daemonsets": {
+      "title": "AdvancedDaemonSets",
+      "detailedDescription": "AdvancedDaemonSet 是增强型 DaemonSet，支持灰度发布、按节点暂停等高级功能"
+    },
+    "broadcastjobs": {
+      "title": "BroadcastJobs",
+      "detailedDescription": "BroadcastJob 可以在集群中所有节点或指定节点上并行执行一次性任务"
+    },
+    "sidecarsets": {
+      "title": "SidecarSets",
+      "detailedDescription": "SidecarSet 用于在 Pod 中注入和管理 Sidecar 容器，无需修改应用配置"
+    },
+    "imagepulljobs": {
+      "title": "ImagePullJobs",
+      "detailedDescription": "ImagePullJob 用于预拉取镜像到指定节点，加速应用部署"
+    },
+    "nodeimages": {
+      "title": "NodeImages",
+      "detailedDescription": "NodeImage 记录节点上已缓存的镜像信息，用于镜像管理和优化"
+    },
+    "uniteddeployments": {
+      "title": "UnitedDeployments",
+      "detailedDescription": "UnitedDeployment 用于跨多个子集（如可用区）管理工作负载，实现灵活的部署策略"
+    },
+    "workloadspreads": {
+      "title": "WorkloadSpreads",
+      "detailedDescription": "WorkloadSpread 控制工作负载如何分散到不同节点、可用区等，避免单点故障"
+    },
+    "containerrecreaterequests": {
+      "title": "ContainerRecreateRequests",
+      "detailedDescription": "ContainerRecreateRequest 用于重建 Pod 中的指定容器，无需重建整个 Pod"
+    },
+    "resourcedistributions": {
+      "title": "ResourceDistributions",
+      "detailedDescription": "ResourceDistribution 用于将 Secret、ConfigMap 等资源分发到多个命名空间"
+    },
+    "persistentpodstates": {
+      "title": "PersistentPodStates",
+      "detailedDescription": "PersistentPodState 持久化 Pod 的状态信息（如节点拓扑），用于 Pod 重建后的状态恢复"
+    },
+    "podprobemarkers": {
+      "title": "PodProbeMarkers",
+      "detailedDescription": "PodProbeMarker 提供自定义探针能力，扩展 Kubernetes 原生的健康检查机制"
+    },
+    "podunavailablebudgets": {
+      "title": "PodUnavailableBudgets",
+      "detailedDescription": "PodUnavailableBudget 控制工作负载中允许不可用的 Pod 数量，保障服务可用性"
+    }
+  },
+  "traefik": {
+    "title": "Traefik",
+    "description": "现代 HTTP 反向代理和负载均衡器",
+    "notInstalled": "Traefik 未安装",
+    "notInstalledDescription": "此集群未安装 Traefik",
+    "availableWorkloads": "可用资源",
+    "totalInstances": "总实例数",
+    "supportedTypes": "支持的类型",
+    "categories": "资源类型",
+    "ingressroutes": {
+      "title": "IngressRoutes",
+      "detailedDescription": "Traefik IngressRoute 是 Traefik 原生的路由配置资源，支持 HTTP/HTTPS 路由规则"
+    },
+    "middlewares": {
+      "title": "Middlewares",
+      "detailedDescription": "Traefik Middleware 提供请求/响应处理能力，如认证、限流、重定向等"
+    }
+  },
+  "tailscale": {
+    "title": "Tailscale",
+    "description": "零配置 VPN，实现安全网络连接",
+    "notInstalled": "Tailscale Operator 未安装",
+    "notInstalledDescription": "此集群未安装 Tailscale Operator",
+    "availableWorkloads": "可用资源",
+    "totalInstances": "总实例数",
+    "supportedTypes": "支持的类型",
+    "categories": "资源类型",
+    "connectors": {
+      "title": "Connectors",
+      "detailedDescription": "Tailscale Connector 用于将 Kubernetes 集群连接到 Tailscale 网络",
+      "hostname": "主机名",
+      "tags": "标签",
+      "proxyClass": "代理类",
+      "routes": "路由",
+      "types": {
+        "subnetRouter": "子网路由器",
+        "exitNode": "出口节点",
+        "appConnector": "应用连接器",
+        "unknown": "未知"
+      },
+      "status": {
+        "ready": "就绪",
+        "notReady": "未就绪",
+        "unknown": "未知"
+      }
+    },
+    "proxyclasses": {
+      "title": "ProxyClasses",
+      "detailedDescription": "ProxyClass 定义 Tailscale 代理的配置模板，如资源限制、节点选择器等",
+      "features": "特性",
+      "image": "镜像",
+      "defaultImage": "默认镜像",
+      "customLabels": "自定义标签",
+      "resources": "资源",
+      "featuresTypes": {
+        "metrics": "指标",
+        "resources": "资源限制",
+        "security": "安全上下文"
+      }
+    }
+  },
+  "systemUpgrade": {
+    "title": "系统升级控制器",
+    "description": "自动化节点升级管理",
+    "notInstalled": "系统升级控制器未安装",
+    "notInstalledDescription": "此集群未安装系统升级控制器",
+    "availableWorkloads": "可用计划",
+    "totalInstances": "总计划数",
+    "supportedTypes": "支持的类型",
+    "categories": "资源类型",
+    "createPlan": "创建计划",
+    "image": "镜像",
+    "concurrency": "并发数",
+    "tolerations": "容忍",
+    "upgradeDevices": "升级设备",
+    "upgradeDevicesDescription": "要升级的节点",
+    "status": {
+      "unknown": "未知",
+      "pending": "等待中",
+      "inProgress": "进行中",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "plans": {
+      "title": "Upgrade Plans",
+      "detailedDescription": "System Upgrade Plan 定义节点系统升级计划，支持滚动升级和节点选择"
+    }
+  },
+  "errors": {
+    "forbidden": "禁止访问",
+    "loadFailed": "加载数据失败",
+    "notFound": "未找到",
+    "operationFailed": "操作失败",
+    "serverError": "服务器错误",
+    "unknownError": "未知错误"
+  },
+  "actions": {
+    "cancel": "取消",
+    "delete": "删除",
+    "deleteSuccess": "删除成功",
+    "download": "下载",
+    "edit": "编辑",
+    "refresh": "刷新",
+    "save": "保存",
+    "updateSuccess": "更新成功"
   }
 }

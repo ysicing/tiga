@@ -10,9 +10,9 @@ import {
   IconSettings,
   IconX,
 } from '@tabler/icons-react'
-import { Pod } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 
+import type { PodWithMetrics } from '@/types/api'
 import { SimpleContainer } from '@/types/k8s'
 import { LOG_THEMES, LogTheme } from '@/types/themes'
 import { ansiStateToCss, parseAnsi, stripAnsi } from '@/lib/ansi-parser'
@@ -50,7 +50,7 @@ import { PodSelector } from './selector/pod-selector'
 interface LogViewerProps {
   namespace: string
   podName?: string
-  pods?: Pod[]
+  pods?: PodWithMetrics[]
   labelSelector?: string
   containers: SimpleContainer
   onClose?: () => void

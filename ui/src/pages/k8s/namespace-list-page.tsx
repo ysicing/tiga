@@ -18,7 +18,7 @@ export function NamespaceListPage() {
         header: t('common.name'),
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
-            <Link to={`/namespaces/${row.original.metadata!.name}`}>
+            <Link to={`/k8s/namespaces/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
             </Link>
           </div>

@@ -34,6 +34,7 @@ import { ResourceHistoryTable } from '@/components/resource-history-table'
 import { Terminal } from '@/components/terminal'
 import { VolumeTable } from '@/components/volume-table'
 import { YamlEditor } from '@/components/yaml-editor'
+import type { PodWithMetrics } from '@/types/api'
 
 interface JobStatusBadge {
   label: string
@@ -407,7 +408,7 @@ export function JobDetail(props: { namespace: string; name: string }) {
                       {pods && <Badge variant="secondary">{pods.length}</Badge>}
                     </>
                   ),
-                  content: <PodTable pods={pods} />,
+                  content: <PodTable pods={pods as PodWithMetrics[]} />,
                 },
                 {
                   value: 'logs',
@@ -416,7 +417,7 @@ export function JobDetail(props: { namespace: string; name: string }) {
                     <div className="space-y-6">
                       <LogViewer
                         namespace={namespace}
-                        pods={pods}
+                        pods={pods as PodWithMetrics[]}
                         containers={toSimpleContainer(
                           job.spec?.template?.spec?.initContainers,
                           job.spec?.template?.spec?.containers
@@ -433,7 +434,7 @@ export function JobDetail(props: { namespace: string; name: string }) {
                     <div className="space-y-6">
                       <Terminal
                         namespace={namespace}
-                        pods={pods}
+                        pods={pods as PodWithMetrics[]}
                         containers={toSimpleContainer(
                           job.spec?.template?.spec?.initContainers,
                           job.spec?.template?.spec?.containers
@@ -495,7 +496,7 @@ export function JobDetail(props: { namespace: string; name: string }) {
             content: (
               <PodMonitoring
                 namespace={namespace}
-                pods={pods}
+                pods={pods as PodWithMetrics[]}
                 containers={toSimpleContainer(
                   job.spec?.template?.spec?.initContainers,
                   job.spec?.template?.spec?.containers

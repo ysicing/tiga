@@ -48,6 +48,7 @@ import { ResourceHistoryTable } from '@/components/resource-history-table'
 import { Terminal } from '@/components/terminal'
 import { VolumeTable } from '@/components/volume-table'
 import { YamlEditor } from '@/components/yaml-editor'
+import type { PodWithMetrics } from '@/types/api'
 
 export function StatefulSetDetail(props: { namespace: string; name: string }) {
   const { namespace, name } = props
@@ -601,7 +602,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                   ),
                   content: (
                     <PodTable
-                      pods={relatedPods}
+                      pods={relatedPods as PodWithMetrics[]}
                       isLoading={isLoadingPods}
                       labelSelector={labelSelector}
                     />
@@ -614,7 +615,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                     <div className="space-y-6">
                       <LogViewer
                         namespace={namespace}
-                        pods={relatedPods}
+                        pods={relatedPods as PodWithMetrics[]}
                         containers={toSimpleContainer(
                           spec?.template.spec?.initContainers,
                           spec?.template.spec?.containers
@@ -631,7 +632,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
                       {relatedPods && relatedPods.length > 0 && (
                         <Terminal
                           namespace={namespace}
-                          pods={relatedPods}
+                          pods={relatedPods as PodWithMetrics[]}
                           containers={toSimpleContainer(
                             spec?.template.spec?.initContainers,
                             spec?.template.spec?.containers
@@ -710,7 +711,7 @@ export function StatefulSetDetail(props: { namespace: string; name: string }) {
             content: (
               <PodMonitoring
                 namespace={namespace}
-                pods={relatedPods}
+                pods={relatedPods as PodWithMetrics[]}
                 containers={toSimpleContainer(
                   spec?.template.spec?.initContainers,
                   spec?.template.spec?.containers

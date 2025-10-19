@@ -125,7 +125,7 @@ export function NodeListPage() {
         header: t('common.name'),
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
-            <Link to={`/nodes/${row.original.metadata!.name}`}>
+            <Link to={`/k8s/nodes/${row.original.metadata!.name}`}>
               {row.original.metadata!.name}
             </Link>
           </div>

@@ -106,7 +106,60 @@ func RegisterRoutes(group *gin.RouterGroup) {
 		}
 	}
 
+	// Register OpenKruise resources with short names mapping to full CRD names
 	crHandler := NewCRHandler()
+	openKruiseResourceMap := map[string]string{
+		"clonesets":                 "clonesets.apps.kruise.io",
+		"advancedstatefulsets":      "statefulsets.apps.kruise.io",
+		"advanceddaemonsets":        "daemonsets.apps.kruise.io",
+		"broadcastjobs":             "broadcastjobs.apps.kruise.io",
+		"advancedcronjobs":          "advancedcronjobs.apps.kruise.io",
+		"sidecarsets":               "sidecarsets.apps.kruise.io",
+		"imagepulljobs":             "imagepulljobs.apps.kruise.io",
+		"nodeimages":                "nodeimages.apps.kruise.io",
+		"uniteddeployments":         "uniteddeployments.apps.kruise.io",
+		"workloadspreads":           "workloadspreads.apps.kruise.io",
+		"containerrecreaterequests": "containerrecreaterequests.apps.kruise.io",
+		"resourcedistributions":     "resourcedistributions.apps.kruise.io",
+		"persistentpodstates":       "persistentpodstates.apps.kruise.io",
+		"podprobemarkers":           "podprobemarkers.apps.kruise.io",
+		"podunavailablebudgets":     "podunavailablebudgets.policy.kruise.io",
+	}
+
+	for shortName, fullCRDName := range openKruiseResourceMap {
+		registerOpenKruiseRoutes(group, shortName, fullCRDName, crHandler)
+	}
+
+	// Register Tailscale resources with short names mapping to full CRD names
+	tailscaleResourceMap := map[string]string{
+		"connectors":   "connectors.tailscale.com",
+		"proxyclasses": "proxyclasses.tailscale.com",
+	}
+
+	for shortName, fullCRDName := range tailscaleResourceMap {
+		registerOpenKruiseRoutes(group, shortName, fullCRDName, crHandler)
+	}
+
+	// Register System Upgrade (K3s) resources with short names mapping to full CRD names
+	systemUpgradeResourceMap := map[string]string{
+		"plans": "plans.upgrade.cattle.io",
+	}
+
+	for shortName, fullCRDName := range systemUpgradeResourceMap {
+		registerOpenKruiseRoutes(group, shortName, fullCRDName, crHandler)
+	}
+
+	// Register Traefik resources with short names mapping to full CRD names
+	traefikResourceMap := map[string]string{
+		"ingressroutes": "ingressroutes.traefik.io",
+		"middlewares":   "middlewares.traefik.io",
+	}
+
+	for shortName, fullCRDName := range traefikResourceMap {
+		registerOpenKruiseRoutes(group, shortName, fullCRDName, crHandler)
+	}
+
+	// Generic CRD handler for other custom resources (wildcard route)
 	otherGroup := group.Group("/:crd")
 	{
 		otherGroup.GET("", crHandler.List)
@@ -122,6 +175,29 @@ func RegisterRoutes(group *gin.RouterGroup) {
 		otherGroup.PUT("/:namespace/:name", crHandler.Update)
 		otherGroup.DELETE("/:namespace/:name", crHandler.Delete)
 	}
+}
+
+// registerOpenKruiseRoutes registers routes for an OpenKruise resource with short name
+func registerOpenKruiseRoutes(parentGroup *gin.RouterGroup, shortName, fullCRDName string, crHandler *CRHandler) {
+	g := parentGroup.Group("/" + shortName)
+
+	// Wrapper function to inject the full CRD name
+	wrapWithCRDName := func(handlerFunc func(*gin.Context)) gin.HandlerFunc {
+		return func(c *gin.Context) {
+			// Inject the full CRD name as the :crd parameter
+			c.Params = append(c.Params, gin.Param{Key: "crd", Value: fullCRDName})
+			handlerFunc(c)
+		}
+	}
+
+	// Register routes (namespaced resources)
+	g.GET("", wrapWithCRDName(crHandler.List))
+	g.GET("/:namespace", wrapWithCRDName(crHandler.List))
+	g.GET("/:namespace/:name", wrapWithCRDName(crHandler.Get))
+	g.POST("/:namespace", wrapWithCRDName(crHandler.Create))
+	g.PUT("/:namespace/:name", wrapWithCRDName(crHandler.Update))
+	g.DELETE("/:namespace/:name", wrapWithCRDName(crHandler.Delete))
+	g.GET("/:namespace/:name/describe", wrapWithCRDName(crHandler.Describe))
 }
 
 func registerClusterScopeRoutes(group *gin.RouterGroup, handler resourceHandler) {

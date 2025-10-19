@@ -29,7 +29,81 @@
     "done": "Done",
     "desired": "Desired",
     "current": "Current",
-    "available": "Available"
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "installInstructions": "Please install the required component to use this feature",
+    "installGuide": "Installation Guide",
+    "learnMore": "Learn More",
+    "summary": "Summary",
+    "nodeSelector": "Node Selector",
+    "age": "Age",
+    "type": "Type",
+    "events": "Events",
+    "timeUnits": {
+      "days": "days",
+      "hours": "hours",
+      "minutes": "minutes"
+    },
+    "assign": "Assign",
+    "availableReplicas": "Available Replicas",
+    "basicInfo": "Basic Information",
+    "comingSoon": "Coming Soon",
+    "conditions": "Conditions",
+    "configuration": "Configuration",
+    "connection": "Connection",
+    "containers": "Containers",
+    "createdTime": "Created Time",
+    "deleteResourceError": "Failed to delete resource",
+    "disable": "Disable",
+    "disabled": "Disabled",
+    "enable": "Enable",
+    "enabled": "Enabled",
+    "errorLoading": "Error loading",
+    "errorLoadingResource": "Error loading resource",
+    "failedToLoad": "Failed to load",
+    "false": "False",
+    "health": "Health",
+    "labelsAndAnnotations": "Labels & Annotations",
+    "loadingResourceDetails": "Loading resource details...",
+    "logs": "Logs",
+    "monitor": "Monitor",
+    "none": "None",
+    "noOwner": "No owner",
+    "notFound": "Not found",
+    "notReady": "Not Ready",
+    "overview": "Overview",
+    "owner": "Owner",
+    "password": "Password",
+    "pods": "Pods",
+    "ready": "Ready",
+    "readyReplicas": "Ready Replicas",
+    "related": "Related Resources",
+    "resetPassword": "Reset Password",
+    "resourceDeleted": "Resource deleted successfully",
+    "resourceNotFound": "Resource not found",
+    "restart": "Restart",
+    "saveYamlError": "Failed to save YAML",
+    "scale": "Scale",
+    "selector": "Selector",
+    "serviceAccount": "Service Account",
+    "services": "Services",
+    "statusOverview": "Status Overview",
+    "strategy": "Strategy",
+    "terminal": "Terminal",
+    "true": "True",
+    "uid": "UID",
+    "unknown": "Unknown",
+    "unknownError": "Unknown error occurred",
+    "update": "Update",
+    "updatedReplicas": "Updated Replicas",
+    "version": "Version",
+    "viewAll": "View All",
+    "volumes": "Volumes",
+    "yaml": "YAML",
+    "yamlConfiguration": "YAML Configuration",
+    "yamlSaved": "YAML saved successfully",
+    "yamlSaveError": "Failed to save YAML",
+    "yamlSaveErrorr": "Failed to save YAML"
   },
   "install": {
     "title": "Tiga Installation",
@@ -135,7 +209,8 @@
       "config": "config",
       "other": "other",
       "security": "Security",
-      "workloads": "Workloads"
+      "workloads": "Workloads",
+      "advanced-features": "Advanced Features"
     },
     "short": {
       "pvcs": "PVCs",
@@ -148,7 +223,14 @@
     "pinnedItems": "Pinned Items",
     "pinned": "Pinned",
     "menuGroups": "Menu Groups",
-    "resetToDefault": "Reset to Default"
+    "resetToDefault": "Reset to Default",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "customize": "Customize Sidebar",
+    "customizeTitle": "Customize Sidebar",
+    "createGroup": "Create Group",
+    "moveUp": "Move Up",
+    "moveDown": "Move Down"
   },
   "nav": {
     "overview": "Overview",
@@ -181,7 +263,25 @@
     "rolebindings": "Role Bindings",
     "clusterroles": "Cluster Roles",
     "clusterrolebindings": "Cluster Role Bindings",
-    "horizontalpodautoscalers": "HPA"
+    "horizontalpodautoscalers": "HPA",
+    "advanced-features": "Advanced Features",
+    "openkruise": "OpenKruise",
+    "tailscale": "Tailscale",
+    "system-upgrade": "System Upgrade",
+    "systemUpgrade": "System Upgrade",
+    "traefik": "Traefik",
+    "clonesets": "CloneSets",
+    "kruise-statefulsets": "Advanced StatefulSets",
+    "kruise-daemonsets": "Advanced DaemonSets",
+    "broadcastjobs": "BroadcastJobs",
+    "advancedcronjobs": "Advanced CronJobs",
+    "sidecarsets": "SidecarSets",
+    "connectors": "Connectors",
+    "proxyclasses": "Proxy Classes",
+    "upgrade-plans": "Upgrade Plans",
+    "ingressroutes": "IngressRoutes",
+    "middlewares": "Middlewares",
+    "clusterManagement": "Cluster Management"
   },
   "overview": {
     "title": "Overview",
@@ -189,6 +289,7 @@
     "clusterStats": "Cluster Statistics",
     "recentEvents": "Recent Events",
     "resourceCharts": "Resource Charts",
+    "resourceChartsDesc": "Cluster resource requests and limits overview",
     "failedToLoad": "Failed to load overview data",
     "unknownError": "Unknown error occurred",
     "subsystem": {
@@ -346,11 +447,73 @@
     "tryAgain": "Try Again"
   },
   "rbac": {
+    "title": "RBAC Management",
     "noPermissionCluster": "User {{user}} does not have permission to {{verb}} {{resource}} on cluster {{cluster}}",
     "noPermissionNamespace": "User {{user}} does not have permission to {{verb}} {{resource}} in namespace {{namespace}} on cluster {{cluster}}",
     "accessDenied": "Access Denied",
     "insufficientPermissions": "You do not have sufficient permissions to perform this action",
     "allNamespaces": "All Namespaces",
+    "actions": {
+      "add": "Add Role",
+      "assign": "Assign",
+      "unassign": "Unassign"
+    },
+    "assign": {
+      "title": "Assign Role",
+      "subject": "Subject",
+      "subjectType": "Subject Type",
+      "user": "User",
+      "group": "Group"
+    },
+    "dialog": {
+      "add": {
+        "title": "Add Role"
+      },
+      "edit": {
+        "title": "Edit Role"
+      }
+    },
+    "empty": {
+      "title": "No roles configured"
+    },
+    "form": {
+      "name": {
+        "label": "Name"
+      },
+      "description": {
+        "label": "Description"
+      },
+      "clusters": {
+        "label": "Clusters"
+      },
+      "namespaces": {
+        "label": "Namespaces"
+      },
+      "resources": {
+        "label": "Resources"
+      },
+      "verbs": {
+        "label": "Verbs"
+      },
+      "permissions": {
+        "label": "Permissions"
+      }
+    },
+    "messages": {
+      "created": "Role created successfully",
+      "createError": "Failed to create role",
+      "updated": "Role updated successfully",
+      "updateError": "Failed to update role",
+      "deleted": "Role deleted successfully",
+      "deleteError": "Failed to delete role",
+      "assigned": "Role assigned successfully",
+      "assignError": "Failed to assign role",
+      "unassigned": "Role unassigned successfully",
+      "unassignError": "Failed to unassign role"
+    },
+    "errors": {
+      "loadFailed": "Failed to load roles"
+    },
     "verb": {
       "get": "Get",
       "create": "Create",
@@ -389,13 +552,15 @@
     "actions": {
       "add": "Add Cluster",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "save": "Save"
     },
     "table": {
       "name": "Name",
       "type": "Type",
       "status": "Status",
       "prometheus": "Prometheus",
+      "Prometheus": "Prometheus",
       "actions": "Actions"
     },
     "type": {
@@ -423,6 +588,12 @@
     },
     "deleteConfirmation": "This action will only remove the current cluster's configuration in tiga and will not delete any cluster resources.",
     "dialog": {
+      "add": {
+        "title": "Add Cluster"
+      },
+      "edit": {
+        "title": "Edit Cluster"
+      },
       "createTitle": "Add Cluster",
       "editTitle": "Edit Cluster",
       "name": "Name",
@@ -436,6 +607,24 @@
       "prometheusUrlPlaceholder": "https://prometheus.example.com",
       "enabled": "Enabled",
       "isDefault": "Set as Default"
+    },
+    "form": {
+      "name": {
+        "label": "Name"
+      },
+      "description": {
+        "label": "Description"
+      },
+      "type": {
+        "label": "Type",
+        "inCluster": "In-Cluster"
+      },
+      "config": {
+        "label": "Configuration"
+      },
+      "enabled": {
+        "label": "Enabled"
+      }
     }
   },
   "oauthManagement": {
@@ -480,6 +669,44 @@
       "scopes": "Scopes",
       "issuer": "Issuer",
       "enabled": "Enabled"
+    }
+  },
+  "userManagement": {
+    "title": "User Management",
+    "actions": {
+      "add": "Add Password User",
+      "editUser": "Edit User"
+    },
+    "table": {
+      "avatar": "Avatar",
+      "name": "Name",
+      "provider": "Provider",
+      "status": "Status",
+      "createdAt": "Created At",
+      "lastLoginAt": "Last Login",
+      "roles": "Roles"
+    },
+    "dialog": {
+      "addTitle": "Add User",
+      "editTitle": "Edit User",
+      "resetPassword": "Reset Password",
+      "assignRoles": "Assign Roles"
+    },
+    "empty": {
+      "title": "No users",
+      "description": "Add your first user to get started"
+    },
+    "messages": {
+      "created": "User created successfully",
+      "createError": "Failed to create user",
+      "updated": "User updated successfully",
+      "updateError": "Failed to update user",
+      "deleted": "User deleted successfully",
+      "deleteError": "Failed to delete user",
+      "resetPassword": "Password reset successfully"
+    },
+    "errors": {
+      "loadFailed": "Failed to load users"
     }
   },
   "initialization": {
@@ -794,5 +1021,179 @@
     "metrics": "Metrics",
     "metrics.description": "Server performance monitoring",
     "comingSoon.description": "Caddy web server management features are under development, please stay tuned."
+  },
+  "openkruise": {
+    "title": "OpenKruise",
+    "description": "Enhanced workload management with advanced deployment strategies",
+    "notInstalled": "OpenKruise Not Installed",
+    "notInstalledDescription": "OpenKruise is not installed in this cluster",
+    "availableWorkloads": "Available Workloads",
+    "totalInstances": "Total Instances",
+    "supportedTypes": "Supported Types",
+    "categories": {
+      "advancedWorkloads": "Advanced Workloads",
+      "sidecarManagement": "Sidecar Management",
+      "enhancedOperations": "Enhanced Operations",
+      "applicationProtection": "Application Protection",
+      "multiDomainManagement": "Multi-Domain Management"
+    },
+    "clonesets": {
+      "title": "CloneSets",
+      "detailedDescription": "CloneSet is an enhanced stateless workload provided by OpenKruise with more flexible Pod management capabilities"
+    },
+    "daemonsets": {
+      "title": "AdvancedDaemonSets",
+      "detailedDescription": "AdvancedDaemonSet is an enhanced DaemonSet supporting canary release, per-node pause, and other advanced features"
+    },
+    "broadcastjobs": {
+      "title": "BroadcastJobs",
+      "detailedDescription": "BroadcastJob can run one-time tasks in parallel on all or selected nodes in the cluster"
+    },
+    "sidecarsets": {
+      "title": "SidecarSets",
+      "detailedDescription": "SidecarSet is used to inject and manage Sidecar containers in Pods without modifying application configurations"
+    },
+    "imagepulljobs": {
+      "title": "ImagePullJobs",
+      "detailedDescription": "ImagePullJob is used to pre-pull images to specified nodes, speeding up application deployment"
+    },
+    "nodeimages": {
+      "title": "NodeImages",
+      "detailedDescription": "NodeImage records cached image information on nodes for image management and optimization"
+    },
+    "uniteddeployments": {
+      "title": "UnitedDeployments",
+      "detailedDescription": "UnitedDeployment manages workloads across multiple subsets (such as availability zones), enabling flexible deployment strategies"
+    },
+    "workloadspreads": {
+      "title": "WorkloadSpreads",
+      "detailedDescription": "WorkloadSpread controls how workloads are distributed across different nodes, availability zones, etc., to avoid single points of failure"
+    },
+    "containerrecreaterequests": {
+      "title": "ContainerRecreateRequests",
+      "detailedDescription": "ContainerRecreateRequest is used to recreate specified containers in a Pod without recreating the entire Pod"
+    },
+    "resourcedistributions": {
+      "title": "ResourceDistributions",
+      "detailedDescription": "ResourceDistribution is used to distribute resources like Secrets and ConfigMaps to multiple namespaces"
+    },
+    "persistentpodstates": {
+      "title": "PersistentPodStates",
+      "detailedDescription": "PersistentPodState persists Pod state information (such as node topology) for state recovery after Pod recreation"
+    },
+    "podprobemarkers": {
+      "title": "PodProbeMarkers",
+      "detailedDescription": "PodProbeMarker provides custom probe capabilities, extending Kubernetes native health check mechanisms"
+    },
+    "podunavailablebudgets": {
+      "title": "PodUnavailableBudgets",
+      "detailedDescription": "PodUnavailableBudget controls the number of unavailable Pods allowed in a workload to ensure service availability"
+    }
+  },
+  "traefik": {
+    "title": "Traefik",
+    "description": "Modern HTTP reverse proxy and load balancer",
+    "notInstalled": "Traefik Not Installed",
+    "notInstalledDescription": "Traefik is not installed in this cluster",
+    "availableWorkloads": "Available Resources",
+    "totalInstances": "Total Instances",
+    "supportedTypes": "Supported Types",
+    "categories": "Resource Types",
+    "ingressroutes": {
+      "title": "IngressRoutes",
+      "detailedDescription": "Traefik IngressRoute is Traefik's native routing configuration resource, supporting HTTP/HTTPS routing rules"
+    },
+    "middlewares": {
+      "title": "Middlewares",
+      "detailedDescription": "Traefik Middleware provides request/response processing capabilities such as authentication, rate limiting, redirection, etc."
+    }
+  },
+  "tailscale": {
+    "title": "Tailscale",
+    "description": "Zero-config VPN for secure networking",
+    "notInstalled": "Tailscale Operator Not Installed",
+    "notInstalledDescription": "Tailscale Operator is not installed in this cluster",
+    "availableWorkloads": "Available Resources",
+    "totalInstances": "Total Instances",
+    "supportedTypes": "Supported Types",
+    "categories": "Resource Types",
+    "connectors": {
+      "title": "Connectors",
+      "detailedDescription": "Tailscale Connector is used to connect Kubernetes clusters to the Tailscale network",
+      "hostname": "Hostname",
+      "tags": "Tags",
+      "proxyClass": "Proxy Class",
+      "routes": "Routes",
+      "types": {
+        "subnetRouter": "Subnet Router",
+        "exitNode": "Exit Node",
+        "appConnector": "App Connector",
+        "unknown": "Unknown"
+      },
+      "status": {
+        "ready": "Ready",
+        "notReady": "Not Ready",
+        "unknown": "Unknown"
+      }
+    },
+    "proxyclasses": {
+      "title": "ProxyClasses",
+      "detailedDescription": "ProxyClass defines configuration templates for Tailscale proxies, such as resource limits, node selectors, etc.",
+      "features": "Features",
+      "image": "Image",
+      "defaultImage": "Default Image",
+      "customLabels": "Custom Labels",
+      "resources": "Resources",
+      "featuresTypes": {
+        "metrics": "Metrics",
+        "resources": "Resource Limits",
+        "security": "Security Context"
+      }
+    }
+  },
+  "systemUpgrade": {
+    "title": "System Upgrade Controller",
+    "description": "Automated node upgrade management",
+    "notInstalled": "System Upgrade Controller Not Installed",
+    "notInstalledDescription": "System Upgrade Controller is not installed in this cluster",
+    "availableWorkloads": "Available Plans",
+    "totalInstances": "Total Plans",
+    "supportedTypes": "Supported Types",
+    "categories": "Resource Types",
+    "createPlan": "Create Plan",
+    "image": "Image",
+    "concurrency": "Concurrency",
+    "tolerations": "Tolerations",
+    "upgradeDevices": "Upgrade Devices",
+    "upgradeDevicesDescription": "Nodes to upgrade",
+    "status": {
+      "unknown": "Unknown",
+      "pending": "Pending",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "plans": {
+      "title": "Upgrade Plans",
+      "detailedDescription": "System Upgrade Plan defines node system upgrade plans, supporting rolling upgrades and node selection"
+    }
+  },
+  "errors": {
+    "forbidden": "Forbidden",
+    "loadFailed": "Failed to load data",
+    "notFound": "Not found",
+    "operationFailed": "Operation failed",
+    "serverError": "Server error",
+    "unknownError": "Unknown error"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleteSuccess": "Deleted successfully",
+    "download": "Download",
+    "edit": "Edit",
+    "refresh": "Refresh",
+    "save": "Save",
+    "updateSuccess": "Updated successfully"
   }
 }

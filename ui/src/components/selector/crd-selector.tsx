@@ -44,7 +44,7 @@ export function CRDSelector({
 
   const availableCRDs = useMemo<CRDOption[]>(() => {
     if (!crdsData) return []
-    return (crdsData as CustomResourceDefinition[])
+    return ((crdsData as unknown) as CustomResourceDefinition[])
       .map((crd) => ({
         name: crd.metadata?.name || '',
         kind: crd.spec?.names?.kind || '',

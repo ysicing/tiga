@@ -17,7 +17,7 @@ export function HTTPRouteListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/httproutes/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
+              to={`/k8s/httproutes/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
             >
               {row.original.metadata!.name}
             </Link>

@@ -12,6 +12,7 @@ export interface SidebarGroup {
   id: string
   nameKey: string
   items: SidebarItem[]
+  subGroups?: SidebarGroup[]  // 支持嵌套子组
   visible: boolean
   collapsed: boolean
   order: number

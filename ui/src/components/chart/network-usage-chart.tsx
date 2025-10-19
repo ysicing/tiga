@@ -24,7 +24,6 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '../ui/chart'
-import { Skeleton } from '../ui/skeleton'
 
 interface NetworkUsageChartProps {
   networkIn: UsageDataPoint[]
@@ -114,8 +113,11 @@ const NetworkUsageChart = React.memo((prop: NetworkUsageChartProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
-          <div className="space-y-3">
-            <Skeleton className="h-[250px] w-full" />
+          <div className="flex h-[250px] w-full items-center justify-center text-sm text-muted-foreground">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <p>Loading network usage data...</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -132,7 +134,16 @@ const NetworkUsageChart = React.memo((prop: NetworkUsageChartProps) => {
         <CardContent className="px-2 sm:px-6">
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error.message}</AlertDescription>
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className="font-medium">Failed to load network data</p>
+                <p className="text-sm">{error.message}</p>
+                <p className="text-sm text-muted-foreground">
+                  Please check if Prometheus is correctly configured in cluster
+                  settings.
+                </p>
+              </div>
+            </AlertDescription>
           </Alert>
         </CardContent>
       </Card>

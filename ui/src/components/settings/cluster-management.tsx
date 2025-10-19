@@ -148,7 +148,7 @@ export function ClusterManagement() {
             {t('common.delete', 'Delete')}
           </div>
         ),
-        shouldDisable: (cluster) => cluster.isDefault,
+        shouldDisable: (cluster) => cluster.isDefault ?? false,
         onClick: (cluster) => {
           setDeletingCluster(cluster)
         },

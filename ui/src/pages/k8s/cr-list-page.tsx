@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { get } from 'lodash'
+import { CustomResourceDefinition } from 'kubernetes-types/apiextensions/v1'
 import { Link, useParams } from 'react-router-dom'
 
 import { CustomResource, ResourceType } from '@/types/api'
@@ -10,7 +11,11 @@ import { ResourceTable } from '@/components/resource-table'
 
 export function CRListPage() {
   const { crd } = useParams<{ crd: string }>()
-  const { data: crdData, isLoading: isLoadingCRD } = useResource('crds', crd!)
+  // For cluster-scoped resources like CRDs, we need to specify namespace as '_all'
+  const { data: crdData, isLoading: isLoadingCRD } = useResource('crds', crd!, '_all') as {
+    data?: CustomResourceDefinition
+    isLoading: boolean
+  }
 
   const columnHelper = createColumnHelper<CustomResource>()
 

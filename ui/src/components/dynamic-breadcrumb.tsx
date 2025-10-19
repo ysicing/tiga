@@ -61,12 +61,18 @@ export function DynamicBreadcrumb() {
       const isLastSegment = index === pathSegments.length - 1
       if (isLastSegment) return undefined
 
-      // Handle different path patterns
-      if (pathSegments[0] === 'crds') {
-        if (index === 0) return '/crds'
-        if (index === 1) return `/crds/${pathSegments[1]}`
-        if (index === 2) return `/crds/${pathSegments[1]}` // namespace links back to CRD list
+      // Detect CRD routes: if in /k8s and second segment contains dots (e.g., clonesets.apps.kruise.io)
+      const isCRDRoute = pathSegments[0] === 'k8s' && pathSegments[1]?.includes('.')
+
+      if (isCRDRoute) {
+        // For CRD routes like /k8s/clonesets.apps.kruise.io/namespace/name
+        if (index === 0) return '/k8s' // K8s home
+        if (index === 1) return `/k8s/${pathSegments[1]}` // CRD list (e.g., /k8s/clonesets.apps.kruise.io)
+        if (index === 2) return `/k8s/${pathSegments[1]}` // namespace links back to CRD list
         return undefined
+      } else if (pathSegments[0] === 'k8s') {
+        // Regular K8s resources
+        return `/k8s/${pathSegments.slice(1, index + 1).join('/')}`
       } else {
         // Regular resources: namespace should link back to resource list
         const isNamespace = pathSegments.length === 3 && index === 1

@@ -18,7 +18,7 @@ export function IngressListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/ingresses/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
+              to={`/k8s/ingresses/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
             >
               {row.original.metadata!.name}
             </Link>

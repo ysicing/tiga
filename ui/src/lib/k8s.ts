@@ -2,7 +2,7 @@ import { Deployment } from 'kubernetes-types/apps/v1'
 import { Container, Pod, Service } from 'kubernetes-types/core/v1'
 import { ObjectMeta } from 'kubernetes-types/meta/v1'
 
-import { DeploymentStatusType, PodStatus, SimpleContainer } from '@/types/k8s'
+import { CloneSet, CloneSetStatusType, DeploymentStatusType, PodStatus, SimpleContainer } from '@/types/k8s'
 
 import { getAge } from './utils'
 
@@ -401,4 +401,82 @@ export function toSimpleContainer(
       image: container.image || '',
     })),
   ]
+}
+
+// OpenKruise CloneSet status function
+export function getCloneSetStatus(
+  cloneSet: CloneSet
+): CloneSetStatusType {
+  if (!cloneSet.status) {
+    return 'Unknown'
+  }
+
+  const status = cloneSet.status
+  const spec = cloneSet.spec
+
+  // Check if cloneSet is being deleted
+  if (cloneSet.metadata?.deletionTimestamp) {
+    return 'Terminating'
+  }
+
+  // Get replica counts
+  const replicas = status.replicas || 0
+  if (replicas === 0) {
+    return 'Scaled Down'
+  }
+  const desiredReplicas = spec?.replicas || 0
+  const actualReplicas = status.replicas || 0
+  const availableReplicas = status.availableReplicas || 0
+  const readyReplicas = status.readyReplicas || 0
+
+  if (desiredReplicas !== actualReplicas) {
+    return 'Progressing'
+  }
+  if (availableReplicas != actualReplicas || readyReplicas != actualReplicas) {
+    return 'Progressing'
+  }
+
+  // All replicas are ready and available
+  if (
+    readyReplicas === desiredReplicas &&
+    availableReplicas === desiredReplicas
+  ) {
+    return 'Available'
+  }
+
+  return 'Unknown'
+}
+
+// OpenKruise workload types that support restart operations
+const RESTARTABLE_OPENKRUISE_RESOURCES = [
+  'clonesets',
+  'advancedstatefulsets',
+  'advanceddaemonsets',
+] as const
+
+// OpenKruise workload types that do NOT support restart operations
+const NON_RESTARTABLE_OPENKRUISE_RESOURCES = [
+  'sidecarsets',
+  'advancedcronjobs',
+  'workloadspreads',
+  'uniteddeployments',
+  'broadcastjobs',
+] as const
+
+/**
+ * Check if an OpenKruise resource type supports restart operations
+ * @param resourceType - The OpenKruise resource type (e.g., 'clonesets', 'advancedstatefulsets')
+ * @returns true if the resource supports restart operations, false otherwise
+ */
+export function isOpenKruiseResourceRestartable(resourceType: string): boolean {
+  return RESTARTABLE_OPENKRUISE_RESOURCES.includes(resourceType as any)
+}
+
+/**
+ * Check if a resource type is an OpenKruise resource
+ * @param resourceType - The resource type to check
+ * @returns true if it's an OpenKruise resource, false otherwise
+ */
+export function isOpenKruiseResource(resourceType: string): boolean {
+  return [...RESTARTABLE_OPENKRUISE_RESOURCES, ...NON_RESTARTABLE_OPENKRUISE_RESOURCES].includes(resourceType as any)
 }

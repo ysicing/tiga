@@ -64,8 +64,8 @@ export function RBACManagement() {
         header: 'Clusters',
         cell: ({ row: { original: r } }) => (
           <div className="text-sm text-muted-foreground">
-            {r.clusters.length > 0 ? (
-              r.clusters.join(', ')
+            {(r.clusters?.length ?? 0) > 0 ? (
+              r.clusters?.join(', ')
             ) : (
               <span className="text-xs text-muted-foreground">-</span>
             )}
@@ -77,8 +77,8 @@ export function RBACManagement() {
         header: 'Namespaces',
         cell: ({ row: { original: r } }) => (
           <div className="text-sm text-muted-foreground">
-            {r.namespaces.length > 0 ? (
-              r.namespaces.join(', ')
+            {(r.namespaces?.length ?? 0) > 0 ? (
+              r.namespaces?.join(', ')
             ) : (
               <span className="text-xs text-muted-foreground">-</span>
             )}
@@ -91,8 +91,8 @@ export function RBACManagement() {
         header: 'Resources',
         cell: ({ row: { original: r } }) => (
           <div className="text-sm text-muted-foreground">
-            {r.resources.length > 0 ? (
-              r.resources.join(', ')
+            {(r.resources?.length ?? 0) > 0 ? (
+              r.resources?.join(', ')
             ) : (
               <span className="text-xs text-muted-foreground">-</span>
             )}
@@ -104,8 +104,8 @@ export function RBACManagement() {
         header: 'Verbs',
         cell: ({ row: { original: r } }) => (
           <div className="text-sm text-muted-foreground">
-            {r.verbs.length > 0 ? (
-              r.verbs.join(', ')
+            {(r.verbs?.length ?? 0) > 0 ? (
+              r.verbs?.join(', ')
             ) : (
               <span className="text-xs text-muted-foreground">-</span>
             )}

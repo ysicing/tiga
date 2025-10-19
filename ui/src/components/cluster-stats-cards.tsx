@@ -29,7 +29,7 @@ export function ClusterStatsCards({
 
   if (isLoading || !stats) {
     return (
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i} className="animate-pulse">
             <CardHeader>
@@ -76,7 +76,7 @@ export function ClusterStatsCards({
   ]
 
   return (
-    <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       {statsConfig.map((stat) => {
         const Icon = stat.icon
         return (
@@ -102,7 +102,7 @@ export function ClusterStatsCards({
                       ) : (
                         <div className="flex items-center gap-1">
                           <IconAlertCircleFilled className="size-4 text-red-600 flex-shrink-0" />
-                          {stat.value - (stat.subValue || 0)} Not Ready
+                          {(stat.value || 0) - (stat.subValue || 0)} Not Ready
                         </div>
                       )}
                     </div>

@@ -231,10 +231,10 @@ export function UserManagement() {
       {
         id: 'roles',
         header: t('userManagement.table.roles', 'Roles'),
-        accessorFn: (row) => row.roles?.map((r) => r.name).join(', '),
+        accessorFn: (row) => row.roles?.join(', ') || '-',
         cell: ({ getValue }) => (
           <div className="text-sm text-muted-foreground">
-            {String(getValue() || '-')}
+            {String(getValue())}
           </div>
         ),
       },
@@ -387,7 +387,7 @@ export function UserManagement() {
             actions={actions}
           />
 
-          {(!data || data.users.length === 0) && (
+          {(!data || (data.users?.length ?? 0) === 0) && (
             <div className="text-center py-8 text-muted-foreground">
               <IconUser className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>{t('userManagement.empty.title', 'No users')}</p>

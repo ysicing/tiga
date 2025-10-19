@@ -214,7 +214,7 @@ export function PodDetail(props: { namespace: string; name: string }) {
                         <p className="text-sm font-medium truncate">
                           {pod.spec?.nodeName ? (
                             <Link
-                              to={`/nodes/${pod.spec.nodeName}`}
+                              to={`/k8s/nodes/${pod.spec.nodeName}`}
                               className="text-blue-600 hover:text-blue-800 hover:underline"
                             >
                               {pod.spec.nodeName}

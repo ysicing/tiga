@@ -54,7 +54,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           .filter((item) => !config.pinnedItems.includes(item.id))
           .sort((a, b) => a.order - b.order),
       }))
-      .filter((group) => group.items.length > 0)
+      .filter((group) => group.items.length > 0 || (group.subGroups && group.subGroups.length > 0))
   }, [config])
 
   const isActive = (url: string) => {
@@ -95,6 +95,66 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
         </SidebarContent>
       </Sidebar>
+    )
+  }
+
+  // Recursive component to render nested groups
+  const renderGroup = (group: any, level = 0) => {
+    const hasSubGroups = group.subGroups && group.subGroups.length > 0
+    const hasItems = group.items && group.items.length > 0
+
+    return (
+      <Collapsible
+        key={group.id}
+        defaultOpen={!group.collapsed}
+        className="group/collapsible"
+      >
+        <SidebarGroup>
+          <SidebarGroupLabel asChild>
+            <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors group-data-[state=open]:text-foreground">
+              <span className="uppercase tracking-wide text-xs font-bold" style={{ paddingLeft: `${level * 0.75}rem` }}>
+                {group.nameKey
+                  ? t(group.nameKey, { defaultValue: group.nameKey })
+                  : ''}
+              </span>
+              <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+            </CollapsibleTrigger>
+          </SidebarGroupLabel>
+          <CollapsibleContent>
+            <SidebarGroupContent className="flex flex-col gap-2">
+              {hasItems && (
+                <SidebarMenu>
+                  {group.items.map((item: any) => {
+                    const IconComponent = getIconComponent(item.icon)
+                    const title = item.titleKey
+                      ? t(item.titleKey, { defaultValue: item.titleKey })
+                      : ''
+                    return (
+                      <SidebarMenuItem key={item.id}>
+                        <SidebarMenuButton
+                          tooltip={title}
+                          asChild
+                          isActive={isActive(item.url)}
+                        >
+                          <Link to={item.url} onClick={handleMenuItemClick}>
+                            <IconComponent className="text-sidebar-primary" />
+                            <span>{title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  })}
+                </SidebarMenu>
+              )}
+              {hasSubGroups && (
+                <div className="flex flex-col gap-1">
+                  {group.subGroups.map((subGroup: any) => renderGroup(subGroup, level + 1))}
+                </div>
+              )}
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </SidebarGroup>
+      </Collapsible>
     )
   }
 
@@ -231,52 +291,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         )}
 
-        {visibleGroups.map((group) => (
-          <Collapsible
-            key={group.id}
-            defaultOpen={!group.collapsed}
-            className="group/collapsible"
-          >
-            <SidebarGroup>
-              <SidebarGroupLabel asChild>
-                <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors group-data-[state=open]:text-foreground">
-                  <span className="uppercase tracking-wide text-xs font-bold">
-                    {group.nameKey
-                      ? t(group.nameKey, { defaultValue: group.nameKey })
-                      : ''}
-                  </span>
-                  <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
-                </CollapsibleTrigger>
-              </SidebarGroupLabel>
-              <CollapsibleContent>
-                <SidebarGroupContent className="flex flex-col gap-2">
-                  <SidebarMenu>
-                    {group.items.map((item) => {
-                      const IconComponent = getIconComponent(item.icon)
-                      const title = item.titleKey
-                        ? t(item.titleKey, { defaultValue: item.titleKey })
-                        : ''
-                      return (
-                        <SidebarMenuItem key={item.id}>
-                          <SidebarMenuButton
-                            tooltip={title}
-                            asChild
-                            isActive={isActive(item.url)}
-                          >
-                            <Link to={item.url} onClick={handleMenuItemClick}>
-                              <IconComponent className="text-sidebar-primary" />
-                              <span>{title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      )
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </CollapsibleContent>
-            </SidebarGroup>
-          </Collapsible>
-        ))}
+        {visibleGroups.map((group) => renderGroup(group))}
       </SidebarContent>
 
       <SidebarFooter>

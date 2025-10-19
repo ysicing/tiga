@@ -24,7 +24,9 @@ import {
 import { API_BASE_URL, apiClient, buildK8sResourceUrl } from './api-client'
 import useWebSocket, { WebSocketMessage } from './useWebSocket'
 
-type ResourcesItems<T extends ResourceType> = ResourcesTypeMap[T]['items']
+type ResourcesItems<T extends ResourceType> = T extends keyof ResourceTypeMap
+  ? ResourceTypeMap[T][]
+  : never
 
 // Pagination result type
 export interface PaginatedResult<T> {
@@ -292,8 +294,9 @@ export const useResourcesEvents = <T extends ResourceType>(
         }).toString()
       return fetchAPI<ResourcesTypeMap['events']>(endpoint)
     },
-    select: (data: ResourcesTypeMap['events']): ResourcesItems<'events'> =>
-      data.items,
+    select: (data: ResourcesTypeMap['events']): ResourcesItems<'events'> => {
+      return (data?.items || []) as ResourcesItems<'events'>
+    },
     placeholderData: (prevData) => prevData,
   })
 }
@@ -329,7 +332,9 @@ export const useResources = <T extends ResourceType>(
       })
     },
     enabled: !options?.disable,
-    select: (data: ResourcesTypeMap[T]): ResourcesItems<T> => data.items,
+    select: (data: ResourcesTypeMap[T]): ResourcesItems<T> => {
+      return (data?.items || []) as ResourcesItems<T>
+    },
     placeholderData: (prevData) => prevData,
     refetchInterval: options?.refreshInterval || 0,
     staleTime: options?.staleTime || (resource === 'crds' ? 5000 : 1000),
@@ -1478,5 +1483,171 @@ export const useInstances = (options?: { staleTime?: number }) => {
     queryFn: fetchInstances,
     staleTime: options?.staleTime || 30000, // 30 seconds cache
     refetchInterval: 30000, // Auto refresh every 30 seconds
+  })
+}
+
+// OpenKruise workload restart APIs (placeholders - backend not implemented yet)
+export const restartKruiseWorkload = async (
+  resource: string,
+  namespace: string,
+  name: string
+): Promise<{ message: string; restartedAt?: string }> => {
+  const endpoint = `/${resource}/${namespace}/${name}/restart`
+  const response = await apiClient.post<{
+    message: string
+    restartedAt?: string
+  }>(endpoint, {}, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  return response
+}
+
+// Specific Kruise workload restart functions for better type safety
+export const restartCloneSet = async (
+  namespace: string,
+  name: string
+): Promise<{ message: string; restartedAt?: string }> => {
+  return restartKruiseWorkload('clonesets', namespace, name)
+}
+
+export const restartAdvancedStatefulSet = async (
+  namespace: string,
+  name: string
+): Promise<{ message: string; restartedAt?: string }> => {
+  return restartKruiseWorkload('advancedstatefulsets', namespace, name)
+}
+
+export const restartAdvancedDaemonSet = async (
+  namespace: string,
+  name: string
+): Promise<{ message: string; restartedAt?: string }> => {
+  return restartKruiseWorkload('advanceddaemonsets', namespace, name)
+}
+
+export const restartUnitedDeployment = async (
+  namespace: string,
+  name: string
+): Promise<{ message: string; restartedAt?: string }> => {
+  return restartKruiseWorkload('uniteddeployments', namespace, name)
+}
+
+// OpenKruise Status API (placeholder - backend not implemented yet)
+export interface OpenKruiseWorkload {
+  name: string
+  kind: string
+  apiVersion: string
+  available: boolean
+  count: number
+  description: string
+}
+
+export interface OpenKruiseStatus {
+  installed: boolean
+  version?: string
+  workloads: OpenKruiseWorkload[]
+}
+
+export const useOpenKruiseStatus = () => {
+  return useQuery<OpenKruiseStatus>({
+    queryKey: ['openkruise-status'],
+    queryFn: async () => {
+      return await apiClient.get<OpenKruiseStatus>('/openkruise/status')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  })
+}
+
+// Tailscale Status API (placeholder - backend not implemented yet)
+export interface TailscaleWorkload {
+  name: string
+  kind: string
+  apiVersion: string
+  available: boolean
+  count: number
+  description: string
+}
+
+export interface TailscaleStatus {
+  installed: boolean
+  version?: string
+  workloads: TailscaleWorkload[]
+}
+
+export const useTailscaleStatus = () => {
+  return useQuery<TailscaleStatus>({
+    queryKey: ['tailscale-status'],
+    queryFn: async () => {
+      return await apiClient.get<TailscaleStatus>('/tailscale/status')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  })
+}
+
+// Traefik Status API (placeholder - backend not implemented yet)
+export interface TraefikWorkload {
+  name: string
+  kind: string
+  apiVersion: string
+  available: boolean
+  count: number
+  description: string
+}
+
+export interface TraefikStatus {
+  installed: boolean
+  version?: string
+  workloads: TraefikWorkload[]
+  ingressRoutes?: {
+    total: number
+    active: number
+  }
+  middlewares?: {
+    total: number
+  }
+  services?: {
+    total: number
+  }
+}
+
+export const useTraefikStatus = () => {
+  return useQuery<TraefikStatus>({
+    queryKey: ['traefik-status'],
+    queryFn: async () => {
+      return await apiClient.get<TraefikStatus>('/traefik/status')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  })
+}
+
+// System Upgrade Status API (placeholder - backend not implemented yet)
+export interface SystemUpgradeWorkload {
+  name: string
+  kind: string
+  apiVersion: string
+  available: boolean
+  count: number
+  description: string
+}
+
+export interface SystemUpgradeStatus {
+  installed: boolean
+  version?: string
+  workloads: SystemUpgradeWorkload[]
+}
+
+export const useSystemUpgradeStatus = () => {
+  return useQuery<SystemUpgradeStatus>({
+    queryKey: ['system-upgrade-status'],
+    queryFn: async () => {
+      return await apiClient.get<SystemUpgradeStatus>('/system-upgrade/status')
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   })
 }

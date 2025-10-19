@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
-import { Pod } from 'kubernetes-types/core/v1'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
@@ -25,7 +24,7 @@ export function PodListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/pods/${row.original.metadata!.namespace}/${
+              to={`/k8s/pods/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >
@@ -38,7 +37,7 @@ export function PodListPage() {
         id: 'containers',
         header: t('pods.ready'),
         cell: ({ row }) => {
-          const status = getPodStatus(row.original)
+          const status = getPodStatus(row.original as any)
           return (
             <div>
               {status.readyContainers} / {status.totalContainers}
@@ -50,7 +49,7 @@ export function PodListPage() {
         header: t('common.status'),
         enableColumnFilter: true,
         cell: ({ row }) => {
-          const status = getPodStatus(row.original)
+          const status = getPodStatus(row.original as any)
           return (
             <Badge variant="outline" className="text-muted-foreground px-1.5">
               <PodStatusIcon status={status.reason} />
@@ -63,7 +62,7 @@ export function PodListPage() {
         id: 'restarts',
         header: t('pods.restarts'),
         cell: ({ row }) => {
-          const status = getPodStatus(row.original)
+          const status = getPodStatus(row.original as any)
           return (
             <span className="text-muted-foreground text-sm">
               {status.restartString}
@@ -105,7 +104,7 @@ export function PodListPage() {
           if (row.original.spec?.nodeName) {
             return (
               <div className="font-medium text-blue-500 hover:underline">
-                <Link to={`/nodes/${row.original.spec?.nodeName}`}>
+                <Link to={`/k8s/nodes/${row.original.spec?.nodeName}`}>
                   {row.original.spec?.nodeName}
                 </Link>
               </div>
@@ -129,7 +128,7 @@ export function PodListPage() {
   )
 
   // Custom filter for pod search
-  const podSearchFilter = useCallback((pod: Pod, query: string) => {
+  const podSearchFilter = useCallback((pod: PodWithMetrics, query: string) => {
     return (
       pod.metadata?.name?.toLowerCase().includes(query) ||
       (pod.spec?.nodeName?.toLowerCase() || '').includes(query) ||
@@ -138,7 +137,7 @@ export function PodListPage() {
   }, [])
 
   return (
-    <ResourceTable<Pod>
+    <ResourceTable<PodWithMetrics>
       resourceName="Pods"
       columns={columns}
       clusterScope={false}

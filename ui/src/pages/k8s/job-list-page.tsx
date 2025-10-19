@@ -19,7 +19,7 @@ export function JobListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/jobs/${row.original.metadata!.namespace}/${
+              to={`/k8s/jobs/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

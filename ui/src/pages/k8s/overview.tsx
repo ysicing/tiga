@@ -54,7 +54,7 @@ export function Overview() {
         user?.provider !== 'Anonymous' &&
         user?.roles?.some((role) => role.name === 'admin') && <SettingsHint />}
 
-      <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ResourceCharts
           data={overview?.resource}
           isLoading={isLoading}
@@ -64,23 +64,23 @@ export function Overview() {
         <RecentEvents />
       </div>
 
-      {overview?.prometheusEnabled && (
-        <div className="grid grid-cols-1 gap-4 @5xl/main:grid-cols-2">
+      {overview?.prometheusEnabled ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ResourceUtilizationChart
             cpu={resourceUsage?.cpu || []}
             memory={resourceUsage?.memory || []}
             isLoading={isLoadingResourceUsage}
-            error={errorResourceUsage}
+            error={errorResourceUsage as Error | undefined}
           />
 
           <NetworkUsageChart
             networkIn={resourceUsage?.networkIn || []}
             networkOut={resourceUsage?.networkOut || []}
             isLoading={isLoadingResourceUsage}
-            error={errorResourceUsage}
+            error={errorResourceUsage as Error | undefined}
           />
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
