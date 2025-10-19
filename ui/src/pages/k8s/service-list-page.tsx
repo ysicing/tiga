@@ -22,7 +22,7 @@ export function ServiceListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/services/${row.original.metadata!.namespace}/${
+              to={`/k8s/services/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

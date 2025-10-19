@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom'
 
 import {
   InstallGuard,
@@ -51,15 +51,77 @@ import { ClusterFormPage } from './pages/k8s/cluster-form-page'
 import { ClusterListPage } from './pages/k8s/cluster-list-page'
 import { ResourceHistoryPage } from './pages/k8s/resource-history-page'
 import { ResourceHistoryDetailPage } from './pages/k8s/resource-history-detail-page'
-import { CloneSetManagementPage } from './pages/k8s/cloneset-management-page'
-import { DaemonSetManagementPage } from './pages/k8s/daemonset-management-page'
-import { StatefulSetManagementPage } from './pages/k8s/statefulset-management-page'
+import { OpenKruisePage as OpenKruiseOverviewPage } from './pages/k8s/openkruise-page'
+import { TailscalePage } from './pages/k8s/tailscale-page'
+import { SystemUpgradePage } from './pages/k8s/system-upgrade-page'
+import { TraefikPage } from './pages/k8s/traefik-page'
+// OpenKruise Pages
+import { CloneSetListPage } from './pages/k8s/cloneset-list-page'
+import { CloneSetDetail } from './pages/k8s/cloneset-detail'
+import { AdvancedDaemonSetListPage } from './pages/k8s/advanced-daemonset-list-page'
+import { AdvancedDaemonSetDetail } from './pages/k8s/advanced-daemonset-detail'
+// import { BroadcastJobListPage } from './pages/k8s/broadcastjob-list-page'
+// import { SidecarSetListPage } from './pages/k8s/sidecarset-list-page'
+// import { ImagePullJobListPage } from './pages/k8s/imagepulljob-list-page'
+// import { NodeImageListPage } from './pages/k8s/nodeimage-list-page'
+// import { UnitedDeploymentListPage } from './pages/k8s/uniteddeployment-list-page'
+// import { WorkloadSpreadListPage } from './pages/k8s/workloadspread-list-page'
+// import { ContainerRecreateRequestListPage } from './pages/k8s/containerrecreate-list-page'
+// import { ResourceDistributionListPage } from './pages/k8s/resourcedistribution-list-page'
+// import { PersistentPodStateListPage } from './pages/k8s/persistentpodstate-list-page'
+// import { PodProbeMarkerListPage } from './pages/k8s/podprobemarker-list-page'
+// import { PodUnavailableBudgetListPage } from './pages/k8s/podunavailablebudget-list-page'
+// Traefik Pages
+import { IngressRouteListPage } from './pages/k8s/ingressroute-list-page'
+import { IngressRouteDetail } from './pages/k8s/ingressroute-detail'
+import { MiddlewareListPage } from './pages/k8s/middleware-list-page'
+import { MiddlewareDetail } from './pages/k8s/middleware-detail'
+// Tailscale Pages
+import ConnectorListPage from './pages/k8s/connector-list-page'
+import { ConnectorDetail } from './pages/k8s/connector-detail'
+import ProxyClassListPage from './pages/k8s/proxyclass-list-page'
+import { ProxyClassDetail } from './pages/k8s/proxyclass-detail'
+// System Upgrade Pages
+import UpgradePlansListPage from './pages/k8s/upgrade-plans-list-page'
+import UpgradePlanDetail from './pages/k8s/upgrade-plan-detail'
 import RolesPage from './pages/roles'
 import { SettingsPage } from './pages/settings'
 import UserFormPage from './pages/user-form'
 import UsersPage from './pages/users'
 // WebServer Pages
 import { WebServerOverview } from './pages/webserver-overview'
+
+// Wrapper components for detail pages that need URL params
+const CloneSetDetailWrapper = () => {
+  const { namespace, name } = useParams<{ namespace: string; name: string }>()
+  return <CloneSetDetail namespace={namespace!} name={name!} />
+}
+
+const AdvancedDaemonSetDetailWrapper = () => {
+  const { namespace, name } = useParams<{ namespace: string; name: string }>()
+  return <AdvancedDaemonSetDetail namespace={namespace!} name={name!} />
+}
+
+const IngressRouteDetailWrapper = () => {
+  const { namespace, name } = useParams<{ namespace: string; name: string }>()
+  return <IngressRouteDetail namespace={namespace!} name={name!} />
+}
+
+const MiddlewareDetailWrapper = () => {
+  const { namespace, name } = useParams<{ namespace: string; name: string }>()
+  return <MiddlewareDetail namespace={namespace!} name={name!} />
+}
+
+const ConnectorDetailWrapper = () => {
+  const { name } = useParams<{ namespace: string; name: string }>()
+  // Connector uses namespace/name format in single prop
+  return <ConnectorDetail name={name!} />
+}
+
+const ProxyClassDetailWrapper = () => {
+  const { name } = useParams<{ name: string }>()
+  return <ProxyClassDetail name={name!} />
+}
 
 export const router = createBrowserRouter([
   {
@@ -363,18 +425,22 @@ export const router = createBrowserRouter([
         path: 'clusters/:clusterId/yaml-editor',
         element: <CRDYAMLEditorPage />,
       },
-      // Workload Management routes
+      // Advanced Features routes
       {
-        path: 'workloads/clonesets',
-        element: <CloneSetManagementPage />,
+        path: 'advanced-features/openkruise',
+        element: <OpenKruiseOverviewPage />,
       },
       {
-        path: 'workloads/daemonsets',
-        element: <DaemonSetManagementPage />,
+        path: 'advanced-features/tailscale',
+        element: <TailscalePage />,
       },
       {
-        path: 'workloads/statefulsets',
-        element: <StatefulSetManagementPage />,
+        path: 'advanced-features/system-upgrade',
+        element: <SystemUpgradePage />,
+      },
+      {
+        path: 'advanced-features/traefik',
+        element: <TraefikPage />,
       },
       // CRD routes
       {
@@ -389,7 +455,116 @@ export const router = createBrowserRouter([
         path: 'crds/:resource/:name',
         element: <ResourceDetail />,
       },
+      // OpenKruise routes (must be before generic routes)
+      {
+        path: 'clonesets',
+        element: <CloneSetListPage />,
+      },
+      {
+        path: 'clonesets/:namespace/:name',
+        element: <CloneSetDetailWrapper />,
+      },
+      {
+        path: 'daemonsets.apps.kruise.io',
+        element: <AdvancedDaemonSetListPage />,
+      },
+      {
+        path: 'daemonsets.apps.kruise.io/:namespace/:name',
+        element: <AdvancedDaemonSetDetailWrapper />,
+      },
+      {
+        path: 'broadcastjobs',
+        element: <div>Coming Soon: BroadcastJobs</div>,
+      },
+      {
+        path: 'sidecarsets',
+        element: <div>Coming Soon: SidecarSets</div>,
+      },
+      {
+        path: 'imagepulljobs',
+        element: <div>Coming Soon: ImagePullJobs</div>,
+      },
+      {
+        path: 'nodeimages',
+        element: <div>Coming Soon: NodeImages</div>,
+      },
+      {
+        path: 'uniteddeployments',
+        element: <div>Coming Soon: UnitedDeployments</div>,
+      },
+      {
+        path: 'workloadspreads',
+        element: <div>Coming Soon: WorkloadSpreads</div>,
+      },
+      {
+        path: 'containerrecreaterequests',
+        element: <div>Coming Soon: ContainerRecreateRequests</div>,
+      },
+      {
+        path: 'resourcedistributions',
+        element: <div>Coming Soon: ResourceDistributions</div>,
+      },
+      {
+        path: 'persistentpodstates',
+        element: <div>Coming Soon: PersistentPodStates</div>,
+      },
+      {
+        path: 'podprobemarkers',
+        element: <div>Coming Soon: PodProbeMarkers</div>,
+      },
+      {
+        path: 'podunavailablebudgets',
+        element: <div>Coming Soon: PodUnavailableBudgets</div>,
+      },
+      // Traefik routes
+      {
+        path: 'ingressroutes',
+        element: <IngressRouteListPage />,
+      },
+      {
+        path: 'ingressroutes/:namespace/:name',
+        element: <IngressRouteDetailWrapper />,
+      },
+      {
+        path: 'middlewares',
+        element: <MiddlewareListPage />,
+      },
+      {
+        path: 'middlewares/:namespace/:name',
+        element: <MiddlewareDetailWrapper />,
+      },
+      // Tailscale routes
+      {
+        path: 'connectors',
+        element: <ConnectorListPage />,
+      },
+      {
+        path: 'connectors/:namespace/:name',
+        element: <ConnectorDetailWrapper />,
+      },
+      {
+        path: 'proxyclasses',
+        element: <ProxyClassListPage />,
+      },
+      {
+        path: 'proxyclasses/:name',
+        element: <ProxyClassDetailWrapper />,
+      },
+      // System Upgrade routes
+      {
+        path: 'plans',
+        element: <UpgradePlansListPage />,
+      },
+      {
+        path: 'plans/:namespace/:name',
+        element: <UpgradePlanDetail />,
+      },
       // Generic K8s resource routes
+      // IMPORTANT: Order matters! More specific routes (3 params) must come before generic routes (2 params)
+      {
+        path: ':resource/:namespace/:name',
+        element: <ResourceDetail />,
+      },
       {
         path: ':resource/:name',
         element: <ResourceDetail />,
@@ -397,10 +572,6 @@ export const router = createBrowserRouter([
       {
         path: ':resource',
         element: <ResourceList />,
-      },
-      {
-        path: ':resource/:namespace/:name',
-        element: <ResourceDetail />,
       },
     ],
   },

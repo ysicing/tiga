@@ -19,7 +19,7 @@ export function SecretListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/secrets/${row.original.metadata!.namespace}/${
+              to={`/k8s/secrets/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

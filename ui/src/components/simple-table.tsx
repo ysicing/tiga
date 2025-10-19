@@ -55,29 +55,35 @@ export function SimpleTable<T>({
     [pagination]
   )
 
-  const { paginatedData, totalPages, startIndex, endIndex } = useMemo(() => {
-    if (!paginationConfig.enabled) {
-      return {
-        paginatedData: data,
-        totalPages: 1,
-        startIndex: 1,
-        endIndex: data.length,
+  const { paginatedData, totalPages, startIndex, endIndex, totalEntries } =
+    useMemo(() => {
+      // Ensure data is always an array
+      const safeData = Array.isArray(data) ? data : []
+
+      if (!paginationConfig.enabled) {
+        return {
+          paginatedData: safeData,
+          totalPages: 1,
+          startIndex: 1,
+          endIndex: safeData.length,
+          totalEntries: safeData.length,
+        }
       }
-    }
 
-    const { pageSize } = paginationConfig
-    const totalPages = Math.ceil(data.length / pageSize)
-    const startIndex = (currentPage - 1) * pageSize
-    const endIndex = Math.min(startIndex + pageSize, data.length)
-    const paginatedData = data.slice(startIndex, endIndex)
+      const { pageSize } = paginationConfig
+      const totalPages = Math.ceil(safeData.length / pageSize)
+      const startIndex = (currentPage - 1) * pageSize
+      const endIndex = Math.min(startIndex + pageSize, safeData.length)
+      const paginatedData = safeData.slice(startIndex, endIndex)
 
-    return {
-      paginatedData,
-      totalPages,
-      startIndex: startIndex + 1,
-      endIndex,
-    }
-  }, [data, currentPage, paginationConfig])
+      return {
+        paginatedData,
+        totalPages,
+        startIndex: startIndex + 1,
+        endIndex,
+        totalEntries: safeData.length,
+      }
+    }, [data, currentPage, paginationConfig])
 
   const handlePreviousPage = () => {
     if (isControlled) {
@@ -152,11 +158,11 @@ export function SimpleTable<T>({
         </TableBody>
       </Table>
 
-      {paginationConfig.enabled && data.length > 0 && (
+      {paginationConfig.enabled && totalEntries > 0 && (
         <div className="flex items-center justify-between">
           {paginationConfig.showPageInfo && (
             <div className="text-sm text-muted-foreground">
-              Showing {startIndex} - {endIndex} of {data.length} entries
+              Showing {startIndex} - {endIndex} of {totalEntries} entries
             </div>
           )}
 

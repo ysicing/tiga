@@ -164,7 +164,7 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
           const job = value as Job
           return (
             <Link
-              to={`/jobs/${job.metadata?.namespace}/${job.metadata?.name}`}
+              to={`/k8s/jobs/${job.metadata?.namespace}/${job.metadata?.name}`}
               className="text-blue-600 hover:underline"
             >
               {job.metadata?.name}
@@ -545,7 +545,7 @@ export function CronJobDetail(props: { namespace: string; name: string }) {
                         {activeJobs.map((job) => (
                           <Badge key={job.metadata?.uid} variant="secondary">
                             <Link
-                              to={`/jobs/${job.metadata?.namespace}/${job.metadata?.name}`}
+                              to={`/k8s/jobs/${job.metadata?.namespace}/${job.metadata?.name}`}
                               className="hover:underline"
                             >
                               {job.metadata?.name}

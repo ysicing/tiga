@@ -631,3 +631,33 @@ export const getTerminalWebSocketURL = (
 
   return `${wsProtocol}//${host}/api/v1/k8s/clusters/${clusterId}/pods/terminal?${params.toString()}`
 }
+
+// ==================== OpenKruise Advanced Features ====================
+
+export interface OpenKruiseWorkload {
+  name: string
+  kind: string
+  apiVersion: string
+  available: boolean
+  count: number
+  description: string
+}
+
+export interface OpenKruiseStatus {
+  installed: boolean
+  version?: string
+  workloads: OpenKruiseWorkload[]
+}
+
+export const useOpenKruiseStatus = () => {
+  return useQuery({
+    queryKey: ['k8s', 'openkruise-status'],
+    queryFn: async () => {
+      const response = await apiClient.get<{ data: OpenKruiseStatus }>('/k8s/openkruise/status')
+      return response.data
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  })
+}
+

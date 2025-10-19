@@ -56,7 +56,7 @@ export function HorizontalPodAutoscalerListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/horizontalpodautoscalers/${row.original.metadata!.namespace}/${
+              to={`/k8s/horizontalpodautoscalers/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

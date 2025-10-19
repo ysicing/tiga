@@ -4,10 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { Cluster } from '@/types/api'
+import { apiClient } from '@/lib/api-client'
 
 interface ClusterContextType {
   clusters: Cluster[]
   currentCluster: string | null
+  selectedCluster?: string | null // Alias for currentCluster, for backward compatibility
   setCurrentCluster: (clusterName: string) => void
   isLoading: boolean
   isSwitching?: boolean
@@ -26,6 +28,11 @@ export const ClusterProvider: React.FC<{ children: React.ReactNode }> = ({
   )
   const queryClient = useQueryClient()
   const [isSwitching, setIsSwitching] = useState(false)
+
+  // Set cluster provider for apiClient on mount
+  useEffect(() => {
+    apiClient.setClusterProvider(() => localStorage.getItem('current-cluster'))
+  }, [])
 
   // Fetch clusters from API (this request shouldn't need cluster header)
   const {
@@ -117,6 +124,7 @@ export const ClusterProvider: React.FC<{ children: React.ReactNode }> = ({
   const value: ClusterContextType = {
     clusters,
     currentCluster,
+    selectedCluster: currentCluster, // Alias for backward compatibility
     setCurrentCluster,
     isLoading,
     isSwitching,

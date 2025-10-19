@@ -26,9 +26,9 @@ export function PodTable(props: {
     (): Column<PodWithMetrics>[] => [
       {
         header: 'Name',
-        accessor: (pod: Pod) => pod.metadata,
+        accessor: (pod: PodWithMetrics) => pod.metadata,
         cell: (value: unknown) => {
-          const meta = value as Pod['metadata']
+          const meta = value as PodWithMetrics['metadata']
           return (
             <div className="font-medium text-blue-500 hover:underline">
               <Link to={`/pods/${meta!.namespace}/${meta!.name}`}>
@@ -41,16 +41,16 @@ export function PodTable(props: {
       },
       {
         header: 'Ready',
-        accessor: (pod: Pod) => {
-          const status = getPodStatus(pod)
+        accessor: (pod: PodWithMetrics) => {
+          const status = getPodStatus(pod as unknown as Pod)
           return `${status.readyContainers} / ${status.totalContainers}`
         },
         cell: (value: unknown) => value as string,
       },
       {
         header: 'Restart',
-        accessor: (pod: Pod) => {
-          const status = getPodStatus(pod)
+        accessor: (pod: PodWithMetrics) => {
+          const status = getPodStatus(pod as unknown as Pod)
           return status.restartString || '0'
         },
         cell: (value: unknown) => {
@@ -63,9 +63,9 @@ export function PodTable(props: {
       },
       {
         header: 'Status',
-        accessor: (pod: Pod) => pod,
+        accessor: (pod: PodWithMetrics) => pod,
         cell: (value: unknown) => {
-          const status = getPodStatus(value as Pod)
+          const status = getPodStatus(value as unknown as Pod)
           return (
             <Badge variant="outline" className="text-muted-foreground px-1.5">
               <PodStatusIcon status={status.reason} />
@@ -94,7 +94,7 @@ export function PodTable(props: {
       },
       {
         header: 'IP',
-        accessor: (pod: Pod) => pod.status?.podIP || '-',
+        accessor: (pod: PodWithMetrics) => pod.status?.podIP || '-',
         cell: (value: unknown) => (
           <span className="text-sm text-muted-foreground font-mono">
             {value as string}
@@ -106,7 +106,7 @@ export function PodTable(props: {
         : [
             {
               header: 'Node',
-              accessor: (pod: Pod) => pod.spec?.nodeName || '-',
+              accessor: (pod: PodWithMetrics) => pod.spec?.nodeName || '-',
               cell: (value: unknown) => (
                 <Link
                   to={`/nodes/${value}`}
@@ -119,7 +119,7 @@ export function PodTable(props: {
           ]),
       {
         header: 'Created',
-        accessor: (pod: Pod) => pod.metadata?.creationTimestamp || '',
+        accessor: (pod: PodWithMetrics) => pod.metadata?.creationTimestamp || '',
         cell: (value: unknown) => {
           return (
             <span className="text-muted-foreground text-sm">

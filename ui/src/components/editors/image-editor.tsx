@@ -90,7 +90,7 @@ export function ImageEditor({ container, onUpdate }: ImageEditorProps) {
               <div
                 key={tag.name}
                 className="px-3 py-2 cursor-pointer hover:bg-accent text-sm flex justify-between"
-                onMouseDown={() => handleTagSelect(tag.name)}
+                onMouseDown={() => handleTagSelect(tag.name || '')}
               >
                 <span>{tag.name}</span>
                 {tag.timestamp && (

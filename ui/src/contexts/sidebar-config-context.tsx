@@ -124,99 +124,83 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
 
   const getDefaultMenus = useCallback(
     (): DefaultMenus => ({
+      'sidebar.groups.advanced-features': [], // Placeholder, actual structure generated in generateDefaultConfig
       'sidebar.groups.workloads': [
-        { titleKey: 'nav.pods', url: '/pods', icon: IconBox },
-        { titleKey: 'nav.deployments', url: '/deployments', icon: IconRocket },
+        { titleKey: 'nav.pods', url: '/k8s/pods', icon: IconBox },
+        { titleKey: 'nav.deployments', url: '/k8s/deployments', icon: IconRocket },
         {
           titleKey: 'nav.statefulsets',
-          url: '/statefulsets',
+          url: '/k8s/statefulsets',
           icon: IconStack2,
         },
         {
           titleKey: 'nav.daemonsets',
-          url: '/daemonsets',
+          url: '/k8s/daemonsets',
           icon: IconTopologyBus,
         },
-        { titleKey: 'nav.jobs', url: '/jobs', icon: IconPlayerPlay },
-        { titleKey: 'nav.cronjobs', url: '/cronjobs', icon: IconClockHour4 },
+        { titleKey: 'nav.jobs', url: '/k8s/jobs', icon: IconPlayerPlay },
+        { titleKey: 'nav.cronjobs', url: '/k8s/cronjobs', icon: IconClockHour4 },
       ],
       'sidebar.groups.traffic': [
-        { titleKey: 'nav.ingresses', url: '/ingresses', icon: IconRouter },
-        { titleKey: 'nav.services', url: '/services', icon: IconNetwork },
-        { titleKey: 'nav.gateways', url: '/gateways', icon: IconLoadBalancer },
-        { titleKey: 'nav.httproutes', url: '/httproutes', icon: IconRoute },
+        { titleKey: 'nav.ingresses', url: '/k8s/ingresses', icon: IconRouter },
+        { titleKey: 'nav.services', url: '/k8s/services', icon: IconNetwork },
+        { titleKey: 'nav.gateways', url: '/k8s/gateways', icon: IconLoadBalancer },
+        { titleKey: 'nav.httproutes', url: '/k8s/httproutes', icon: IconRoute },
       ],
       'sidebar.groups.storage': [
         {
           titleKey: 'sidebar.short.pvcs',
-          url: '/persistentvolumeclaims',
+          url: '/k8s/persistentvolumeclaims',
           icon: IconFileDatabase,
         },
         {
           titleKey: 'sidebar.short.pvs',
-          url: '/persistentvolumes',
+          url: '/k8s/persistentvolumes',
           icon: IconDatabase,
         },
         {
           titleKey: 'nav.storageclasses',
-          url: '/storageclasses',
+          url: '/k8s/storageclasses',
           icon: IconFileDatabase,
         },
       ],
       'sidebar.groups.config': [
-        { titleKey: 'nav.configMaps', url: '/configmaps', icon: IconMap },
-        { titleKey: 'nav.secrets', url: '/secrets', icon: IconLock },
+        { titleKey: 'nav.configMaps', url: '/k8s/configmaps', icon: IconMap },
+        { titleKey: 'nav.secrets', url: '/k8s/secrets', icon: IconLock },
         {
           titleKey: 'nav.horizontalpodautoscalers',
-          url: '/horizontalpodautoscalers',
+          url: '/k8s/horizontalpodautoscalers',
           icon: IconArrowsHorizontal,
         },
       ],
       'sidebar.groups.security': [
         {
           titleKey: 'nav.serviceaccounts',
-          url: '/serviceaccounts',
+          url: '/k8s/serviceaccounts',
           icon: IconUser,
         },
-        { titleKey: 'nav.roles', url: '/roles', icon: IconShield },
-        { titleKey: 'nav.rolebindings', url: '/rolebindings', icon: IconUsers },
+        { titleKey: 'nav.roles', url: '/k8s/roles', icon: IconShield },
+        { titleKey: 'nav.rolebindings', url: '/k8s/rolebindings', icon: IconUsers },
         {
           titleKey: 'nav.clusterroles',
-          url: '/clusterroles',
+          url: '/k8s/clusterroles',
           icon: IconShieldCheck,
         },
         {
           titleKey: 'nav.clusterrolebindings',
-          url: '/clusterrolebindings',
+          url: '/k8s/clusterrolebindings',
           icon: IconKey,
         },
       ],
       'sidebar.groups.other': [
         {
           titleKey: 'nav.namespaces',
-          url: '/namespaces',
+          url: '/k8s/namespaces',
           icon: IconBoxMultiple,
         },
-        { titleKey: 'nav.nodes', url: '/nodes', icon: IconServer2 },
-        { titleKey: 'nav.events', url: '/events', icon: IconBell },
-        { titleKey: 'nav.crds', url: '/crds', icon: IconCode },
-      ],
-      'sidebar.groups.workload-management': [
-        {
-          titleKey: 'nav.clonesets-management',
-          url: '/workloads/clonesets',
-          icon: IconRocket,
-        },
-        {
-          titleKey: 'nav.daemonsets-management',
-          url: '/workloads/daemonsets',
-          icon: IconTopologyBus,
-        },
-        {
-          titleKey: 'nav.statefulsets-management',
-          url: '/workloads/statefulsets',
-          icon: IconStack2,
-        },
+        { titleKey: 'nav.nodes', url: '/k8s/nodes', icon: IconServer2 },
+        { titleKey: 'nav.events', url: '/k8s/events', icon: IconBell },
+        { titleKey: 'nav.crds', url: '/k8s/crds', icon: IconCode },
       ],
     }),
     []
@@ -232,24 +216,179 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
         .toLowerCase()
         .replace(/\./g, '-')
         .replace(/\s+/g, '-')
-      const sidebarItems: SidebarItem[] = items.map((item, index) => ({
-        id: `${groupId}-${item.url.replace(/[^a-zA-Z0-9]/g, '-')}`,
-        titleKey: item.titleKey,
-        url: item.url,
-        icon: getIconName(item.icon),
-        visible: true,
-        pinned: false,
-        order: index,
-      }))
 
-      groups.push({
-        id: groupId,
-        nameKey: groupKey,
-        items: sidebarItems,
-        visible: true,
-        collapsed: false,
-        order: groupOrder++,
-      })
+      // Special handling for advanced-features group - create nested structure
+      if (groupId === 'sidebar-groups-advanced-features') {
+        groups.push({
+          id: groupId,
+          nameKey: groupKey,
+          items: [], // No direct items, only subGroups
+          subGroups: [
+            // OpenKruise subgroup
+            {
+              id: 'openkruise',
+              nameKey: 'nav.openkruise',
+              items: [
+                {
+                  id: 'openkruise-clonesets',
+                  titleKey: 'nav.clonesets',
+                  url: '/k8s/clonesets',
+                  icon: 'IconRocket',
+                  visible: true,
+                  pinned: false,
+                  order: 0,
+                },
+                {
+                  id: 'openkruise-statefulsets',
+                  titleKey: 'nav.kruise-statefulsets',
+                  url: '/k8s/advancedstatefulsets',
+                  icon: 'IconStack2',
+                  visible: true,
+                  pinned: false,
+                  order: 1,
+                },
+                {
+                  id: 'openkruise-daemonsets',
+                  titleKey: 'nav.kruise-daemonsets',
+                  url: '/k8s/advanceddaemonsets',
+                  icon: 'IconTopologyBus',
+                  visible: true,
+                  pinned: false,
+                  order: 2,
+                },
+                {
+                  id: 'openkruise-broadcastjobs',
+                  titleKey: 'nav.broadcastjobs',
+                  url: '/k8s/broadcastjobs',
+                  icon: 'IconPlayerPlay',
+                  visible: true,
+                  pinned: false,
+                  order: 3,
+                },
+                {
+                  id: 'openkruise-advancedcronjobs',
+                  titleKey: 'nav.advancedcronjobs',
+                  url: '/k8s/advancedcronjobs',
+                  icon: 'IconClockHour4',
+                  visible: true,
+                  pinned: false,
+                  order: 4,
+                },
+                {
+                  id: 'openkruise-sidecarsets',
+                  titleKey: 'nav.sidecarsets',
+                  url: '/k8s/sidecarsets',
+                  icon: 'IconBox',
+                  visible: true,
+                  pinned: false,
+                  order: 5,
+                },
+              ],
+              visible: true,
+              collapsed: false,
+              order: 0,
+            },
+            // Tailscale subgroup
+            {
+              id: 'tailscale',
+              nameKey: 'nav.tailscale',
+              items: [
+                {
+                  id: 'tailscale-connectors',
+                  titleKey: 'nav.connectors',
+                  url: '/k8s/connectors',
+                  icon: 'IconNetwork',
+                  visible: true,
+                  pinned: false,
+                  order: 0,
+                },
+                {
+                  id: 'tailscale-proxyclasses',
+                  titleKey: 'nav.proxyclasses',
+                  url: '/k8s/proxyclasses',
+                  icon: 'IconRouter',
+                  visible: true,
+                  pinned: false,
+                  order: 1,
+                },
+              ],
+              visible: true,
+              collapsed: false,
+              order: 1,
+            },
+            // System Upgrade subgroup
+            {
+              id: 'system-upgrade',
+              nameKey: 'nav.system-upgrade',
+              items: [
+                {
+                  id: 'system-upgrade-plans',
+                  titleKey: 'nav.upgrade-plans',
+                  url: '/k8s/plans',
+                  icon: 'IconArrowsHorizontal',
+                  visible: true,
+                  pinned: false,
+                  order: 0,
+                },
+              ],
+              visible: true,
+              collapsed: false,
+              order: 2,
+            },
+            // Traefik subgroup
+            {
+              id: 'traefik',
+              nameKey: 'nav.traefik',
+              items: [
+                {
+                  id: 'traefik-ingressroutes',
+                  titleKey: 'nav.ingressroutes',
+                  url: '/k8s/ingressroutes',
+                  icon: 'IconRoute',
+                  visible: true,
+                  pinned: false,
+                  order: 0,
+                },
+                {
+                  id: 'traefik-middlewares',
+                  titleKey: 'nav.middlewares',
+                  url: '/k8s/middlewares',
+                  icon: 'IconCode',
+                  visible: true,
+                  pinned: false,
+                  order: 1,
+                },
+              ],
+              visible: true,
+              collapsed: false,
+              order: 3,
+            },
+          ],
+          visible: true,
+          collapsed: false,
+          order: groupOrder++,
+        })
+      } else {
+        // Regular group without nesting
+        const sidebarItems: SidebarItem[] = items.map((item, index) => ({
+          id: `${groupId}-${item.url.replace(/[^a-zA-Z0-9]/g, '-')}`,
+          titleKey: item.titleKey,
+          url: item.url,
+          icon: getIconName(item.icon),
+          visible: true,
+          pinned: false,
+          order: index,
+        }))
+
+        groups.push({
+          id: groupId,
+          nameKey: groupKey,
+          items: sidebarItems,
+          visible: true,
+          collapsed: false,
+          order: groupOrder++,
+        })
+      }
     })
 
     return {

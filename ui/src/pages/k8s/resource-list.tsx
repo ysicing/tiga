@@ -59,6 +59,31 @@ export function ResourceList() {
       return <HTTPRouteListPage />
     case 'horizontalpodautoscalers':
       return <HorizontalPodAutoscalerListPage />
+    // OpenKruise resources
+    case 'clonesets':
+    case 'advancedstatefulsets':
+    case 'advanceddaemonsets':
+    case 'broadcastjobs':
+    case 'advancedcronjobs':
+    case 'sidecarsets':
+    case 'imagepulljobs':
+    case 'nodeimages':
+    case 'uniteddeployments':
+    case 'workloadspreads':
+    case 'containerrecreaterequests':
+    case 'resourcedistributions':
+    case 'persistentpodstates':
+    case 'podprobemarkers':
+    case 'podunavailablebudgets':
+    // Tailscale resources
+    case 'connectors':
+    case 'proxyclasses':
+    // System Upgrade (K3s) resources
+    case 'plans':
+    // Traefik resources
+    case 'ingressroutes':
+    case 'middlewares':
+      return <SimpleListPage resourceType={resource as ResourceType} />
     default:
       return <SimpleListPage resourceType={resource as ResourceType} />
   }

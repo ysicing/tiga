@@ -1,9 +1,8 @@
 import { clsx, type ClassValue } from 'clsx'
 import { format, formatDistance } from 'date-fns'
 import { TFunction } from 'i18next'
+import { toast } from 'sonner'
 import { twMerge } from 'tailwind-merge'
-
-import { PodMetrics } from '@/types/api'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -55,7 +54,17 @@ export function getAge(timestamp: string): string {
 }
 
 export function formatDate(timestamp: string, addTo = false): string {
+  if (!timestamp) {
+    return 'N/A'
+  }
+
   const date = new Date(timestamp)
+
+  // Check if date is valid
+  if (isNaN(date.getTime())) {
+    return 'N/A'
+  }
+
   const s = format(date, 'yyyy-MM-dd HH:mm:ss')
   return addTo ? `${s} (${formatDistance(new Date(), date)})` : s
 }
@@ -150,7 +159,7 @@ export function formatMemory(memory: string | number): string {
   return memory
 }
 
-export function formatPodMetrics(metric: PodMetrics): {
+export function formatPodMetrics(metric: import('@/types/api').PodMetricsSnapshot): {
   cpu: number
   memory: number
 } {
@@ -232,4 +241,50 @@ export function translateError(error: Error | unknown, t: TFunction): string {
   }
 
   return error.message
+}
+
+// Handle resource API errors with toast messages
+export function handleResourceError(error: any, t: (key: string, options?: any) => string) {
+  console.error('Resource operation error:', error)
+
+  if (error?.response) {
+    const status = error.response.status
+    const message = error.response.data?.message || error.message
+
+    switch (status) {
+      case 404:
+        toast.error(t('errors.notFound'))
+        break
+      case 403:
+        toast.error(t('errors.forbidden'))
+        break
+      case 500:
+        toast.error(t('errors.serverError'))
+        break
+      default:
+        toast.error(t('errors.operationFailed', { message }))
+    }
+  } else if (error?.message) {
+    toast.error(t('errors.operationFailed', { message: error.message }))
+  } else {
+    toast.error(t('errors.unknownError'))
+  }
+}
+
+// Download resource as YAML file
+export function downloadResource(resource: any, filename: string) {
+  // Convert resource to YAML string
+  const yaml = require('js-yaml')
+  const yamlStr = yaml.dump(resource, { indent: 2, lineWidth: -1, noRefs: true })
+
+  // Create blob and download
+  const blob = new Blob([yamlStr], { type: 'text/yaml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }

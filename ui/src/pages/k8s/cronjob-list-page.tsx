@@ -27,7 +27,7 @@ export function CronJobListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/cronjobs/${row.original.metadata!.namespace}/${
+              to={`/k8s/cronjobs/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

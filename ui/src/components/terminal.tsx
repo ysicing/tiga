@@ -11,12 +11,12 @@ import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { Terminal as XTerm } from '@xterm/xterm'
-import { Pod } from 'kubernetes-types/core/v1'
 
 import '@xterm/xterm/css/xterm.css'
 
 import { useTranslation } from 'react-i18next'
 
+import type { PodWithMetrics } from '@/types/api'
 import { SimpleContainer } from '@/types/k8s'
 import { TERMINAL_THEMES, TerminalTheme } from '@/types/themes'
 import { translateError } from '@/lib/utils'
@@ -46,7 +46,7 @@ interface TerminalProps {
   namespace?: string
   podName?: string
   nodeName?: string
-  pods?: Pod[]
+  pods?: PodWithMetrics[]
   containers?: SimpleContainer
 }
 
@@ -261,8 +261,8 @@ export function Terminal({
     const currentCluster = localStorage.getItem('current-cluster')
     const wsUrl =
       type === 'pod'
-        ? `${protocol}//${host}/api/v1/terminal/${namespace}/${selectedPod}/ws?container=${selectedContainer}&x-cluster-name=${currentCluster}`
-        : `${protocol}//${host}/api/v1/node-terminal/${nodeName}/ws?x-cluster-name=${currentCluster}`
+        ? `${protocol}//${host}/api/v1/cluster/${currentCluster}/terminal/${namespace}/${selectedPod}/ws?container=${selectedContainer}`
+        : `${protocol}//${host}/api/v1/cluster/${currentCluster}/node-terminal/${nodeName}/ws`
     const websocket = new WebSocket(wsUrl)
     wsRef.current = websocket
 

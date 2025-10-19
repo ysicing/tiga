@@ -56,6 +56,7 @@ import { NodeMonitoring } from '@/components/node-monitoring'
 import { PodTable } from '@/components/pod-table'
 import { Terminal } from '@/components/terminal'
 import { YamlEditor } from '@/components/yaml-editor'
+import type { PodWithMetrics } from '@/types/api'
 
 export function NodeDetail(props: { name: string }) {
   const { name } = props
@@ -885,7 +886,7 @@ export function NodeDetail(props: { name: string }) {
                   ),
                   content: (
                     <PodTable
-                      pods={relatedPods}
+                      pods={relatedPods as PodWithMetrics[]}
                       isLoading={isLoadingRelated}
                       hiddenNode
                     />

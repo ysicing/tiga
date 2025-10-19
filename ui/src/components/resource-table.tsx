@@ -52,6 +52,10 @@ export interface ResourceTableProps<T> {
   searchQueryFilter?: (item: T, query: string) => boolean // Custom filter function
   showCreateButton?: boolean // If true, show create button
   onCreateClick?: () => void // Callback for create button click
+  // Optional external data (if provided, skip internal fetching)
+  data?: T[]
+  isLoading?: boolean
+  error?: Error | null
 }
 
 export function ResourceTable<T>({

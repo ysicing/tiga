@@ -22,7 +22,7 @@ export function DaemonSetListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/daemonsets/${row.original.metadata!.namespace}/${
+              to={`/k8s/daemonsets/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

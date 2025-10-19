@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Pod } from 'kubernetes-types/core/v1'
 
+import type { PodWithMetrics } from '@/types/api'
 import { SimpleContainer } from '@/types/k8s'
 import { usePodMetrics } from '@/lib/api'
 import {
@@ -22,7 +22,7 @@ interface PodMonitoringProps {
   namespace: string
   podName?: string
   defaultQueryName?: string
-  pods?: Pod[]
+  pods?: PodWithMetrics[]
   containers: SimpleContainer
   labelSelector?: string
 }

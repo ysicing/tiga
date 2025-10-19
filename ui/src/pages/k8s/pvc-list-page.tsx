@@ -21,7 +21,7 @@ export function PVCListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/persistentvolumeclaims/${row.original.metadata!.namespace}/${
+              to={`/k8s/persistentvolumeclaims/${row.original.metadata!.namespace}/${
                 row.original.metadata!.name
               }`}
             >

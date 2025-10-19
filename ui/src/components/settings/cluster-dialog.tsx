@@ -57,9 +57,9 @@ export function ClusterDialog({
         description: cluster.description || '',
         config: cluster.config || '',
         prometheusURL: cluster.prometheusURL || '',
-        enabled: cluster.enabled,
-        isDefault: cluster.isDefault,
-        inCluster: cluster.inCluster,
+        enabled: cluster.enabled ?? false,
+        isDefault: cluster.isDefault ?? false,
+        inCluster: cluster.inCluster ?? false,
       })
     }
   }, [cluster, open])

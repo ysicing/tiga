@@ -296,6 +296,30 @@ export function buildK8sResourceUrl(path: string): string {
     '/resourcequotas',
     '/customresourcedefinitions',
     '/crds',
+    // OpenKruise resources (short names)
+    '/clonesets',
+    '/advancedstatefulsets',
+    '/advanceddaemonsets',
+    '/broadcastjobs',
+    '/advancedcronjobs',
+    '/sidecarsets',
+    '/imagepulljobs',
+    '/nodeimages',
+    '/uniteddeployments',
+    '/workloadspreads',
+    '/containerrecreaterequests',
+    '/resourcedistributions',
+    '/persistentpodstates',
+    '/podprobemarkers',
+    '/podunavailablebudgets',
+    // Tailscale resources (short names)
+    '/connectors',
+    '/proxyclasses',
+    // System Upgrade (K3s) resources (short names)
+    '/plans',
+    // Traefik resources (short names)
+    '/ingressroutes',
+    '/middlewares',
   ]
 
   // Check if path needs cluster prefix

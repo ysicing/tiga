@@ -17,7 +17,7 @@ export function GatewayListPage() {
         cell: ({ row }) => (
           <div className="font-medium text-blue-500 hover:underline">
             <Link
-              to={`/gateways/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
+              to={`/k8s/gateways/${row.original.metadata!.namespace}/${row.original.metadata!.name}`}
             >
               {row.original.metadata!.name}
             </Link>

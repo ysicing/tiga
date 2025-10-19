@@ -1,401 +1,515 @@
-// API types for Custom Resources
+// API types and interfaces
 
-import {
-  CustomResourceDefinition,
-  CustomResourceDefinitionList,
-} from 'kubernetes-types/apiextensions/v1'
-import {
-  DaemonSet,
-  DaemonSetList,
-  Deployment,
-  DeploymentList,
-  ReplicaSet,
-  ReplicaSetList,
-  StatefulSet,
-  StatefulSetList,
-} from 'kubernetes-types/apps/v1'
-import {
-  HorizontalPodAutoscaler,
-  HorizontalPodAutoscalerList,
-} from 'kubernetes-types/autoscaling/v2'
-import { CronJob, CronJobList, Job, JobList } from 'kubernetes-types/batch/v1'
-import {
-  ConfigMap,
-  ConfigMapList,
-  Event,
-  EventList,
-  Namespace,
-  NamespaceList,
-  Node,
-  PersistentVolume,
-  PersistentVolumeClaim,
-  PersistentVolumeClaimList,
-  PersistentVolumeList,
-  Pod,
-  Secret,
-  SecretList,
-  Service,
-  ServiceAccount,
-  ServiceAccountList,
-  ServiceList,
-} from 'kubernetes-types/core/v1'
-import { Ingress, IngressList } from 'kubernetes-types/networking/v1'
-import {
-  ClusterRole,
-  ClusterRoleBinding,
-  ClusterRoleBindingList,
-  ClusterRoleList,
-  Role as RawRole,
-  RoleBinding,
-  RoleBindingList,
-  RoleList,
-} from 'kubernetes-types/rbac/v1'
-import { StorageClass, StorageClassList } from 'kubernetes-types/storage/v1'
+import type { Pod, Event } from 'kubernetes-types/core/v1'
+import type { Deployment, StatefulSet, DaemonSet, ReplicaSet } from 'kubernetes-types/apps/v1'
+import type { Job, CronJob } from 'kubernetes-types/batch/v1'
+import type { Ingress, IngressClass, NetworkPolicy } from 'kubernetes-types/networking/v1'
+import type { Service, ConfigMap, Secret, PersistentVolumeClaim, PersistentVolume, ServiceAccount, Namespace, Node, Endpoints } from 'kubernetes-types/core/v1'
+import type { CloneSet, AdvancedDaemonSet, CustomResource as K8sCustomResource } from './k8s'
 
-export interface CustomResource {
-  apiVersion: string
-  kind: string
-  metadata: {
-    name: string
-    namespace?: string
-    creationTimestamp: string
-    uid?: string
-    resourceVersion?: string
-    labels?: Record<string, string>
-    annotations?: Record<string, string>
-  }
-  spec?: Record<string, unknown>
-  status?: Record<string, unknown>
+// Re-export CustomResource from k8s.ts for backward compatibility
+export type { CustomResource, Pod } from './k8s'
+export type { Event } from 'kubernetes-types/core/v1'
+
+// API response wrapper
+export interface APIResponse<T> {
+  data: T
+  message?: string
+  success: boolean
 }
 
-export interface CustomResourceList {
-  apiVersion: string
-  kind: string
-  items: CustomResource[]
-  metadata?: {
-    continue?: string
-    remainingItemCount?: number
-  }
-}
-
-export interface DeploymentRelatedResource {
-  events: Event[]
-  pods: Pod[]
-  services: Service[]
-}
-
-// Resource type definitions
-export type ResourceType =
-  | 'pods'
-  | 'deployments'
-  | 'statefulsets'
-  | 'daemonsets'
-  | 'jobs'
-  | 'cronjobs'
-  | 'services'
-  | 'configmaps'
-  | 'secrets'
-  | 'ingresses'
-  | 'namespaces'
-  | 'crds'
-  | 'crs'
-  | 'nodes'
-  | 'events'
-  | 'persistentvolumes'
-  | 'persistentvolumeclaims'
-  | 'storageclasses'
-  | 'podmetrics'
-  | 'replicasets'
-  | 'serviceaccounts'
-  | 'roles'
-  | 'rolebindings'
-  | 'clusterroles'
-  | 'clusterrolebindings'
-  | 'horizontalpodautoscalers'
-
-export const clusterScopeResources: ResourceType[] = [
-  'crds',
-  'namespaces',
-  'persistentvolumes',
-  'nodes',
-  'storageclasses',
-  'clusterroles',
-  'clusterrolebindings',
-]
-
-type listMetadataType = {
-  continue?: string
-  remainingItemCount?: number
-}
-
-// Define resource type mappings
-export interface ResourcesTypeMap {
-  pods: {
-    items: PodWithMetrics[]
-    metadata?: listMetadataType
-  }
-  deployments: DeploymentList
-  statefulsets: StatefulSetList
-  daemonsets: DaemonSetList
-  jobs: JobList
-  cronjobs: CronJobList
-  services: ServiceList
-  configmaps: ConfigMapList
-  secrets: SecretList
-  persistentvolumeclaims: PersistentVolumeClaimList
-  ingresses: IngressList
-  namespaces: NamespaceList
-  crds: CustomResourceDefinitionList
-  crs: {
-    items: CustomResource[]
-    metadata?: listMetadataType
-  }
-  nodes: {
-    items: NodeWithMetrics[]
-    metadata?: listMetadataType
-  }
-  events: EventList
-  persistentvolumes: PersistentVolumeList
-  storageclasses: StorageClassList
-  podmetrics: {
-    items: PodMetrics[]
-    metadata?: listMetadataType
-  }
-  replicasets: ReplicaSetList
-  serviceaccounts: ServiceAccountList
-  roles: RoleList
-  rolebindings: RoleBindingList
-  clusterroles: ClusterRoleList
-  clusterrolebindings: ClusterRoleBindingList
-  horizontalpodautoscalers: HorizontalPodAutoscalerList
-}
-
-export interface PodMetrics {
-  metadata: {
-    name: string
-    namespace: string
-    labels?: Record<string, string>
-    annotations?: Record<string, string>
-    creationTimestamp?: string
-    uid?: string
-    resourceVersion?: string
-  }
-  containers: {
-    name: string // container name
-    usage: {
-      cpu: string // 214572390n
-      memory: string // 2956516Ki
-    }
-  }[]
-}
-
-export type MetricsData = {
-  cpuUsage?: number
-  memoryUsage?: number
-  cpuLimit?: number
-  memoryLimit?: number
-  cpuRequest?: number
-  memoryRequest?: number
-}
-
-export type PodWithMetrics = Pod & {
-  metrics?: MetricsData
-}
-
-export type NodeWithMetrics = Node & {
-  metrics?: MetricsData
-}
-
-export interface ResourceTypeMap {
-  pods: PodWithMetrics
-  deployments: Deployment
-  statefulsets: StatefulSet
-  daemonsets: DaemonSet
-  jobs: Job
-  cronjobs: CronJob
-  services: Service
-  configmaps: ConfigMap
-  secrets: Secret
-  persistentvolumeclaims: PersistentVolumeClaim
-  ingresses: Ingress
-  namespaces: Namespace
-  crds: CustomResourceDefinition
-  crs: CustomResource
-  nodes: NodeWithMetrics
-  events: Event
-  persistentvolumes: PersistentVolume
-  storageclasses: StorageClass
-  replicasets: ReplicaSet
-  podmetrics: PodMetrics
-  serviceaccounts: ServiceAccount
-  roles: RawRole
-  rolebindings: RoleBinding
-  clusterroles: ClusterRole
-  clusterrolebindings: ClusterRoleBinding
-  horizontalpodautoscalers: HorizontalPodAutoscaler
-}
-
-export interface RecentEvent {
-  type: string
-  reason: string
-  message: string
-  involvedObjectKind: string
-  involvedObjectName: string
-  namespace?: string
-  timestamp: string
-}
-
-export interface UsageDataPoint {
-  timestamp: string
-  value: number
-}
-
-export interface ResourceUsageHistory {
-  cpu: UsageDataPoint[]
-  memory: UsageDataPoint[]
-  networkIn: UsageDataPoint[]
-  networkOut: UsageDataPoint[]
-  diskRead: UsageDataPoint[]
-  diskWrite: UsageDataPoint[]
-}
-
-// Pod monitoring types
-export interface PodMetrics {
-  cpu: UsageDataPoint[]
-  memory: UsageDataPoint[]
-  networkIn?: UsageDataPoint[]
-  networkOut?: UsageDataPoint[]
-  diskRead?: UsageDataPoint[]
-  diskWrite?: UsageDataPoint[]
-  fallback?: boolean
-}
-
-export interface OverviewData {
-  totalNodes: number
-  readyNodes: number
-  totalPods: number
-  runningPods: number
-  totalNamespaces: number
-  totalServices: number
-  prometheusEnabled: boolean
-  resource: {
-    cpu: {
-      allocatable: number
-      requested: number
-      limited: number
-    }
-    memory: {
-      allocatable: number
-      requested: number
-      limited: number
-    }
-  }
-}
-
-// Pagination types
-export interface PaginationInfo {
-  hasNextPage: boolean
-  nextContinueToken?: string
-  remainingItems?: number
-}
-
-export interface PaginationOptions {
-  limit?: number
-  continueToken?: string
-}
-
-// Pod current metrics types
-export interface PodCurrentMetrics {
-  podName: string
-  namespace: string
-  cpu: number // CPU cores
-  memory: number // Memory in MB
-}
-
-export interface ImageTagInfo {
-  name: string
-  timestamp?: string
-}
-
-export interface RelatedResources {
-  type: ResourceType
-  name: string
-  namespace?: string
-  apiVersion?: string
-}
-
-export interface Cluster {
+export interface User {
   id: number
-  name: string
-  description?: string
-  version?: string
-  config?: string
-  enabled: boolean
-  inCluster: boolean
-  isDefault: boolean
-  createdAt: string
-  updatedAt: string
-  prometheusURL?: string
+  username: string
+  email: string
+  display_name?: string
+  avatar?: string
+  role: 'admin' | 'user' | 'viewer'
+  created_at: string
+  updated_at: string
+  last_login?: string
 }
 
-export interface OAuthProvider {
+export interface UserItem {
   id: number
-  name: string
-  clientId: string
-  clientSecret: string
-  authUrl?: string
-  tokenUrl?: string
-  userInfoUrl?: string
-  scopes?: string
-  issuer?: string
-  enabled: boolean
-  createdAt: string
-  updatedAt: string
+  username: string
+  email: string
+  display_name?: string
+  name?: string // Alias for display_name
+  role: string
+  roles?: string[] // For multi-role support
+  created_at: string
+  createdAt?: string // Deprecated: use created_at
+  updated_at: string
+  last_login?: string
+  lastLoginAt?: string // Deprecated: use last_login
+  enabled?: boolean
+  provider?: string
+  avatar?: string
+  avatar_url?: string // Alias for avatar
 }
 
+export interface FetchUserListResponse {
+  data: UserItem[]
+  users?: UserItem[] // Alias for data
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
+}
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface LoginResponse {
+  access_token: string
+  refresh_token: string
+  user: User
+}
+
+export interface RefreshTokenRequest {
+  refresh_token: string
+}
+
+export interface RefreshTokenResponse {
+  access_token: string
+  refresh_token: string
+}
+
+export interface RegisterRequest {
+  username: string
+  email: string
+  password: string
+  display_name?: string
+}
+
+// Role assignment for RBAC
 export interface RoleAssignment {
-  id: number
-  roleId: number
-  subjectType: 'user' | 'group'
+  subjectType: 'user' | 'group' | 'serviceaccount'
   subject: string
-  createdAt: string
-  updatedAt: string
 }
 
 export interface Role {
   id: number
   name: string
   description?: string
+  permissions: string[]
+  created_at: string
+  updated_at: string
+  // RBAC fields
   isSystem?: boolean
-  clusters: string[]
-  namespaces: string[]
-  resources: string[]
-  verbs: string[]
+  clusters?: string[]
+  namespaces?: string[]
+  resources?: string[]
+  verbs?: string[]
   assignments?: RoleAssignment[]
-  createdAt: string
-  updatedAt: string
 }
 
-export interface UserItem {
+export interface OAuthProvider {
   id: number
-  username: string
-  provider: string
-  createdAt: string
-  lastLoginAt?: string
-  enabled?: boolean
-  avatar_url?: string
   name?: string
-  roles?: Role[]
+  provider: 'google' | 'github'
+  client_id: string
+  clientId?: string // Deprecated: use client_id
+  client_secret: string
+  redirect_url: string
+  enabled: boolean
+  created_at: string
+  updated_at: string
+  // Additional OAuth fields
+  authUrl?: string
+  tokenUrl?: string
+  userInfoUrl?: string
+  scopes?: string
+  issuer?: string
 }
 
-export interface FetchUserListResponse {
-  users: UserItem[]
-  total: number
-  page: number
+export interface Alert {
+  id: string
+  instance_id: string
+  instance_name: string
+  instance_type: string
+  alert_type: string
+  severity: 'critical' | 'warning' | 'info'
+  message: string
+  triggered_at: string
+  resolved_at?: string
+  status: 'active' | 'resolved' | 'acknowledged'
+  metadata?: Record<string, unknown>
+}
+
+export interface Metric {
+  instance_id: string
+  instance_name: string
+  metric_type: 'cpu' | 'memory' | 'disk' | 'network' | 'connections'
+  value: number
+  unit: string
+  timestamp: string
+  labels?: Record<string, string>
+}
+
+// Usage data point for charts
+export interface UsageDataPoint {
+  timestamp: string
+  value: number
+}
+
+// Metrics data for resources
+export interface MetricsData {
+  cpuUsage?: number // Optional since metrics might not always be available
+  cpuLimit?: number
+  cpuRequest?: number
+  memoryUsage?: number // Optional since metrics might not always be available
+  memoryLimit?: number
+  memoryRequest?: number
+}
+
+// Related resources
+export interface RelatedResources {
+  type: string
+  apiVersion?: string
+  name: string
+  namespace?: string
+}
+
+// Resource usage history
+export interface ResourceUsageHistory {
+  cpu: UsageDataPoint[]
+  memory: UsageDataPoint[]
+  networkIn?: UsageDataPoint[]
+  networkOut?: UsageDataPoint[]
+  diskRead?: UsageDataPoint[]
+  diskWrite?: UsageDataPoint[]
+}
+
+// Image tag info
+export interface ImageTagInfo {
+  tag: string
+  name?: string
+  digest: string
+  created: string
+  timestamp?: string
   size: number
 }
 
-// Resource History types
+// Resource allocation data for overview dashboard
+export interface ResourceAllocation {
+  cpu: {
+    requested: number
+    allocatable: number
+    limited: number
+  }
+  memory: {
+    requested: number
+    allocatable: number
+    limited: number
+  }
+}
+
+export interface OverviewData {
+  totalInstances: number
+  runningInstances: number
+  stoppedInstances: number
+  errorInstances: number
+  // K8s cluster statistics
+  totalNodes?: number
+  readyNodes?: number
+  totalPods?: number
+  runningPods?: number
+  totalNamespaces?: number
+  totalServices?: number
+  // Additional fields
+  resource?: ResourceAllocation // K8s cluster resource allocation
+  prometheusEnabled?: boolean
+  subsystems: {
+    type: string
+    count: number
+    running: number
+    stopped: number
+    error: number
+  }[]
+  recentAlerts: Alert[]
+  recentMetrics: {
+    cpu: Metric[]
+    memory: Metric[]
+    disk: Metric[]
+  }
+}
+
+// K8s Cluster types
+export interface Cluster {
+  id: number
+  name: string
+  description?: string
+  config?: string
+  // Support both snake_case (backend) and camelCase (frontend)
+  in_cluster: boolean
+  inCluster?: boolean // Deprecated: use in_cluster
+  is_default: boolean
+  isDefault?: boolean // Deprecated: use is_default
+  version?: string
+  prometheus_url?: string
+  prometheusURL?: string // Deprecated: use prometheus_url
+  enable: boolean
+  enabled?: boolean // Deprecated: use enable
+  health_status: 'unknown' | 'healthy' | 'unhealthy'
+  last_connected_at?: string
+  node_count: number
+  pod_count: number
+  created_at: string
+  updated_at: string
+}
+
+// Pod types
+export interface PodCondition {
+  type: string
+  status: string
+  lastProbeTime?: string
+  lastTransitionTime?: string
+  reason?: string
+  message?: string
+}
+
+export interface ContainerStatus {
+  name: string
+  state?: {
+    waiting?: {
+      reason?: string
+      message?: string
+    }
+    running?: {
+      startedAt?: string
+    }
+    terminated?: {
+      exitCode?: number
+      signal?: number
+      reason?: string
+      message?: string
+      startedAt?: string
+      finishedAt?: string
+      containerID?: string
+    }
+  }
+  lastState?: {
+    waiting?: {
+      reason?: string
+      message?: string
+    }
+    running?: {
+      startedAt?: string
+    }
+    terminated?: {
+      exitCode?: number
+      signal?: number
+      reason?: string
+      message?: string
+      startedAt?: string
+      finishedAt?: string
+      containerID?: string
+    }
+  }
+  ready: boolean
+  restartCount: number
+  image: string
+  imageID?: string
+  containerID?: string
+  started?: boolean
+}
+
+// Prometheus time-series metrics for pod monitoring
+export interface PodMetrics {
+  // Time-series data arrays for charts
+  cpu: UsageDataPoint[]
+  memory: UsageDataPoint[]
+  networkIn?: UsageDataPoint[]
+  networkOut?: UsageDataPoint[]
+  diskRead?: UsageDataPoint[]
+  diskWrite?: UsageDataPoint[]
+  fallback?: boolean // Indicates if data is from metrics-server (limited historical data)
+}
+
+// Metrics-server format (single time point) - used for pod list display
+export interface PodMetricsSnapshot {
+  metadata: {
+    name: string
+    namespace: string
+    creationTimestamp: string
+  }
+  timestamp: string
+  window: string
+  containers: Array<{
+    name: string
+    usage: {
+      cpu: string
+      memory: string
+    }
+  }>
+  // Flattened metrics for convenience (computed from containers)
+  cpuUsage?: number    // Total CPU usage across all containers (in millicores)
+  memoryUsage?: number // Total memory usage across all containers (in bytes)
+  cpuLimit?: number
+  cpuRequest?: number
+  memoryLimit?: number
+  memoryRequest?: number
+  networkIn?: number
+  networkOut?: number
+  diskRead?: number
+  diskWrite?: number
+}
+
+export interface PodWithMetrics {
+  metadata: {
+    name: string
+    namespace: string
+    creationTimestamp: string
+    uid?: string
+    resourceVersion?: string
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+    generateName?: string // For pod name generation
+  }
+  spec?: {
+    nodeName?: string
+    containers?: Array<{
+      name: string
+      image: string
+      ports?: Array<{
+        containerPort: number
+        protocol?: string
+      }>
+      env?: Array<{
+        name: string
+        value?: string
+      }>
+      resources?: {
+        requests?: {
+          cpu?: string
+          memory?: string
+        }
+        limits?: {
+          cpu?: string
+          memory?: string
+        }
+      }
+      volumeMounts?: Array<{
+        name: string
+        mountPath: string
+      }>
+    }>
+    volumes?: Array<{
+      name: string
+      configMap?: {
+        name: string
+      }
+      secret?: {
+        secretName: string
+      }
+      persistentVolumeClaim?: {
+        claimName: string
+      }
+    }>
+    restartPolicy?: string
+    serviceAccountName?: string
+  }
+  status?: {
+    phase?: string
+    conditions?: PodCondition[]
+    hostIP?: string
+    podIP?: string
+    podIPs?: Array<{ ip: string }>
+    startTime?: string
+    containerStatuses?: ContainerStatus[]
+    initContainerStatuses?: ContainerStatus[]
+    qosClass?: string
+    reason?: string
+    message?: string
+  }
+  metrics?: PodMetricsSnapshot // Single time point metrics for list display
+}
+
+export interface NodeCondition {
+  type: string
+  status: string
+  lastHeartbeatTime?: string
+  lastTransitionTime?: string
+  reason?: string
+  message?: string
+}
+
+export interface NodeWithMetrics {
+  metadata: {
+    name: string
+    creationTimestamp: string
+    uid?: string
+    resourceVersion?: string
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+  }
+  spec?: {
+    podCIDR?: string
+    podCIDRs?: string[]
+    providerID?: string
+    unschedulable?: boolean
+    taints?: Array<{
+      key: string
+      value?: string
+      effect: string
+    }>
+  }
+  status?: {
+    conditions?: NodeCondition[]
+    addresses?: Array<{
+      type: string
+      address: string
+    }>
+    allocatable?: {
+      cpu?: string
+      memory?: string
+      pods?: string
+      'ephemeral-storage'?: string
+    }
+    capacity?: {
+      cpu?: string
+      memory?: string
+      pods?: string
+      'ephemeral-storage'?: string
+    }
+    nodeInfo?: {
+      machineID?: string
+      systemUUID?: string
+      bootID?: string
+      kernelVersion?: string
+      osImage?: string
+      containerRuntimeVersion?: string
+      kubeletVersion?: string
+      kubeProxyVersion?: string
+      operatingSystem?: string
+      architecture?: string
+    }
+  }
+  metrics?: {
+    metadata: {
+      name: string
+      creationTimestamp: string
+    }
+    timestamp: string
+    window: string
+    usage: {
+      cpu: string
+      memory: string
+    }
+    // Flattened computed fields for convenience
+    cpuUsage?: number
+    memoryUsage?: number
+  }
+}
+
 export interface ResourceHistory {
   id: number
   clusterName: string
@@ -465,3 +579,210 @@ export interface SubsystemStats {
   stopped: number
   error: number
 }
+
+// System Upgrade Plan types
+export interface UpgradePlan extends K8sCustomResource {
+  spec: {
+    concurrency?: number
+    cordon?: boolean
+    nodeSelector?: {
+      matchLabels?: Record<string, string>
+      matchExpressions?: Array<{
+        key: string
+        operator: string
+        values?: string[]
+      }>
+    }
+    tolerations?: Array<{
+      key?: string
+      operator?: string
+      value?: string
+      effect?: string
+      tolerationSeconds?: number
+    }>
+    secrets?: Array<{
+      name: string
+      path: string
+    }>
+    serviceAccountName?: string
+    prepare?: {
+      image: string
+      command?: string[]
+      args?: string[]
+      envs?: Array<{
+        name: string
+        value?: string
+        valueFrom?: unknown
+      }>
+    }
+    upgrade: {
+      image: string
+      command?: string[]
+      args?: string[]
+      envs?: Array<{
+        name: string
+        value?: string
+        valueFrom?: unknown
+      }>
+    }
+    drain?: {
+      enabled?: boolean
+      force?: boolean
+      timeout?: string
+      skipWaitForDeleteTimeout?: number
+      ignoreDaemonSets?: boolean
+      deleteLocalData?: boolean
+    }
+    version?: string
+    channel?: string
+  }
+  status?: {
+    conditions?: Array<{
+      type: string
+      status: string
+      lastUpdateTime: string
+      lastTransitionTime?: string
+      reason?: string
+      message?: string
+    }>
+    applying?: Array<{
+      name: string
+      image: string
+      phase: string
+    }>
+  }
+}
+
+// K8s Resource Types
+export type ResourceType =
+  // Core resources
+  | 'pods'
+  | 'nodes'
+  | 'namespaces'
+  | 'services'
+  | 'configmaps'
+  | 'secrets'
+  | 'persistentvolumes'
+  | 'persistentvolumeclaims'
+  | 'serviceaccounts'
+  | 'endpoints'
+  | 'events'
+  // Workloads
+  | 'deployments'
+  | 'statefulsets'
+  | 'daemonsets'
+  | 'replicasets'
+  | 'jobs'
+  | 'cronjobs'
+  // Networking
+  | 'ingresses'
+  | 'ingressclasses'
+  | 'networkpolicies'
+  // OpenKruise
+  | 'clonesets'
+  | 'daemonsets.apps.kruise.io'
+  | 'uniteddeployments'
+  | 'broadcastjobs'
+  | 'advancedcronjobs'
+  | 'sidecarsets'
+  | 'imagepulljobs'
+  | 'containerrecreaterequests'
+  | 'resourcedistributions'
+  | 'persistentpodstates'
+  | 'podprobemarkers'
+  | 'podunavailablebudgets'
+  // Traefik
+  | 'ingressroutes'
+  | 'middlewares'
+  | 'middlewaretcps'
+  | 'ingressroutetcps'
+  | 'ingressrouteudps'
+  | 'tlsoptions'
+  | 'tlsstores'
+  | 'traefikservices'
+  // Tailscale
+  | 'connectors'
+  | 'proxyclasses'
+  // System Upgrade
+  | 'plans'
+  // Advanced/Custom
+  | 'advanceddaemonsets'
+  // Custom resources
+  | 'customresourcedefinitions'
+  | 'crds'
+
+// Resource Type Map - maps resource types to their corresponding interfaces
+export interface ResourceTypeMap {
+  // Core resources
+  pods: Pod
+  nodes: Node
+  namespaces: Namespace
+  services: Service
+  configmaps: ConfigMap
+  secrets: Secret
+  persistentvolumes: PersistentVolume
+  persistentvolumeclaims: PersistentVolumeClaim
+  serviceaccounts: ServiceAccount
+  endpoints: Endpoints
+  events: Event
+  // Workloads
+  deployments: Deployment
+  statefulsets: StatefulSet
+  daemonsets: DaemonSet
+  replicasets: ReplicaSet
+  jobs: Job
+  cronjobs: CronJob
+  // Networking
+  ingresses: Ingress
+  ingressclasses: IngressClass
+  networkpolicies: NetworkPolicy
+  // OpenKruise
+  clonesets: CloneSet
+  'daemonsets.apps.kruise.io': AdvancedDaemonSet
+  uniteddeployments: K8sCustomResource
+  broadcastjobs: K8sCustomResource
+  advancedcronjobs: K8sCustomResource
+  sidecarsets: K8sCustomResource
+  imagepulljobs: K8sCustomResource
+  containerrecreaterequests: K8sCustomResource
+  resourcedistributions: K8sCustomResource
+  persistentpodstates: K8sCustomResource
+  podprobemarkers: K8sCustomResource
+  podunavailablebudgets: K8sCustomResource
+  // Traefik
+  ingressroutes: K8sCustomResource
+  middlewares: K8sCustomResource
+  middlewaretcps: K8sCustomResource
+  ingressroutetcps: K8sCustomResource
+  ingressrouteudps: K8sCustomResource
+  tlsoptions: K8sCustomResource
+  tlsstores: K8sCustomResource
+  traefikservices: K8sCustomResource
+  // Tailscale
+  connectors: K8sCustomResource
+  proxyclasses: K8sCustomResource
+  // System Upgrade
+  plans: UpgradePlan
+  // Advanced/Custom
+  advanceddaemonsets: AdvancedDaemonSet
+  // Custom resources
+  customresourcedefinitions: K8sCustomResource
+  crds: K8sCustomResource
+}
+
+// Resources Type Map - maps resource types to their list response structure
+export type ResourcesTypeMap = {
+  [K in keyof ResourceTypeMap]: {
+    items: ResourceTypeMap[K][]
+  }
+}
+
+// Cluster-scoped resources list
+export const clusterScopeResources: ResourceType[] = [
+  'nodes',
+  'namespaces',
+  'persistentvolumes',
+  'customresourcedefinitions',
+  'crds',
+  'ingressclasses',
+]

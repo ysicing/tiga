@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pod } from 'kubernetes-types/core/v1'
 import { Check, ChevronsUpDown } from 'lucide-react'
 
+import type { PodWithMetrics } from '@/types/api'
 import { cn, getAge } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,7 +20,7 @@ import {
 } from '@/components/ui/popover'
 
 interface PodSelectorProps {
-  pods: Pod[]
+  pods: PodWithMetrics[]
   selectedPod?: string
   onPodChange: (podName?: string) => void
   placeholder?: string

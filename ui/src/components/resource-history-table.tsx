@@ -18,7 +18,7 @@ interface ResourceHistoryTableProps<T extends ResourceType> {
   resourceType: T
   name: string
   namespace?: string
-  currentResource?: ResourceTypeMap[T]
+  currentResource?: NoInfer<ResourceTypeMap[T]> | ResourceTypeMap[T]
 }
 
 export function ResourceHistoryTable<T extends ResourceType>({

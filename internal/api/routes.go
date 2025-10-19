@@ -270,6 +270,11 @@ func SetupRoutes(
 			// ==================== New K8s Cluster Management API (Phase 0-4) ====================
 			k8sGroup := protected.Group("/k8s")
 			{
+				// Unified CRD status check (OpenKruise, Tailscale, Traefik, SystemUpgrade)
+				crdStatusHandler := pkghandlers.NewCRDStatusHandler()
+				k8sGroup.Use(pkgmiddleware.ClusterMiddleware(clusterManager))
+				k8sGroup.GET("/crd-status/:type", crdStatusHandler.GetCRDStatus)
+
 				// Cluster management
 				clustersGroup := k8sGroup.Group("/clusters")
 				{

@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { useTranslation } from 'react-i18next'
 
 import { useResources } from '@/lib/api'
+import { Event } from '@/types/api'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -20,7 +21,7 @@ export function RecentEvents() {
   })
 
   const events = useMemo(() => {
-    return data?.slice().sort((a, b) => {
+    return data?.slice().sort((a: Event, b: Event) => {
       const dateA = new Date(
         a.metadata.creationTimestamp || a.firstTimestamp || ''
       )
@@ -101,7 +102,7 @@ export function RecentEvents() {
       <CardContent>
         <div className="max-h-72 overflow-y-auto scrollbar-hide">
           <div className="space-y-4">
-            {events.map((event, index) => (
+            {events.map((event: Event, index: number) => (
               <div
                 key={index}
                 className="flex items-start gap-3 pb-3 border-b border-border last:border-0"
