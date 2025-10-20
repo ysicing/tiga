@@ -64,6 +64,9 @@ var RepositorySet = wire.NewSet(
 	schedulerrepo.NewExecutionRepository,
 	schedulerrepo.NewTaskRepository,
 
+	// T036-T037: 统一审计事件仓储（MinIO 和 Database 使用）
+	repository.NewAuditEventRepository,
+
 	// These return interfaces directly, no need for wire.Bind
 	repository.NewHostRepository,
 	repository.NewServiceRepository,
