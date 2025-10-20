@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,18 +12,23 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/internal/models"
-	"github.com/ysicing/tiga/internal/repository"
+	auditservice "github.com/ysicing/tiga/internal/services/audit"
 )
 
-// AuditMiddleware handles audit logging
+// AuditMiddleware handles unified audit logging
+// T017: Enhanced to use AsyncLogger and unified AuditEvent model
+//
+// Reference: .claude/specs/006-gitness-tiga/tasks.md T017
+//           .claude/specs/006-gitness-tiga/audit-unification.md Stage 2
 type AuditMiddleware struct {
-	auditRepo *repository.AuditLogRepository
+	asyncLogger *auditservice.AsyncLogger[*models.AuditEvent]
 }
 
-// NewAuditMiddleware creates a new audit middleware
-func NewAuditMiddleware(auditRepo *repository.AuditLogRepository) *AuditMiddleware {
+// NewAuditMiddleware creates a new unified audit middleware
+// T017: Uses AsyncLogger instead of simple goroutine
+func NewAuditMiddleware(asyncLogger *auditservice.AsyncLogger[*models.AuditEvent]) *AuditMiddleware {
 	return &AuditMiddleware{
-		auditRepo: auditRepo,
+		asyncLogger: asyncLogger,
 	}
 }
 
@@ -44,84 +50,178 @@ func (m *AuditMiddleware) AuditLog() gin.HandlerFunc {
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 		}
 
+		// Capture response body using custom response writer
+		blw := &bodyLogWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
+		c.Writer = blw
+
 		// Process request
 		c.Next()
 
-		// Create audit log entry
-		go func() {
-			auditLog := m.buildAuditLog(c, start, requestBody)
-			if auditLog != nil {
-				if err := m.auditRepo.Create(c.Request.Context(), auditLog); err != nil {
-					logrus.Errorf("Failed to create audit log: %v", err)
-				}
+		// Build and log audit event asynchronously
+		// T017: Use AsyncLogger for non-blocking writes
+		auditEvent := m.buildAuditEvent(c, start, requestBody, blw.body.Bytes())
+		if auditEvent != nil {
+			if err := m.asyncLogger.Enqueue(auditEvent); err != nil {
+				logrus.Errorf("Failed to enqueue audit event: %v", err)
 			}
-		}()
+		}
 	}
 }
 
-// buildAuditLog builds an audit log entry
-func (m *AuditMiddleware) buildAuditLog(c *gin.Context, start time.Time, requestBody []byte) *models.AuditLog {
-	// Get user ID if authenticated
-	var userID *uuid.UUID
+// buildAuditEvent builds a unified AuditEvent
+// T017: Constructs AuditEvent with OldObject/NewObject extraction
+func (m *AuditMiddleware) buildAuditEvent(c *gin.Context, start time.Time, requestBody, responseBody []byte) *models.AuditEvent {
+	// Get user information
+	var userUID, username string
+	var principalType models.PrincipalType
+
 	if uid, err := GetUserID(c); err == nil {
-		userID = &uid
+		userUID = uid.String()
+		if name, err := GetUsername(c); err == nil {
+			username = name
+		} else {
+			username = "unknown"
+		}
+		principalType = models.PrincipalTypeUser
+	} else {
+		userUID = "anonymous"
+		username = "anonymous"
+		principalType = models.PrincipalTypeAnonymous
 	}
 
-	// Determine action from method and path
-	action := determineAction(c.Request.Method, c.Request.URL.Path)
+	// Determine action from method
+	action := mapHTTPMethodToAction(c.Request.Method)
 
-	// Determine resource type and ID from path
-	resourceType, resourceID := extractResource(c.Request.URL.Path)
+	// Extract resource information from path
+	resourceType, resourceID := extractResourceFromPath(c.Request.URL.Path)
 
-	// Determine status
-	status := "success"
-	if c.Writer.Status() >= 400 {
-		status = "failure"
-	}
+	// T017: Extract OldObject/NewObject from request/response bodies
+	var oldObject, newObject string
+	var diffObject models.DiffObject
 
-	// Build changes object
-	changes := make(map[string]interface{})
-	if len(requestBody) > 0 && len(requestBody) < 10000 { // Limit size
-		var bodyData map[string]interface{}
-		if err := json.Unmarshal(requestBody, &bodyData); err == nil {
-			changes["request"] = bodyData
+	// For UPDATE/DELETE operations: response contains old object
+	// For CREATE operations: response contains new object
+	// For READ operations: no diff needed
+	switch action {
+	case models.ActionCreated:
+		// New object from response body
+		if len(responseBody) > 0 && len(responseBody) < 100*1024 {
+			newObject = extractJSONFromResponse(responseBody)
+		}
+
+	case models.ActionUpdated:
+		// Old object from request body (or would need to fetch from DB)
+		// New object from response body
+		if len(requestBody) > 0 && len(requestBody) < 100*1024 {
+			oldObject = extractJSONFromRequest(requestBody)
+		}
+		if len(responseBody) > 0 && len(responseBody) < 100*1024 {
+			newObject = extractJSONFromResponse(responseBody)
+		}
+
+	case models.ActionDeleted:
+		// Old object from response body (if API returns deleted object)
+		if len(responseBody) > 0 && len(responseBody) < 100*1024 {
+			oldObject = extractJSONFromResponse(responseBody)
 		}
 	}
 
-	// Add response status
-	changes["status_code"] = c.Writer.Status()
-
-	// Add errors if any
-	if len(c.Errors) > 0 {
-		changes["errors"] = c.Errors.String()
+	// T017: Apply truncation if objects exceed 64KB
+	if oldObject != "" {
+		if result, err := auditservice.TruncateObject(json.RawMessage(oldObject)); err == nil {
+			diffObject.OldObject = result.TruncatedJSON
+			diffObject.OldObjectTruncated = result.WasTruncated
+			if result.WasTruncated {
+				diffObject.TruncatedFields = append(diffObject.TruncatedFields, result.TruncatedFields...)
+			}
+		}
 	}
 
-	auditLog := &models.AuditLog{
-		UserID:       userID,
-		Action:       action,
+	if newObject != "" {
+		if result, err := auditservice.TruncateObject(json.RawMessage(newObject)); err == nil {
+			diffObject.NewObject = result.TruncatedJSON
+			diffObject.NewObjectTruncated = result.WasTruncated
+			if result.WasTruncated {
+				diffObject.TruncatedFields = append(diffObject.TruncatedFields, result.TruncatedFields...)
+			}
+		}
+	}
+
+	// Extract client IP (with X-Forwarded-For support)
+	clientIP := extractClientIP(c)
+
+	// Get or generate request ID
+	requestID := c.GetString("RequestID")
+	if requestID == "" {
+		requestID = uuid.New().String()
+	}
+
+	// Build resource metadata
+	resourceData := make(map[string]string)
+	if resourceID != "" {
+		resourceData["resourceId"] = resourceID
+	}
+	resourceData["method"] = c.Request.Method
+	resourceData["path"] = c.Request.URL.Path
+	resourceData["statusCode"] = string(rune(c.Writer.Status()))
+
+	// Create unified AuditEvent
+	auditEvent := &models.AuditEvent{
+		ID:        uuid.New().String(),
+		Timestamp: time.Now().UnixMilli(),
+		Action:    action,
 		ResourceType: resourceType,
-		ResourceID:   resourceID,
-		IPAddress:    c.ClientIP(),
-		UserAgent:    c.Request.UserAgent(),
-		Status:       status,
-		Description:  buildDescription(c),
-		Changes:      changes,
+		Resource: models.Resource{
+			Type:       resourceType,
+			Identifier: resourceID,
+			Data:       resourceData,
+		},
+		User: models.Principal{
+			UID:      userUID,
+			Username: username,
+			Type:     principalType,
+		},
+		DiffObject:    diffObject,
+		ClientIP:      clientIP,
+		UserAgent:     c.Request.UserAgent(),
+		RequestMethod: c.Request.Method,
+		RequestID:     requestID,
+		CreatedAt:     time.Now(),
 	}
 
-	return auditLog
+	// Validate before logging
+	if err := auditEvent.Validate(); err != nil {
+		logrus.Errorf("Invalid audit event: %v", err)
+		return nil
+	}
+
+	return auditEvent
 }
 
-// shouldSkipAudit determines if audit logging should be skipped
+// bodyLogWriter wraps gin.ResponseWriter to capture response body
+type bodyLogWriter struct {
+	gin.ResponseWriter
+	body *bytes.Buffer
+}
+
+func (w *bodyLogWriter) Write(b []byte) (int, error) {
+	w.body.Write(b)
+	return w.ResponseWriter.Write(b)
+}
+
+// Helper functions
+
 func shouldSkipAudit(path string) bool {
 	skipPaths := []string{
 		"/health",
 		"/ready",
 		"/metrics",
 		"/api/v1/auth/refresh",
+		"/swagger",
 	}
 
 	for _, skip := range skipPaths {
-		if path == skip {
+		if strings.HasPrefix(path, skip) {
 			return true
 		}
 	}
@@ -129,104 +229,115 @@ func shouldSkipAudit(path string) bool {
 	return false
 }
 
-// shouldLogBody determines if request body should be logged
 func shouldLogBody(method string) bool {
 	return method == "POST" || method == "PUT" || method == "PATCH"
 }
 
-// determineAction determines the action from method and path
-func determineAction(method, path string) string {
+func mapHTTPMethodToAction(method string) models.Action {
 	switch method {
-	case "GET":
-		return "read"
+	case "GET", "HEAD":
+		return models.ActionRead
 	case "POST":
-		return "create"
+		return models.ActionCreated
 	case "PUT", "PATCH":
-		return "update"
+		return models.ActionUpdated
 	case "DELETE":
-		return "delete"
+		return models.ActionDeleted
 	default:
-		return method
+		return models.ActionRead
 	}
 }
 
-// extractResource extracts resource type and ID from path
-func extractResource(path string) (string, *uuid.UUID) {
-	// This is a simplified implementation
-	// In practice, you would parse the path to extract resource info
-	// Example: /api/v1/dbs/uuid -> resourceType: dbs, resourceID: uuid
+func extractResourceFromPath(path string) (models.ResourceType, string) {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
 
-	parts := splitPath(path)
-	if len(parts) >= 4 {
-		resourceType := parts[3]
-		if len(parts) >= 5 {
-			if id, err := uuid.Parse(parts[4]); err == nil {
-				return resourceType, &id
+	// Pattern: /api/v1/{resource_type}/{resource_id}
+	if len(parts) >= 3 {
+		resourceTypeStr := parts[2]
+
+		// Map API paths to ResourceType enum
+		var resourceType models.ResourceType
+		switch {
+		case strings.Contains(resourceTypeStr, "cluster"):
+			resourceType = models.ResourceTypeCluster
+		case strings.Contains(resourceTypeStr, "database"):
+			resourceType = models.ResourceTypeDatabase
+		case strings.Contains(resourceTypeStr, "pod"):
+			resourceType = models.ResourceTypePod
+		case strings.Contains(resourceTypeStr, "deployment"):
+			resourceType = models.ResourceTypeDeployment
+		case strings.Contains(resourceTypeStr, "service"):
+			resourceType = models.ResourceTypeService
+		case strings.Contains(resourceTypeStr, "user"):
+			resourceType = models.ResourceTypeUser
+		case strings.Contains(resourceTypeStr, "role"):
+			resourceType = models.ResourceTypeRole
+		case strings.Contains(resourceTypeStr, "scheduler"), strings.Contains(resourceTypeStr, "task"):
+			resourceType = models.ResourceTypeScheduledTask
+		default:
+			resourceType = models.ResourceType(resourceTypeStr)
+		}
+
+		// Extract resource ID if present
+		if len(parts) >= 4 {
+			return resourceType, parts[3]
+		}
+
+		return resourceType, ""
+	}
+
+	return models.ResourceType("unknown"), ""
+}
+
+func extractClientIP(c *gin.Context) string {
+	// Check X-Forwarded-For header first
+	if forwarded := c.GetHeader("X-Forwarded-For"); forwarded != "" {
+		// Take the first IP in the list
+		ips := strings.Split(forwarded, ",")
+		return strings.TrimSpace(ips[0])
+	}
+
+	// Check X-Real-IP header
+	if realIP := c.GetHeader("X-Real-IP"); realIP != "" {
+		return realIP
+	}
+
+	// Fall back to RemoteAddr
+	return c.ClientIP()
+}
+
+func extractJSONFromRequest(body []byte) string {
+	// Attempt to parse as JSON
+	var data interface{}
+	if err := json.Unmarshal(body, &data); err == nil {
+		return string(body)
+	}
+	return ""
+}
+
+func extractJSONFromResponse(body []byte) string {
+	// Attempt to extract JSON from response
+	// Response might be wrapped in {data: ...}
+	var wrapper map[string]interface{}
+	if err := json.Unmarshal(body, &wrapper); err == nil {
+		if data, ok := wrapper["data"]; ok {
+			if jsonData, err := json.Marshal(data); err == nil {
+				return string(jsonData)
 			}
 		}
-		return resourceType, nil
+		// Return whole response if not wrapped
+		return string(body)
 	}
-
-	return "unknown", nil
-}
-
-// splitPath splits a path into parts
-func splitPath(path string) []string {
-	var parts []string
-	current := ""
-	for i := 0; i < len(path); i++ {
-		if path[i] == '/' {
-			if current != "" {
-				parts = append(parts, current)
-				current = ""
-			}
-		} else {
-			current += string(path[i])
-		}
-	}
-	if current != "" {
-		parts = append(parts, current)
-	}
-	return parts
-}
-
-// buildDescription builds a human-readable description
-func buildDescription(c *gin.Context) string {
-	method := c.Request.Method
-	path := c.Request.URL.Path
-	statusCode := c.Writer.Status()
-
-	description := method + " " + path
-
-	if statusCode >= 400 {
-		description += " (failed)"
-	}
-
-	return description
-}
-
-// AuditCreate is a helper to log create actions
-func AuditCreate(c *gin.Context, resourceType string, resourceID uuid.UUID, description string) {
-	// This would be called from handlers to create audit logs
-	// Implementation would use the audit repository directly
-}
-
-// AuditUpdate is a helper to log update actions
-func AuditUpdate(c *gin.Context, resourceType string, resourceID uuid.UUID, changes map[string]interface{}, description string) {
-	// This would be called from handlers to create audit logs
-}
-
-// AuditDelete is a helper to log delete actions
-func AuditDelete(c *gin.Context, resourceType string, resourceID uuid.UUID, description string) {
-	// This would be called from handlers to create audit logs
+	return ""
 }
 
 // Global audit middleware instance
 var globalAuditMiddleware *AuditMiddleware
 
 // InitAuditMiddleware initializes the global audit middleware
-func InitAuditMiddleware(auditRepo *repository.AuditLogRepository) {
-	globalAuditMiddleware = NewAuditMiddleware(auditRepo)
+// T017: Updated to use AsyncLogger
+func InitAuditMiddleware(asyncLogger *auditservice.AsyncLogger[*models.AuditEvent]) {
+	globalAuditMiddleware = NewAuditMiddleware(asyncLogger)
 }
 
 // AuditLog is the global audit logging middleware

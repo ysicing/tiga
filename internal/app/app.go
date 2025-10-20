@@ -86,7 +86,7 @@ func NewApplication(cfg *config.Config, configPath string, installMode bool, sta
 			config:      cfg,
 			configPath:  configPath,
 			installMode: installMode,
-			scheduler:   scheduler.NewScheduler(),
+			scheduler:   scheduler.NewScheduler(nil), // nil ExecutionRepository in install mode
 			staticFS:    staticFS,
 		}
 		return app, nil
