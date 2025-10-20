@@ -1,0 +1,478 @@
+openapi: 3.0.3
+info:
+  title: Tiga Audit API
+  description: |
+    审计系统 API，基于 Gitness Audit 架构设计。
+
+    核心功能：
+    - 审计日志查询（分页、多维度过滤）
+    - 审计配置管理（保留期等）
+    - 强类型事件追踪（Action、ResourceType）
+    - 变更差异追踪（OldObject vs NewObject）
+
+    **重要特性**：
+    - 审计日志只能创建和查询，不支持修改和删除
+    - 对象数据限制 64KB，超出智能截断字段值
+    - 异步写入，不阻塞业务操作
+  version: 1.0.0
+  contact:
+    name: Tiga Team
+    url: https://github.com/ysicing/tiga
+
+servers:
+  - url: http://localhost:12306/api/v1
+    description: 本地开发环境
+  - url: https://api.example.com/api/v1
+    description: 生产环境
+
+tags:
+  - name: events
+    description: 审计事件查询
+  - name: config
+    description: 审计配置管理
+
+paths:
+  /audit/events:
+    get:
+      summary: 获取审计日志列表
+      description: |
+        分页查询审计日志，支持多维度过滤：
+        - 按用户 UID
+        - 按资源类型
+        - 按操作类型
+        - 按时间范围
+        - 按客户端 IP
+        - 按请求 ID（用于关联请求）
+      tags: [events]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: user_uid
+          in: query
+          description: 过滤用户 UID
+          schema:
+            type: string
+            example: "user-uuid-1234"
+        - name: resource_type
+          in: query
+          description: 过滤资源类型
+          schema:
+            type: string
+            enum: [cluster, pod, deployment, service, database, databaseInstance, user, role, scheduledTask]
+            example: "database"
+        - name: action
+          in: query
+          description: 过滤操作类型
+          schema:
+            type: string
+            enum: [created, updated, deleted, read, enabled, disabled, login, logout, granted, revoked]
+            example: "deleted"
+        - name: start_time
+          in: query
+          description: 开始时间（Unix 毫秒时间戳）
+          schema:
+            type: integer
+            format: int64
+            example: 1697529600000
+        - name: end_time
+          in: query
+          description: 结束时间（Unix 毫秒时间戳）
+          schema:
+            type: integer
+            format: int64
+            example: 1697616000000
+        - name: client_ip
+          in: query
+          description: 过滤客户端 IP
+          schema:
+            type: string
+            example: "192.168.1.100"
+        - name: request_id
+          in: query
+          description: 过滤请求 ID（用于关联请求）
+          schema:
+            type: string
+            example: "req-uuid-5678"
+      responses:
+        '200':
+          description: 成功返回审计日志列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /audit/events/{id}:
+    get:
+      summary: 获取审计事件详情
+      description: 获取单个审计事件的完整信息，包括完整的对象差异数据
+      tags: [events]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 审计事件 ID（UUID）
+          schema:
+            type: string
+            example: "event-uuid-1234"
+      responses:
+        '200':
+          description: 成功返回审计事件详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditEvent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /audit/config:
+    get:
+      summary: 获取审计配置
+      description: 获取当前审计系统配置（保留期、写入策略等）
+      tags: [config]
+      responses:
+        '200':
+          description: 成功返回审计配置
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditConfig'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      summary: 更新审计配置
+      description: |
+        更新审计系统配置，立即生效。
+
+        **注意**：
+        - 保留期变更立即生效，下次清理任务执行时应用
+        - 修改保留期可能导致历史数据被清理
+      tags: [config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                retention_days:
+                  type: integer
+                  minimum: 1
+                  maximum: 3650
+                  description: 审计日志保留天数（1-3650 天）
+                  example: 90
+      responses:
+        '200':
+          description: 配置已更新
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Audit configuration updated successfully"
+                  data:
+                    $ref: '#/components/schemas/AuditConfig'
+        '400':
+          description: 参数无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "retention_days must be between 1 and 3650"
+                code: "INVALID_PARAMETER"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  schemas:
+    AuditEvent:
+      type: object
+      required:
+        - id
+        - timestamp
+        - action
+        - resource_type
+        - resource
+        - user
+        - client_ip
+        - created_at
+      properties:
+        id:
+          type: string
+          description: 审计事件 UUID
+          example: "event-uuid-1234"
+        timestamp:
+          type: integer
+          format: int64
+          description: 事件时间戳（Unix 毫秒）
+          example: 1697529600000
+        action:
+          type: string
+          enum: [created, updated, deleted, read, enabled, disabled, bypassed, forcePush, login, logout, granted, revoked]
+          description: 操作类型
+          example: "deleted"
+        resource_type:
+          type: string
+          enum: [cluster, pod, deployment, service, configMap, secret, database, databaseInstance, databaseUser, minio, redis, mysql, postgresql, user, role, instance, scheduledTask]
+          description: 资源类型
+          example: "database"
+        resource:
+          $ref: '#/components/schemas/Resource'
+        user:
+          $ref: '#/components/schemas/Principal'
+        space_path:
+          type: string
+          description: 空间路径（可选）
+          example: "/projects/project-1"
+        diff_object:
+          $ref: '#/components/schemas/DiffObject'
+        client_ip:
+          type: string
+          description: 客户端 IP 地址
+          example: "192.168.1.100"
+        user_agent:
+          type: string
+          description: 用户代理字符串
+          example: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        request_method:
+          type: string
+          description: HTTP 请求方法
+          example: "DELETE"
+        request_id:
+          type: string
+          description: 请求 ID（用于关联请求）
+          example: "req-uuid-5678"
+        data:
+          type: object
+          additionalProperties:
+            type: string
+          description: 自定义数据（键值对）
+          example:
+            reason: "scheduled cleanup"
+            operator: "admin"
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: "2025-10-19T12:34:56Z"
+
+    Resource:
+      type: object
+      required:
+        - type
+        - identifier
+      properties:
+        type:
+          type: string
+          description: 资源类型
+          example: "database"
+        identifier:
+          type: string
+          description: 资源标识符（ID）
+          example: "db-uuid-9876"
+        data:
+          type: object
+          additionalProperties:
+            type: string
+          description: 资源元数据
+          example:
+            resourceName: "production-db"
+            clusterName: "cluster-1"
+            namespace: "default"
+
+    Principal:
+      type: object
+      required:
+        - uid
+        - username
+        - type
+      properties:
+        uid:
+          type: string
+          description: 用户 UID
+          example: "user-uuid-1234"
+        username:
+          type: string
+          description: 用户名
+          example: "admin"
+        type:
+          type: string
+          enum: [user, service, anonymous]
+          description: 主体类型
+          example: "user"
+
+    DiffObject:
+      type: object
+      properties:
+        old_object:
+          type: string
+          description: 变更前的对象数据（JSON 字符串，最大 64KB）
+          example: '{"name":"test-db","size":"10Gi","version":"13.0"}'
+        new_object:
+          type: string
+          description: 变更后的对象数据（JSON 字符串，最大 64KB）
+          example: '{"name":"test-db","size":"20Gi","version":"13.0"}'
+        old_object_truncated:
+          type: boolean
+          description: OldObject 是否被截断
+          example: false
+        new_object_truncated:
+          type: boolean
+          description: NewObject 是否被截断
+          example: false
+        truncated_fields:
+          type: array
+          items:
+            type: string
+          description: 被截断的字段列表
+          example: ["config", "metadata"]
+
+    AuditConfig:
+      type: object
+      required:
+        - retention_days
+        - last_updated_at
+      properties:
+        retention_days:
+          type: integer
+          description: 审计日志保留天数
+          example: 90
+        last_updated_at:
+          type: string
+          format: date-time
+          description: 最后更新时间
+          example: "2025-10-19T10:00:00Z"
+        updated_by:
+          type: string
+          description: 更新者用户 UID
+          example: "user-uuid-1234"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: 当前页码（从 1 开始）
+          example: 1
+        page_size:
+          type: integer
+          description: 每页数量
+          example: 20
+        total:
+          type: integer
+          format: int64
+          description: 总记录数
+          example: 10523
+        total_pages:
+          type: integer
+          description: 总页数
+          example: 527
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: 错误信息
+          example: "Resource not found"
+        code:
+          type: string
+          description: 错误代码
+          example: "NOT_FOUND"
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: 页码（从 1 开始）
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: page_size
+      in: query
+      description: 每页数量
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: 未授权
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unauthorized"
+            code: "UNAUTHORIZED"
+
+    Forbidden:
+      description: 禁止访问
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Forbidden"
+            code: "FORBIDDEN"
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+
+    InternalError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 认证
+
+security:
+  - BearerAuth: []

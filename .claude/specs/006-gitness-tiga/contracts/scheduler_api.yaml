@@ -1,0 +1,672 @@
+openapi: 3.0.3
+info:
+  title: Tiga Scheduler API
+  description: |
+    定时任务调度系统 API，基于 Gitness Job Scheduler 架构设计。
+
+    核心功能：
+    - 任务管理（启用/禁用、手动触发）
+    - 执行历史查询（分页、过滤）
+    - 统计数据分析
+  version: 1.0.0
+  contact:
+    name: Tiga Team
+    url: https://github.com/ysicing/tiga
+
+servers:
+  - url: http://localhost:12306/api/v1
+    description: 本地开发环境
+  - url: https://api.example.com/api/v1
+    description: 生产环境
+
+tags:
+  - name: tasks
+    description: 定时任务管理
+  - name: executions
+    description: 任务执行历史
+  - name: stats
+    description: 统计数据
+
+paths:
+  /scheduler/tasks:
+    get:
+      summary: 获取任务列表
+      description: 分页查询所有定时任务配置
+      tags: [tasks]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: enabled
+          in: query
+          description: 过滤启用/禁用状态
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          description: 过滤任务类型
+          schema:
+            type: string
+            example: "alert_processing"
+      responses:
+        '200':
+          description: 成功返回任务列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduledTask'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scheduler/tasks/{id}:
+    get:
+      summary: 获取任务详情
+      tags: [tasks]
+      parameters:
+        - $ref: '#/components/parameters/TaskIDParam'
+      responses:
+        '200':
+          description: 成功返回任务详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduledTask'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /scheduler/tasks/{id}/enable:
+    post:
+      summary: 启用任务
+      description: 启用指定的定时任务，立即生效，无需重启服务
+      tags: [tasks]
+      parameters:
+        - $ref: '#/components/parameters/TaskIDParam'
+      responses:
+        '200':
+          description: 任务已启用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /scheduler/tasks/{id}/disable:
+    post:
+      summary: 禁用任务
+      description: 禁用指定的定时任务，立即生效，正在执行的任务不受影响
+      tags: [tasks]
+      parameters:
+        - $ref: '#/components/parameters/TaskIDParam'
+      responses:
+        '200':
+          description: 任务已禁用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /scheduler/tasks/{id}/trigger:
+    post:
+      summary: 手动触发任务
+      description: 立即执行指定的任务，不等待下次调度时间。用于调试和紧急情况
+      tags: [tasks]
+      parameters:
+        - $ref: '#/components/parameters/TaskIDParam'
+      requestBody:
+        description: 触发参数（可选）
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                override_data:
+                  type: string
+                  description: 覆盖任务的默认输入数据（JSON 字符串）
+                  example: '{"retention_days": 30}'
+      responses:
+        '202':
+          description: 任务已加入执行队列
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Task triggered successfully"
+                  execution_uid:
+                    type: string
+                    description: 执行 UID，可用于查询执行状态
+                    example: "exec-uuid-1234"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: 任务已在执行中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /scheduler/executions:
+    get:
+      summary: 获取执行历史
+      description: 分页查询任务执行历史，支持按任务名称、状态、时间范围过滤
+      tags: [executions]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: task_name
+          in: query
+          description: 过滤任务名称
+          schema:
+            type: string
+            example: "alert_processing"
+        - name: state
+          in: query
+          description: 过滤执行状态
+          schema:
+            type: string
+            enum: [pending, running, success, failure, timeout, cancelled, interrupted]
+            example: "failure"
+        - name: start_time
+          in: query
+          description: 开始时间（Unix 毫秒时间戳）
+          schema:
+            type: integer
+            format: int64
+            example: 1697529600000
+        - name: end_time
+          in: query
+          description: 结束时间（Unix 毫秒时间戳）
+          schema:
+            type: integer
+            format: int64
+            example: 1697616000000
+      responses:
+        '200':
+          description: 成功返回执行历史
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskExecution'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scheduler/executions/{id}:
+    get:
+      summary: 获取执行详情
+      tags: [executions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 执行 ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功返回执行详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TaskExecution'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /scheduler/stats:
+    get:
+      summary: 获取统计数据
+      description: 获取所有任务的统计数据（成功率、平均执行时间、失败次数）
+      tags: [stats]
+      responses:
+        '200':
+          description: 成功返回统计数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      total_tasks:
+                        type: integer
+                        description: 任务总数
+                        example: 10
+                      enabled_tasks:
+                        type: integer
+                        description: 启用的任务数
+                        example: 8
+                      total_executions:
+                        type: integer
+                        description: 总执行次数
+                        example: 1523
+                      success_rate:
+                        type: number
+                        format: float
+                        description: 成功率（百分比）
+                        example: 98.5
+                      average_duration_ms:
+                        type: integer
+                        format: int64
+                        description: 平均执行时间（毫秒）
+                        example: 1234
+                      task_stats:
+                        type: array
+                        description: 各任务统计
+                        items:
+                          type: object
+                          properties:
+                            task_name:
+                              type: string
+                              example: "alert_processing"
+                            total_executions:
+                              type: integer
+                              example: 523
+                            success_executions:
+                              type: integer
+                              example: 520
+                            failure_executions:
+                              type: integer
+                              example: 3
+                            average_duration_ms:
+                              type: integer
+                              format: int64
+                              example: 856
+                            last_executed_at:
+                              type: string
+                              format: date-time
+                              example: "2025-10-19T12:34:56Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    ScheduledTask:
+      type: object
+      required:
+        - uid
+        - name
+        - type
+        - is_recurring
+        - enabled
+        - max_duration_seconds
+        - created_at
+        - updated_at
+      properties:
+        uid:
+          type: string
+          description: 任务唯一标识符
+          example: "task-uuid-1234"
+        name:
+          type: string
+          description: 任务名称（唯一）
+          example: "alert_processing"
+        type:
+          type: string
+          description: 任务类型（对应 Handler）
+          example: "alert_processing"
+        description:
+          type: string
+          description: 任务描述
+          example: "处理系统告警并发送通知"
+        is_recurring:
+          type: boolean
+          description: 是否为循环任务
+          example: true
+        cron_expr:
+          type: string
+          description: Cron 表达式（循环任务时必填）
+          example: "*/5 * * * *"
+        interval:
+          type: integer
+          format: int64
+          description: 间隔时间（秒），非 cron 任务时使用
+          example: 300
+        next_run:
+          type: string
+          format: date-time
+          description: 下次执行时间
+          example: "2025-10-19T12:40:00Z"
+        enabled:
+          type: boolean
+          description: 是否启用
+          example: true
+        max_duration_seconds:
+          type: integer
+          description: 最大执行时间（秒）
+          example: 3600
+        max_retries:
+          type: integer
+          description: 最大重试次数
+          example: 3
+        timeout_grace_period:
+          type: integer
+          description: 超时宽限期（秒）
+          example: 30
+        max_concurrent:
+          type: integer
+          description: 最大并发执行数
+          example: 1
+        priority:
+          type: integer
+          description: 优先级（越大越高）
+          example: 0
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+          description: 资源标签
+          example:
+            env: "production"
+            team: "ops"
+        data:
+          type: string
+          description: 任务输入数据（JSON 字符串）
+          example: '{"retention_days": 90}'
+        total_executions:
+          type: integer
+          description: 总执行次数
+          example: 523
+        success_executions:
+          type: integer
+          description: 成功执行次数
+          example: 520
+        failure_executions:
+          type: integer
+          description: 失败执行次数
+          example: 3
+        consecutive_failures:
+          type: integer
+          description: 连续失败次数
+          example: 0
+        last_executed_at:
+          type: string
+          format: date-time
+          description: 最后执行时间
+          example: "2025-10-19T12:34:56Z"
+        last_failure_error:
+          type: string
+          description: 最后失败错误信息
+          example: "database connection timeout"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-10-19T12:00:00Z"
+
+    TaskExecution:
+      type: object
+      required:
+        - id
+        - task_uid
+        - task_name
+        - task_type
+        - execution_uid
+        - run_by
+        - scheduled_at
+        - started_at
+        - state
+        - trigger_type
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 执行 ID（自增）
+          example: 12345
+        task_uid:
+          type: string
+          description: 任务 UID
+          example: "task-uuid-1234"
+        task_name:
+          type: string
+          description: 任务名称
+          example: "alert_processing"
+        task_type:
+          type: string
+          description: 任务类型
+          example: "alert_processing"
+        execution_uid:
+          type: string
+          description: 执行唯一标识符
+          example: "exec-uuid-5678"
+        run_by:
+          type: string
+          description: 执行实例 ID
+          example: "instance-1"
+        scheduled_at:
+          type: string
+          format: date-time
+          description: 计划执行时间
+          example: "2025-10-19T12:30:00Z"
+        started_at:
+          type: string
+          format: date-time
+          description: 实际开始时间
+          example: "2025-10-19T12:30:01Z"
+        finished_at:
+          type: string
+          format: date-time
+          description: 实际结束时间
+          example: "2025-10-19T12:30:15Z"
+        state:
+          type: string
+          enum: [pending, running, success, failure, timeout, cancelled, interrupted]
+          description: 执行状态
+          example: "success"
+        result:
+          type: string
+          description: 执行结果数据
+          example: "processed 15 alerts"
+        error_message:
+          type: string
+          description: 错误信息
+          example: "connection timeout"
+        error_stack:
+          type: string
+          description: 错误堆栈
+          example: "goroutine 123:\n..."
+        duration_ms:
+          type: integer
+          format: int64
+          description: 执行时长（毫秒）
+          example: 14523
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: 执行进度（0-100）
+          example: 100
+        retry_count:
+          type: integer
+          description: 重试次数
+          example: 0
+        trigger_type:
+          type: string
+          enum: [scheduled, manual]
+          description: 触发方式
+          example: "scheduled"
+        trigger_by:
+          type: string
+          description: 手动触发的用户 ID
+          example: "user-uuid-9876"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-10-19T12:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-10-19T12:30:15Z"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: 当前页码（从 1 开始）
+          example: 1
+        page_size:
+          type: integer
+          description: 每页数量
+          example: 20
+        total:
+          type: integer
+          format: int64
+          description: 总记录数
+          example: 523
+        total_pages:
+          type: integer
+          description: 总页数
+          example: 27
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation successful"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: 错误信息
+          example: "Resource not found"
+        code:
+          type: string
+          description: 错误代码
+          example: "NOT_FOUND"
+
+  parameters:
+    TaskIDParam:
+      name: id
+      in: path
+      required: true
+      description: 任务 UID
+      schema:
+        type: string
+        example: "task-uuid-1234"
+
+    PageParam:
+      name: page
+      in: query
+      description: 页码（从 1 开始）
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: page_size
+      in: query
+      description: 每页数量
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: 未授权
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Unauthorized"
+            code: "UNAUTHORIZED"
+
+    Forbidden:
+      description: 禁止访问
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Forbidden"
+            code: "FORBIDDEN"
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+
+    InternalError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 认证
+
+security:
+  - BearerAuth: []
