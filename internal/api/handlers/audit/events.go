@@ -17,7 +17,8 @@ import (
 // T023: Audit API handlers implementation
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T023
-//           .claude/specs/006-gitness-tiga/contracts/audit_api.yaml
+//
+//	.claude/specs/006-gitness-tiga/contracts/audit_api.yaml
 type EventHandler struct {
 	eventRepo repository.AuditEventRepository
 }

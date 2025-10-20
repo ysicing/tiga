@@ -3,10 +3,6 @@ package scheduler
 import (
 	"context"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestTaskExecutionIntegration 任务执行集成测试
@@ -54,7 +50,7 @@ func TestTaskExecutionIntegration(t *testing.T) {
 			// 验证执行历史
 			// executions := getTaskExecutions(t, db, task.UID)
 			// assert.GreaterOrEqual(t, len(executions), 1, "至少应有1次执行记录")
-			// 
+			//
 			// exec := executions[0]
 			// assert.Equal(t, "success", exec.State, "任务应执行成功")
 			// assert.NotEmpty(t, exec.ExecutionUID, "应有执行UID")
@@ -214,7 +210,7 @@ func TestTaskExecutionIntegration(t *testing.T) {
 			// 验证执行历史
 			// execution := getExecution(t, db, executionUID)
 			// assert.Equal(t, "timeout", execution.State)
-			// 
+			//
 			// // 验证宽限期内任务有机会清理资源
 			// // （通过检查测试 handler 的清理标志）
 			// assert.True(t, testHandlerCleanupCalled, "应调用清理函数")

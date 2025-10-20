@@ -14,7 +14,8 @@ import (
 // T023: Audit API handlers implementation
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T023
-//           .claude/specs/006-gitness-tiga/contracts/audit_api.yaml
+//
+//	.claude/specs/006-gitness-tiga/contracts/audit_api.yaml
 type ConfigHandler struct {
 	// TODO: Add config service or repository when implemented
 	// For now, we'll return a static configuration

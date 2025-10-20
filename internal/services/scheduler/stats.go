@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sirupsen/logrus"
+
 	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 )
 
@@ -12,7 +13,8 @@ import (
 // T016: Task statistics calculation service
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T016
-//           .claude/specs/006-gitness-tiga/contracts/scheduler_api.yaml /stats endpoint
+//
+//	.claude/specs/006-gitness-tiga/contracts/scheduler_api.yaml /stats endpoint
 type StatsCalculator struct {
 	repo schedulerrepo.ExecutionRepository
 }

@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	clusterhandlers "github.com/ysicing/tiga/internal/api/handlers/cluster"
 	"github.com/ysicing/tiga/internal/api/handlers/instances"
 	"github.com/ysicing/tiga/internal/api/handlers/minio"
 	"github.com/ysicing/tiga/internal/api/middleware"
@@ -16,14 +18,19 @@ import (
 	"github.com/ysicing/tiga/pkg/cluster"
 	"github.com/ysicing/tiga/pkg/handlers/resources"
 
+	audithandlers "github.com/ysicing/tiga/internal/api/handlers/audit"
+	clusterhandlers "github.com/ysicing/tiga/internal/api/handlers/cluster"
 	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
+	schedulerhandlers "github.com/ysicing/tiga/internal/api/handlers/scheduler"
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
 	dbrepo "github.com/ysicing/tiga/internal/repository/database"
+	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 	alertservices "github.com/ysicing/tiga/internal/services/alert"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
 	dbservices "github.com/ysicing/tiga/internal/services/database"
 	hostservices "github.com/ysicing/tiga/internal/services/host"
 	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
+	schedulerservices "github.com/ysicing/tiga/internal/services/scheduler"
 	websshservices "github.com/ysicing/tiga/internal/services/webssh"
 	pkghandlers "github.com/ysicing/tiga/pkg/handlers"
 	pkgmiddleware "github.com/ysicing/tiga/pkg/middleware"
@@ -43,6 +50,9 @@ func SetupRoutes(
 	probeScheduler *monitorservices.ServiceProbeScheduler,
 	cfg *config.Config,
 ) {
+	// Initialize global JWT auth middleware
+	middleware.InitJWTAuthMiddleware(jwtManager, db)
+
 	// Global middleware to inject config into context for all routes
 	router.Use(middleware.ConfigMiddleware(cfg))
 
@@ -95,6 +105,13 @@ func SetupRoutes(
 	dbAuditLogRepo := dbrepo.NewAuditLogRepository(db)
 	dbQuerySessionRepo := dbrepo.NewQuerySessionRepository(db)
 
+	// Scheduler repositories (T013, T019)
+	schedulerTaskRepo := schedulerrepo.NewTaskRepository(db)
+	schedulerExecutionRepo := schedulerrepo.NewExecutionRepository(db)
+
+	// Audit repositories (T012, T020)
+	auditEventRepo := repository.NewAuditEventRepository(db)
+
 	// Initialize session and login services using the shared jwtManager
 	sessionService := authservices.NewSessionService(db)
 	loginService := authservices.NewLoginService(db, jwtManager, sessionService)
@@ -129,9 +146,42 @@ func SetupRoutes(
 	agentManager := hostService.GetAgentManager()
 
 	// Start background services
-	_ = alertservices.NewAlertEngine(monitorAlertRepo, hostRepo, serviceRepo) // Runs in background
+	_ = alertservices.NewAlertEngine(monitorAlertRepo, hostRepo, serviceRepo) // Runs in background (monitor alerts)
 	expiryScheduler := hostservices.NewExpiryScheduler(hostRepo, monitorAlertRepo, db)
 	expiryScheduler.Start()
+
+	// Scheduler service (T013)
+	schedulerService := schedulerservices.NewScheduler(schedulerExecutionRepo)
+	schedulerService.Start(context.Background()) // Start the scheduler background worker
+
+	// T027: Register existing tasks with Scheduler
+	// Note: alert_processing task uses AlertProcessor (for database alerts), not AlertEngine (for monitor alerts)
+	// Commented out until AlertProcessor dependencies are available in routes.go
+	// TODO: Uncomment when notificationSvc and coordinator are available
+	// alertProcessor := alertservices.NewAlertProcessor(alertRepo, metricsRepo, notificationSvc, coordinator)
+	// alertTask := schedulerservices.NewAlertTask(alertProcessor)
+	// if err := schedulerService.AddCron(
+	// 	"alert_processing",
+	// 	"*/5 * * * *", // Every 5 minutes
+	// 	alertTask,
+	// ); err != nil {
+	// 	logrus.Errorf("Failed to register alert_processing task: %v", err)
+	// } else {
+	// 	logrus.Info("alert_processing task registered successfully")
+	// }
+
+	// 2. Database audit cleanup task (daily at 2 AM)
+	// TODO: Get retention days from config (default: 90 days)
+	dbAuditCleanupTask := schedulerservices.NewDatabaseAuditCleanupTask(dbAuditLogRepo, 90)
+	if err := schedulerService.AddCron(
+		"database_audit_cleanup",
+		"0 2 * * *", // Daily at 2:00 AM
+		dbAuditCleanupTask,
+	); err != nil {
+		logrus.Errorf("Failed to register database_audit_cleanup task: %v", err)
+	} else {
+		logrus.Info("database_audit_cleanup task registered successfully")
+	}
 
 	// Initialize handlers
 	instanceHandler := handlers.NewInstanceHandler(instanceRepo)
@@ -139,6 +189,16 @@ func SetupRoutes(
 	metricsHandler := instances.NewMetricsHandler(instanceService)
 	alertHandler := handlers.NewAlertHandler(alertRepo)
 	auditHandler := handlers.NewAuditLogHandler(auditRepo)
+
+	// Scheduler handlers (T022)
+	schedulerTaskHandler := schedulerhandlers.NewTaskHandler(schedulerTaskRepo, schedulerService)
+	schedulerExecutionHandler := schedulerhandlers.NewExecutionHandler(schedulerExecutionRepo)
+	schedulerStatsCalculator := schedulerservices.NewStatsCalculator(schedulerExecutionRepo)
+	schedulerStatsHandler := schedulerhandlers.NewStatsHandler(schedulerStatsCalculator)
+
+	// Audit handlers (T023)
+	auditEventHandler := audithandlers.NewEventHandler(auditEventRepo)
+	auditConfigHandler := audithandlers.NewConfigHandler()
 
 	// K8s handlers (Phase 0-4)
 	k8sClusterHandler := clusterhandlers.NewClusterHandler(clusterRepo, resourceHistoryRepo, cfg)
@@ -481,24 +541,52 @@ func SetupRoutes(
 				alertsGroup.GET("/statistics", alertHandler.GetAlertStatistics)
 			}
 
+			// ==================== Scheduler Subsystem ====================
+			// T022: Scheduler API endpoints
+			schedulerGroup := protected.Group("/scheduler")
+			{
+				// Task management
+				schedulerGroup.GET("/tasks", schedulerTaskHandler.ListTasks)
+				schedulerGroup.GET("/tasks/:id", schedulerTaskHandler.GetTask)
+				schedulerGroup.POST("/tasks/:id/enable", schedulerTaskHandler.EnableTask)
+				schedulerGroup.POST("/tasks/:id/disable", schedulerTaskHandler.DisableTask)
+				schedulerGroup.POST("/tasks/:id/trigger", schedulerTaskHandler.TriggerTask)
+
+				// Execution history
+				schedulerGroup.GET("/executions", schedulerExecutionHandler.ListExecutions)
+				schedulerGroup.GET("/executions/:id", schedulerExecutionHandler.GetExecution)
+
+				// Statistics
+				schedulerGroup.GET("/stats", schedulerStatsHandler.GetStats)
+			}
+
 			// ==================== Audit Log Subsystem ====================
 			auditGroup := protected.Group("/audit")
 			{
-				// Main audit log endpoints
+				// Main audit log endpoints (legacy)
 				auditGroup.GET("", auditHandler.ListAuditLogs)
 				auditGroup.GET("/:log_id", auditHandler.GetAuditLog)
 				auditGroup.GET("/recent", auditHandler.ListRecentLogs)
 				auditGroup.GET("/failed", auditHandler.ListFailedActions)
 
-				// Analytics
+				// Analytics (legacy)
 				auditGroup.GET("/timeline", auditHandler.GetActivityTimeline)
 				auditGroup.GET("/statistics", auditHandler.GetAuditStatistics)
 				auditGroup.GET("/actions", auditHandler.GetDistinctActions)
 				auditGroup.GET("/resource-types", auditHandler.GetDistinctResourceTypes)
 				auditGroup.GET("/search", auditHandler.SearchAuditLogs)
 
-				// Resource-specific
+				// Resource-specific (legacy)
 				auditGroup.GET("/resources/:resource_type/:resource_id", auditHandler.ListResourceAuditLogs)
+
+				// ==================== New Unified Audit API (T023) ====================
+				// Unified audit events
+				auditGroup.GET("/events", auditEventHandler.ListEvents)
+				auditGroup.GET("/events/:id", auditEventHandler.GetEvent)
+
+				// Audit configuration
+				auditGroup.GET("/config", auditConfigHandler.GetConfig)
+				auditGroup.PUT("/config", auditConfigHandler.UpdateConfig)
 			}
 
 			// User-specific audit logs

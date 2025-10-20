@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository/scheduler"
 )
@@ -35,7 +36,7 @@ func (er *ExecutionRecorder) RecordExecution(
 	schedule *Schedule,
 	task Task,
 	triggerType string, // "scheduled" or "manual"
-	triggerBy string,   // User ID for manual triggers
+	triggerBy string, // User ID for manual triggers
 ) *models.TaskExecution {
 	executionUID := uuid.New().String()
 	now := time.Now()

@@ -13,12 +13,13 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
-	k8sservice "github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/pkg/kube"
+
+	k8sservice "github.com/ysicing/tiga/internal/services/k8s"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 // TestClusterHealthCheck tests cluster health check service

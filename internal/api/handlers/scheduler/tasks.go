@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
+
 	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 	schedulerservice "github.com/ysicing/tiga/internal/services/scheduler"
 )
@@ -16,7 +17,8 @@ import (
 // T022: Scheduler API handlers implementation
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T022
-//           .claude/specs/006-gitness-tiga/contracts/scheduler_api.yaml
+//
+//	.claude/specs/006-gitness-tiga/contracts/scheduler_api.yaml
 type TaskHandler struct {
 	taskRepo  schedulerrepo.TaskRepository
 	scheduler *schedulerservice.Scheduler

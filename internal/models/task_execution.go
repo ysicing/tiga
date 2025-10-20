@@ -17,11 +17,11 @@ type TaskExecution struct {
 	TaskType string `gorm:"type:varchar(255);not null" json:"task_type"`
 
 	// 执行上下文
-	ExecutionUID string    `gorm:"type:varchar(255);not null;uniqueIndex" json:"execution_uid"` // UUID
-	RunBy        string    `gorm:"type:varchar(255);not null" json:"run_by"`                    // 实例 ID
-	ScheduledAt  time.Time `gorm:"not null" json:"scheduled_at"`                                // 计划执行时间
+	ExecutionUID string    `gorm:"type:varchar(255);not null;uniqueIndex" json:"execution_uid"`                                                    // UUID
+	RunBy        string    `gorm:"type:varchar(255);not null" json:"run_by"`                                                                       // 实例 ID
+	ScheduledAt  time.Time `gorm:"not null" json:"scheduled_at"`                                                                                   // 计划执行时间
 	StartedAt    time.Time `gorm:"not null;index:idx_task_executions_started_at;index:idx_task_executions_composite,priority:4" json:"started_at"` // 实际开始时间
-	FinishedAt   time.Time `gorm:"" json:"finished_at,omitempty"`                               // 实际结束时间
+	FinishedAt   time.Time `gorm:"" json:"finished_at,omitempty"`                                                                                  // 实际结束时间
 
 	// 执行结果
 	State        ExecutionState `gorm:"type:varchar(32);not null;index:idx_task_executions_state;index:idx_task_executions_composite,priority:3" json:"state"`
@@ -35,8 +35,8 @@ type TaskExecution struct {
 	RetryCount int   `gorm:"not null;default:0" json:"retry_count"` // 重试次数
 
 	// 触发方式
-	TriggerType string `gorm:"type:varchar(32);not null" json:"trigger_type"`       // scheduled, manual
-	TriggerBy   string `gorm:"type:varchar(255)" json:"trigger_by,omitempty"`       // 手动触发的用户 ID
+	TriggerType string `gorm:"type:varchar(32);not null" json:"trigger_type"` // scheduled, manual
+	TriggerBy   string `gorm:"type:varchar(255)" json:"trigger_by,omitempty"` // 手动触发的用户 ID
 
 	// 时间戳
 	CreatedAt time.Time `gorm:"index" json:"created_at"`

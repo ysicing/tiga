@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/ysicing/tiga/internal/models"
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	"github.com/ysicing/tiga/internal/services/audit"
+
+	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 )
 
 // AsyncAuditLogger provides non-blocking audit logging with batching for database operations.

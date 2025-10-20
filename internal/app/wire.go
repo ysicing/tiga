@@ -15,7 +15,6 @@ import (
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/db"
 	"github.com/ysicing/tiga/internal/repository"
-	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
@@ -27,6 +26,8 @@ import (
 	"github.com/ysicing/tiga/internal/services/prometheus"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/kube"
+
+	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 )
 
 // DatabaseSet provides database-related dependencies

@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/internal/models"
+
 	auditservice "github.com/ysicing/tiga/internal/services/audit"
 )
 
@@ -19,7 +20,8 @@ import (
 // T017: Enhanced to use AsyncLogger and unified AuditEvent model
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T017
-//           .claude/specs/006-gitness-tiga/audit-unification.md Stage 2
+//
+//	.claude/specs/006-gitness-tiga/audit-unification.md Stage 2
 type AuditMiddleware struct {
 	asyncLogger *auditservice.AsyncLogger[*models.AuditEvent]
 }
@@ -166,11 +168,13 @@ func (m *AuditMiddleware) buildAuditEvent(c *gin.Context, start time.Time, reque
 	resourceData["statusCode"] = string(rune(c.Writer.Status()))
 
 	// Create unified AuditEvent
+	// T017: Set Subsystem = "http" for HTTP API audit
 	auditEvent := &models.AuditEvent{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now().UnixMilli(),
-		Action:    action,
+		ID:           uuid.New().String(),
+		Timestamp:    time.Now().UnixMilli(),
+		Action:       action,
 		ResourceType: resourceType,
+		Subsystem:    models.SubsystemHTTP, // T017: Set subsystem to HTTP
 		Resource: models.Resource{
 			Type:       resourceType,
 			Identifier: resourceID,

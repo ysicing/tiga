@@ -2,11 +2,7 @@ package scheduler
 
 import (
 	"context"
-	"sync"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // TestConcurrentScheduling 并发调度集成测试（简化版 - 单实例内）
@@ -87,7 +83,7 @@ func TestConcurrentScheduling(t *testing.T) {
 			// var wg sync.WaitGroup
 			// executionUIDs := make([]string, 3)
 			// errors := make([]error, 3)
-			// 
+			//
 			// for i := 0; i < 3; i++ {
 			//     wg.Add(1)
 			//     go func(idx int) {
@@ -200,7 +196,7 @@ func TestConcurrentScheduling(t *testing.T) {
 			//     Priority: 0,
 			//     Enabled:  true,
 			// })
-			// 
+			//
 			// highPriorityTask := createTestTask(t, db, &models.ScheduledTask{
 			//     Name:     "high-priority-task",
 			//     Type:     "test_handler",
@@ -210,7 +206,7 @@ func TestConcurrentScheduling(t *testing.T) {
 
 			// 先触发低优先级任务
 			// scheduler.TriggerTask(ctx, lowPriorityTask.UID, "system")
-			// 
+			//
 			// // 延迟触发高优先级任务（确保都在队列中）
 			// time.Sleep(100 * time.Millisecond)
 			// scheduler.TriggerTask(ctx, highPriorityTask.UID, "system")
@@ -221,7 +217,7 @@ func TestConcurrentScheduling(t *testing.T) {
 			// 验证执行顺序（通过 started_at 时间戳）
 			// lowExec := getLastExecution(t, db, lowPriorityTask.UID)
 			// highExec := getLastExecution(t, db, highPriorityTask.UID)
-			// 
+			//
 			// // 高优先级应先执行（started_at 更早）
 			// assert.True(t, highExec.StartedAt.Before(lowExec.StartedAt),
 			//     "高优先级任务应先执行")
@@ -321,7 +317,7 @@ func TestConcurrentScheduling(t *testing.T) {
 
 			// duration := time.Since(startTime)
 			// throughput := float64(taskCount) / duration.Seconds()
-			// 
+			//
 			// t.Logf("任务队列吞吐量: %.2f 任务/秒", throughput)
 			// assert.GreaterOrEqual(t, throughput, 100.0, "吞吐量应≥100任务/秒")
 

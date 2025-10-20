@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // AuditEventRepository 统一审计事件仓储

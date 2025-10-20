@@ -6,12 +6,14 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ysicing/tiga/pkg/cluster"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/ysicing/tiga/pkg/cluster"
+
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 // CRDWorkload represents a CRD workload type

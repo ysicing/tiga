@@ -23,6 +23,8 @@ type Config struct {
 	Webhook            WebhookConfig
 	Features           FeaturesConfig
 	Log                LogConfig
+	Scheduler          SchedulerConfig // T028: Scheduler configuration
+	Audit              AuditConfig     // T028: Audit configuration
 }
 
 // ServerConfig holds HTTP server configuration
@@ -125,6 +127,19 @@ type FeaturesConfig struct {
 type LogConfig struct {
 	Level  string
 	Format string
+}
+
+// SchedulerConfig holds scheduler configuration (T028)
+type SchedulerConfig struct {
+	DefaultTimeoutSeconds int // Default task timeout in seconds (default: 3600)
+	DefaultMaxRetries     int // Default max retries for failed tasks (default: 3)
+	DefaultGracePeriod    int // Default grace period in seconds (default: 30)
+}
+
+// AuditConfig holds audit logging configuration (T028)
+type AuditConfig struct {
+	RetentionDays  int // Audit log retention in days (default: 90)
+	MaxObjectBytes int // Maximum object size in bytes (default: 64KB)
 }
 
 // Load loads configuration from environment variables
@@ -232,6 +247,17 @@ func LoadFromFile(filename string) (*Config, error) {
 			Level:  getEnv("LOG_LEVEL", "info"),
 			Format: getEnv("LOG_FORMAT", "json"),
 		},
+		// T028: Scheduler configuration
+		Scheduler: SchedulerConfig{
+			DefaultTimeoutSeconds: getIntOrDefault(configFile.Scheduler.DefaultTimeoutSeconds, getEnvAsInt("SCHEDULER_DEFAULT_TIMEOUT", 3600)),
+			DefaultMaxRetries:     getIntOrDefault(configFile.Scheduler.DefaultMaxRetries, getEnvAsInt("SCHEDULER_DEFAULT_MAX_RETRIES", 3)),
+			DefaultGracePeriod:    getIntOrDefault(configFile.Scheduler.DefaultGracePeriod, getEnvAsInt("SCHEDULER_DEFAULT_GRACE_PERIOD", 30)),
+		},
+		// T028: Audit configuration
+		Audit: AuditConfig{
+			RetentionDays:  getIntOrDefault(configFile.Audit.RetentionDays, getEnvAsInt("AUDIT_RETENTION_DAYS", 90)),
+			MaxObjectBytes: getIntOrDefault(configFile.Audit.MaxObjectBytes, getEnvAsInt("AUDIT_MAX_OBJECT_BYTES", 64*1024)),
+		},
 	}
 
 	return config, nil
@@ -290,6 +316,19 @@ type ConfigFile struct {
 	Features struct {
 		ReadonlyMode bool `yaml:"readonly_mode"`
 	} `yaml:"features"`
+
+	// T028: Scheduler configuration
+	Scheduler struct {
+		DefaultTimeoutSeconds int `yaml:"default_timeout_seconds"`
+		DefaultMaxRetries     int `yaml:"default_max_retries"`
+		DefaultGracePeriod    int `yaml:"default_grace_period"`
+	} `yaml:"scheduler"`
+
+	// T028: Audit configuration
+	Audit struct {
+		RetentionDays  int `yaml:"retention_days"`
+		MaxObjectBytes int `yaml:"max_object_bytes"`
+	} `yaml:"audit"`
 }
 
 // LoadFromEnv loads configuration from environment variables

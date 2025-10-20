@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository/scheduler"
 )
@@ -42,9 +43,9 @@ type Scheduler struct {
 	stopCh      chan struct{}
 	wg          sync.WaitGroup
 	execRepo    scheduler.ExecutionRepository // T013: Execution history repository
-	cron        *cron.Cron                     // T013: Cron scheduler
-	instanceID  string                         // T013: Scheduler instance ID
-	manualTasks chan string                    // T013: Channel for manual task triggers
+	cron        *cron.Cron                    // T013: Cron scheduler
+	instanceID  string                        // T013: Scheduler instance ID
+	manualTasks chan string                   // T013: Channel for manual task triggers
 }
 
 // NewScheduler creates a new scheduler

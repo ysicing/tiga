@@ -12,3 +12,26 @@ database:
 security:
     jwt_secret: 6dJnIOS7Av7fJd2qlXitcjyWWZ4Al3h2uM9b-FGQ_u0=
     encryption_key: u7K3H4g1O0iuPW0Cns-ue2mHbcU3Aql-2fi-Ro7Ivno=
+# T028: Scheduler configuration
+scheduler:
+    default_timeout_seconds: 3600  # Default task timeout (1 hour)
+    default_max_retries: 3          # Default max retries for failed tasks
+    default_grace_period: 30        # Grace period in seconds
+# T028: Audit configuration
+audit:
+    retention_days: 90              # Audit log retention in days
+    max_object_bytes: 65536         # Maximum object size (64KB)
+    # Supported subsystems:
+    # - http: HTTP API operations
+    # - minio: MinIO object storage operations
+    # - database: Database management operations
+    # - middleware: Redis, MySQL, PostgreSQL management
+    # - kubernetes: K8s cluster management
+    # - docker: Docker instance management
+    # - host: Host monitoring and management (VMs)
+    # - webssh: SSH terminal sessions
+    # - scheduler: Scheduled tasks
+    # - alert: Alert rules and events
+    # - auth: Authentication and authorization
+    # - storage: Storage management
+    # - webserver: Web server management
