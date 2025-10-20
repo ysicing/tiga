@@ -15,6 +15,7 @@ import (
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/db"
 	"github.com/ysicing/tiga/internal/repository"
+	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
@@ -57,6 +58,10 @@ var RepositorySet = wire.NewSet(
 
 	repository.NewResourceHistoryRepository,
 	wire.Bind(new(repository.ResourceHistoryRepositoryInterface), new(*repository.ResourceHistoryRepository)),
+
+	// Scheduler repositories
+	schedulerrepo.NewExecutionRepository,
+	schedulerrepo.NewTaskRepository,
 
 	// These return interfaces directly, no need for wire.Bind
 	repository.NewHostRepository,
@@ -111,6 +116,7 @@ var AuthSet = wire.NewSet(
 )
 
 // SchedulerSet provides scheduler
+// T027: Updated to include ExecutionRepository dependency
 var SchedulerSet = wire.NewSet(
 	scheduler.NewScheduler,
 )

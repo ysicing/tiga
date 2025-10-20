@@ -14,6 +14,7 @@ import (
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/db"
 	"github.com/ysicing/tiga/internal/repository"
+	"github.com/ysicing/tiga/internal/repository/scheduler"
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
@@ -23,7 +24,7 @@ import (
 	"github.com/ysicing/tiga/internal/services/monitor"
 	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/prometheus"
-	"github.com/ysicing/tiga/internal/services/scheduler"
+	scheduler2 "github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/kube"
 	"gorm.io/gorm"
 	"time"
@@ -38,9 +39,10 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 	if err != nil {
 		return nil, err
 	}
-	schedulerScheduler := scheduler.NewScheduler()
-	managerFactory := managers.NewManagerFactory()
 	gormDB := provideGormDB(database)
+	executionRepository := scheduler.NewExecutionRepository(gormDB)
+	schedulerScheduler := scheduler2.NewScheduler(executionRepository)
+	managerFactory := managers.NewManagerFactory()
 	instanceRepository := repository.NewInstanceRepository(gormDB)
 	metricsRepository := repository.NewMetricsRepository(gormDB)
 	auditLogRepository := repository.NewAuditLogRepository(gormDB)
@@ -83,7 +85,7 @@ var DatabaseSet = wire.NewSet(
 )
 
 // RepositorySet provides all repository interfaces
-var RepositorySet = wire.NewSet(repository.NewUserRepository, wire.Bind(new(repository.UserRepositoryInterface), new(*repository.UserRepository)), repository.NewInstanceRepository, wire.Bind(new(repository.InstanceRepositoryInterface), new(*repository.InstanceRepository)), repository.NewMetricsRepository, wire.Bind(new(repository.MetricsRepositoryInterface), new(*repository.MetricsRepository)), repository.NewAlertRepository, wire.Bind(new(repository.AlertRepositoryInterface), new(*repository.AlertRepository)), repository.NewAuditLogRepository, wire.Bind(new(repository.AuditLogRepositoryInterface), new(*repository.AuditLogRepository)), repository.NewClusterRepository, wire.Bind(new(repository.ClusterRepositoryInterface), new(*repository.ClusterRepository)), repository.NewResourceHistoryRepository, wire.Bind(new(repository.ResourceHistoryRepositoryInterface), new(*repository.ResourceHistoryRepository)), repository.NewHostRepository, repository.NewServiceRepository, repository.NewMonitorAlertRepository)
+var RepositorySet = wire.NewSet(repository.NewUserRepository, wire.Bind(new(repository.UserRepositoryInterface), new(*repository.UserRepository)), repository.NewInstanceRepository, wire.Bind(new(repository.InstanceRepositoryInterface), new(*repository.InstanceRepository)), repository.NewMetricsRepository, wire.Bind(new(repository.MetricsRepositoryInterface), new(*repository.MetricsRepository)), repository.NewAlertRepository, wire.Bind(new(repository.AlertRepositoryInterface), new(*repository.AlertRepository)), repository.NewAuditLogRepository, wire.Bind(new(repository.AuditLogRepositoryInterface), new(*repository.AuditLogRepository)), repository.NewClusterRepository, wire.Bind(new(repository.ClusterRepositoryInterface), new(*repository.ClusterRepository)), repository.NewResourceHistoryRepository, wire.Bind(new(repository.ResourceHistoryRepositoryInterface), new(*repository.ResourceHistoryRepository)), scheduler.NewExecutionRepository, scheduler.NewTaskRepository, repository.NewHostRepository, repository.NewServiceRepository, repository.NewMonitorAlertRepository)
 
 // ServiceSet provides core services
 var ServiceSet = wire.NewSet(services.NewK8sService, notification.NewNotificationService, managers.NewManagerFactory, managers.NewManagerCoordinator, provideAlertProcessor,
@@ -119,7 +121,8 @@ var AuthSet = wire.NewSet(
 )
 
 // SchedulerSet provides scheduler
-var SchedulerSet = wire.NewSet(scheduler.NewScheduler)
+// T027: Updated to include ExecutionRepository dependency
+var SchedulerSet = wire.NewSet(scheduler2.NewScheduler)
 
 func provideDatabaseConfig(cfg *config.Config) *config.DatabaseConfig {
 	return &cfg.Database
@@ -226,7 +229,7 @@ func newWireApplication(
 	configPath string,
 	installMode bool,
 	staticFS embed.FS,
-	database *db.Database, scheduler2 *scheduler.Scheduler,
+	database *db.Database, scheduler3 *scheduler2.Scheduler,
 	coordinator *managers.ManagerCoordinator,
 	jwtManager *auth.JWTManager,
 	hostRepo repository.HostRepository,
@@ -247,7 +250,7 @@ func newWireApplication(
 		config:               cfg,
 		configPath:           configPath,
 		db:                   database,
-		scheduler:            scheduler2,
+		scheduler:            scheduler3,
 		coordinator:          coordinator,
 		jwtManager:           jwtManager,
 		installMode:          installMode,
