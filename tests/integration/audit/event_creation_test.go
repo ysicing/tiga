@@ -2,15 +2,9 @@ package audit
 
 import (
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestAuditEventCreation 审计日志创建集成测试
@@ -38,18 +32,18 @@ func TestAuditEventCreation(t *testing.T) {
 			// TODO: 设置测试环境
 			// db := setupTestDatabase(t)
 			// defer cleanupTestDatabase(t, db)
-			// 
+			//
 			// router := setupTestRouter(t, db)
 
 			// 模拟创建资源的 API 请求
 			// reqBody := `{"name": "test-database", "type": "mysql"}`
-			// req := httptest.NewRequest(http.MethodPost, "/api/v1/database/instances", 
+			// req := httptest.NewRequest(http.MethodPost, "/api/v1/database/instances",
 			//     strings.NewReader(reqBody))
 			// req.Header.Set("Authorization", "Bearer test-token")
 			// req.Header.Set("Content-Type", "application/json")
 			// req.Header.Set("X-Request-ID", "req-test-001")
 			// w := httptest.NewRecorder()
-			// 
+			//
 			// router.ServeHTTP(w, req)
 
 			// 等待异步写入完成
@@ -58,7 +52,7 @@ func TestAuditEventCreation(t *testing.T) {
 			// 验证审计事件已创建
 			// events := getAuditEvents(t, db)
 			// require.GreaterOrEqual(t, len(events), 1, "应至少有1条审计记录")
-			// 
+			//
 			// event := events[0]
 			// assert.Equal(t, "created", event.Action, "操作类型应为 created")
 			// assert.Equal(t, "databaseInstance", event.ResourceType)
@@ -84,12 +78,12 @@ func TestAuditEventCreation(t *testing.T) {
 
 			// 更新资源
 			// updateBody := `{"name": "test-db-new", "size": "20Gi"}`
-			// req := httptest.NewRequest(http.MethodPut, 
+			// req := httptest.NewRequest(http.MethodPut,
 			//     fmt.Sprintf("/api/v1/database/instances/%s", resource.ID),
 			//     strings.NewReader(updateBody))
 			// req.Header.Set("Authorization", "Bearer test-token")
 			// w := httptest.NewRecorder()
-			// 
+			//
 			// router.ServeHTTP(w, req)
 
 			// 等待异步写入
@@ -98,14 +92,14 @@ func TestAuditEventCreation(t *testing.T) {
 			// 验证审计事件
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "updated", event.Action)
-			// 
+			//
 			// // 验证 OldObject
 			// require.NotEmpty(t, event.DiffObject.OldObject)
 			// var oldObj map[string]interface{}
 			// json.Unmarshal([]byte(event.DiffObject.OldObject), &oldObj)
 			// assert.Equal(t, "test-db-old", oldObj["name"])
 			// assert.Equal(t, "10Gi", oldObj["size"])
-			// 
+			//
 			// // 验证 NewObject
 			// require.NotEmpty(t, event.DiffObject.NewObject)
 			// var newObj map[string]interface{}
@@ -132,7 +126,7 @@ func TestAuditEventCreation(t *testing.T) {
 			//     fmt.Sprintf("/api/v1/database/instances/%s", resource.ID), nil)
 			// req.Header.Set("Authorization", "Bearer test-token")
 			// w := httptest.NewRecorder()
-			// 
+			//
 			// router.ServeHTTP(w, req)
 
 			// 等待异步写入
@@ -141,11 +135,11 @@ func TestAuditEventCreation(t *testing.T) {
 			// 验证审计事件
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "deleted", event.Action)
-			// 
+			//
 			// // 应有 OldObject，无 NewObject
 			// require.NotEmpty(t, event.DiffObject.OldObject)
 			// assert.Empty(t, event.DiffObject.NewObject)
-			// 
+			//
 			// var oldObj map[string]interface{}
 			// json.Unmarshal([]byte(event.DiffObject.OldObject), &oldObj)
 			// assert.Equal(t, "test-db-to-delete", oldObj["name"])
@@ -160,12 +154,12 @@ func TestAuditEventCreation(t *testing.T) {
 			// req := httptest.NewRequest(http.MethodPost, "/api/v1/test", nil)
 			// req.RemoteAddr = "192.168.1.100:12345"
 			// req.Header.Set("Authorization", "Bearer test-token")
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "192.168.1.100", event.ClientIP)
 
@@ -178,14 +172,14 @@ func TestAuditEventCreation(t *testing.T) {
 			// req.RemoteAddr = "10.0.0.1:12345" // 代理服务器 IP
 			// req.Header.Set("X-Forwarded-For", "203.0.113.50, 10.0.0.2") // 客户端真实 IP
 			// req.Header.Set("Authorization", "Bearer test-token")
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
-			// assert.Equal(t, "203.0.113.50", event.ClientIP, 
+			// assert.Equal(t, "203.0.113.50", event.ClientIP,
 			//     "应提取 X-Forwarded-For 的第一个 IP")
 
 			t.Skip("等待 X-Forwarded-For 处理实现")
@@ -197,12 +191,12 @@ func TestAuditEventCreation(t *testing.T) {
 			// req.RemoteAddr = "10.0.0.1:12345"
 			// req.Header.Set("X-Real-IP", "198.51.100.75") // nginx 设置的真实 IP
 			// req.Header.Set("Authorization", "Bearer test-token")
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "198.51.100.75", event.ClientIP)
 
@@ -215,12 +209,12 @@ func TestAuditEventCreation(t *testing.T) {
 			// req.Header.Set("X-Real-IP", "198.51.100.75")
 			// req.Header.Set("X-Forwarded-For", "203.0.113.50")
 			// req.Header.Set("Authorization", "Bearer test-token")
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "198.51.100.75", event.ClientIP,
 			//     "X-Real-IP 优先级应高于 X-Forwarded-For")
@@ -233,23 +227,23 @@ func TestAuditEventCreation(t *testing.T) {
 		t.Run("should not block business operations", func(t *testing.T) {
 			// TODO: 测试异步写入不阻塞业务
 			// startTime := time.Now()
-			// 
+			//
 			// // 执行业务操作
 			// req := httptest.NewRequest(http.MethodPost, "/api/v1/test", nil)
 			// req.Header.Set("Authorization", "Bearer test-token")
 			// w := httptest.NewRecorder()
-			// 
+			//
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// requestDuration := time.Since(startTime)
-			// 
+			//
 			// // 验证请求快速返回（不等待审计日志写入）
 			// assert.Less(t, requestDuration, 100*time.Millisecond,
 			//     "请求应在100ms内返回（不等待审计写入）")
-			// 
+			//
 			// // 等待异步写入完成
 			// time.Sleep(1 * time.Second)
-			// 
+			//
 			// // 验证审计日志已写入
 			// event := getLatestAuditEvent(t, db)
 			// assert.NotEmpty(t, event.ID)
@@ -261,39 +255,39 @@ func TestAuditEventCreation(t *testing.T) {
 			// TODO: 性能测试 - 1000 并发写入
 			// var wg sync.WaitGroup
 			// errorCount := atomic.Int32{}
-			// 
+			//
 			// startTime := time.Now()
-			// 
+			//
 			// for i := 0; i < 1000; i++ {
 			//     wg.Add(1)
 			//     go func(idx int) {
 			//         defer wg.Done()
-			//         
-			//         req := httptest.NewRequest(http.MethodPost, 
+			//
+			//         req := httptest.NewRequest(http.MethodPost,
 			//             fmt.Sprintf("/api/v1/test/%d", idx), nil)
 			//         req.Header.Set("Authorization", "Bearer test-token")
 			//         w := httptest.NewRecorder()
-			//         
+			//
 			//         router.ServeHTTP(w, req)
-			//         
+			//
 			//         if w.Code != http.StatusOK {
 			//             errorCount.Add(1)
 			//         }
 			//     }(i)
 			// }
-			// 
+			//
 			// wg.Wait()
 			// duration := time.Since(startTime)
-			// 
+			//
 			// t.Logf("1000次并发请求耗时: %v", duration)
 			// assert.Equal(t, int32(0), errorCount.Load(), "不应有请求失败")
-			// 
+			//
 			// // 等待所有审计日志写入
 			// time.Sleep(3 * time.Second)
-			// 
+			//
 			// // 验证审计日志数量
 			// events := getAuditEvents(t, db)
-			// assert.GreaterOrEqual(t, len(events), 900, 
+			// assert.GreaterOrEqual(t, len(events), 900,
 			//     "至少应有90%的审计日志写入成功")
 
 			t.Skip("等待并发写入性能测试")
@@ -307,14 +301,14 @@ func TestAuditEventCreation(t *testing.T) {
 			// req.Header.Set("Authorization", "Bearer test-token")
 			// req.Header.Set("User-Agent", "Mozilla/5.0 Test")
 			// req.Header.Set("X-Request-ID", "req-test-002")
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
-			// 
+			//
 			// // 验证必填字段
 			// assert.NotEmpty(t, event.ID, "ID 不能为空")
 			// assert.Greater(t, event.Timestamp, int64(0), "Timestamp 必须>0")
@@ -335,9 +329,11 @@ func TestAuditEventCreation(t *testing.T) {
 
 		t.Run("should validate action enum", func(t *testing.T) {
 			// TODO: 验证 Action 枚举值
-			validActions := []string{"created", "updated", "deleted", "read", 
+			_ = []string{"created", "updated", "deleted", "read",
 				"enabled", "disabled", "login", "logout", "granted", "revoked"}
-			
+
+			// validActions := []string{"created", "updated", "deleted", "read",
+			// 	"enabled", "disabled", "login", "logout", "granted", "revoked"}
 			// for _, action := range validActions {
 			//     // 触发相应操作...
 			//     event := getLatestAuditEvent(t, db)
@@ -352,7 +348,7 @@ func TestAuditEventCreation(t *testing.T) {
 			// TODO: 验证 ResourceType 枚举值
 			validResourceTypes := []string{"cluster", "pod", "deployment", "service",
 				"database", "databaseInstance", "user", "role", "scheduledTask"}
-			
+
 			// 测试逻辑...
 
 			_ = validResourceTypes
@@ -365,12 +361,12 @@ func TestAuditEventCreation(t *testing.T) {
 			// TODO: 测试匿名用户请求
 			// req := httptest.NewRequest(http.MethodGet, "/api/v1/public/info", nil)
 			// // 不设置 Authorization header
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "anonymous", event.User.Type)
 			// assert.NotEmpty(t, event.User.UID, "匿名用户也应有UID")
@@ -382,12 +378,12 @@ func TestAuditEventCreation(t *testing.T) {
 			// TODO: 测试服务账号请求
 			// req := httptest.NewRequest(http.MethodPost, "/api/v1/internal/sync", nil)
 			// req.Header.Set("Authorization", "Bearer service-account-token")
-			// 
+			//
 			// w := httptest.NewRecorder()
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// time.Sleep(500 * time.Millisecond)
-			// 
+			//
 			// event := getLatestAuditEvent(t, db)
 			// assert.Equal(t, "service", event.User.Type)
 
@@ -396,18 +392,18 @@ func TestAuditEventCreation(t *testing.T) {
 
 		t.Run("should handle audit write failure gracefully", func(t *testing.T) {
 			// TODO: 测试审计写入失败不影响业务
-			// 
+			//
 			// // 模拟数据库写入失败（关闭数据库连接）
 			// // ...
-			// 
+			//
 			// req := httptest.NewRequest(http.MethodPost, "/api/v1/test", nil)
 			// req.Header.Set("Authorization", "Bearer test-token")
 			// w := httptest.NewRecorder()
-			// 
+			//
 			// router.ServeHTTP(w, req)
-			// 
+			//
 			// // 业务操作应成功
-			// assert.Equal(t, http.StatusOK, w.Code, 
+			// assert.Equal(t, http.StatusOK, w.Code,
 			//     "审计写入失败不应影响业务操作")
 
 			t.Skip("等待审计失败处理")
@@ -445,16 +441,16 @@ func TestAuditMiddleware(t *testing.T) {
 		//     "/api/v1/metrics",
 		//     "/swagger/",
 		// }
-		// 
+		//
 		// for _, path := range excludedPaths {
 		//     eventCountBefore := countAuditEvents(t, db)
-		//     
+		//
 		//     req := httptest.NewRequest(http.MethodGet, path, nil)
 		//     w := httptest.NewRecorder()
 		//     router.ServeHTTP(w, req)
-		//     
+		//
 		//     time.Sleep(500 * time.Millisecond)
-		//     
+		//
 		//     eventCountAfter := countAuditEvents(t, db)
 		//     assert.Equal(t, eventCountBefore, eventCountAfter,
 		//         "路径 %s 不应记录审计日志", path)

@@ -5,13 +5,125 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/api"
+	"github.com/ysicing/tiga/internal/config"
+	"github.com/ysicing/tiga/internal/models"
+
+	authservices "github.com/ysicing/tiga/internal/services/auth"
+	hostservices "github.com/ysicing/tiga/internal/services/host"
+	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
 )
+
+// setupTestRouter 设置测试用的 Gin router
+// 使用内存数据库和最小依赖配置
+// 返回: router, database, validJWTToken
+func setupTestRouter(t *testing.T) (*gin.Engine, *gorm.DB, string) {
+	gin.SetMode(gin.TestMode)
+
+	// 创建内存数据库
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err, "Failed to create in-memory database")
+
+	// 初始化全局 DB 变量（用于 ClusterManager）
+	models.DB = database
+
+	// 运行迁移 - 直接使用 gorm.AutoMigrate
+	err = database.AutoMigrate(
+		&models.User{},
+		&models.Instance{},
+		&models.Alert{},
+		&models.AlertEvent{},
+		&models.AuditLog{},
+		&models.AuditEvent{},
+		&models.ScheduledTask{},
+		&models.TaskExecution{},
+		// Add other models as needed
+	)
+	require.NoError(t, err, "Failed to run migrations")
+
+	// 创建测试用户和 JWT token
+	hashedPassword := "$2a$10$test.hash" // Dummy hash for testing
+	testUser := &models.User{
+		Username: "testuser",
+		Password: hashedPassword,
+		Email:    "test@example.com",
+		IsAdmin:  true,
+		Provider: "password",
+		Status:   "active",
+		Enabled:  true,
+	}
+	database.Create(testUser)
+
+	// 创建路由器
+	router := gin.New()
+
+	// 创建最小配置
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Port: 12306,
+		},
+		JWT: config.JWTConfig{
+			Secret:    "test-secret",
+			ExpiresIn: time.Hour * 24,
+		},
+		Features: config.FeaturesConfig{
+			ReadonlyMode: false,
+		},
+	}
+
+	// 创建 JWT manager - 使用正确的参数
+	jwtManager := authservices.NewJWTManager(cfg.JWT.Secret, time.Hour, time.Hour*24)
+
+	// 生成有效的 JWT token 用于测试
+	var roles []string
+	if testUser.IsAdmin {
+		roles = []string{"admin"}
+	}
+	accessToken, _, err := jwtManager.GenerateAccessToken(testUser.ID, testUser.Username, testUser.Email, roles)
+	require.NoError(t, err, "Failed to generate JWT token")
+
+	// 创建必要的服务（使用 nil 值,因为 Scheduler/Audit 测试不需要它们）
+	hostService := &hostservices.HostService{}
+	stateCollector := &hostservices.StateCollector{}
+	terminalManager := &hostservices.TerminalManager{}
+	probeScheduler := &monitorservices.ServiceProbeScheduler{}
+
+	// 创建临时配置文件
+	tmpfile, err := os.CreateTemp("", "config-*.yaml")
+	require.NoError(t, err)
+	tmpfile.WriteString("server:\n  install_lock: true\n")
+	tmpfile.Close() // Close immediately to ensure content is written
+	configPath := tmpfile.Name()
+	t.Cleanup(func() { os.Remove(configPath) }) // Clean up after test
+
+	// 设置路由
+	api.SetupRoutes(
+		router,
+		database,
+		configPath,
+		jwtManager,
+		"test-secret",
+		config.DatabaseManagementConfig{},
+		hostService,
+		stateCollector,
+		terminalManager,
+		probeScheduler,
+		cfg,
+	)
+
+	return router, database, accessToken
+}
 
 // TestSchedulerAPIContract 验证 Scheduler API 契约
 // 参考: .claude/specs/006-gitness-tiga/contracts/scheduler_api.yaml
@@ -21,15 +133,21 @@ import (
 func TestSchedulerAPIContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// TODO: 替换为实际的路由设置
-	// router := setupTestRouter()
-	router := gin.New()
+	// 设置测试路由和数据库
+	router, database, token := setupTestRouter(t)
+	authHeader := "Bearer " + token // 构造完整的 Authorization header
+	defer func() {
+		sqlDB, _ := database.DB()
+		if sqlDB != nil {
+			sqlDB.Close()
+		}
+	}()
 
 	t.Run("GET /api/v1/scheduler/tasks - 获取任务列表", func(t *testing.T) {
 		// 测试场景 1: 基本查询（无过滤）
 		t.Run("should return paginated task list", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/tasks?page=1&page_size=20", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -61,7 +179,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		// 测试场景 2: 按启用状态过滤
 		t.Run("should filter by enabled status", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/tasks?enabled=true", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -83,7 +201,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		// 测试场景 3: 按任务类型过滤
 		t.Run("should filter by task type", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/tasks?type=alert_processing", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -107,7 +225,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should return task details", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/scheduler/tasks/%s", taskID), nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -133,7 +251,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should return 404 for non-existent task", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/tasks/non-existent-id", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -151,7 +269,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should enable task successfully", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/scheduler/tasks/%s/enable", taskID), nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -168,7 +286,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should return 404 for non-existent task", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/scheduler/tasks/non-existent/enable", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -191,7 +309,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should disable task successfully", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/v1/scheduler/tasks/%s/disable", taskID), nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -207,7 +325,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should return 404 for non-existent task", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/scheduler/tasks/non-existent/disable", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -224,7 +342,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost,
 				fmt.Sprintf("/api/v1/scheduler/tasks/%s/trigger", taskID),
 				strings.NewReader(body))
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
@@ -246,7 +364,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		t.Run("should trigger without override data", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost,
 				fmt.Sprintf("/api/v1/scheduler/tasks/%s/trigger", taskID), nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -256,7 +374,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should return 404 for non-existent task", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/scheduler/tasks/non-existent/trigger", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -269,7 +387,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 			// 当前仅验证 API 契约，实际逻辑在集成测试中验证
 			req := httptest.NewRequest(http.MethodPost,
 				fmt.Sprintf("/api/v1/scheduler/tasks/%s/trigger", taskID), nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -283,7 +401,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 	t.Run("GET /api/v1/scheduler/executions - 获取执行历史", func(t *testing.T) {
 		t.Run("should return paginated execution history", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/executions?page=1&page_size=20", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -301,7 +419,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		t.Run("should filter by task name", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet,
 				"/api/v1/scheduler/executions?task_name=alert_processing", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -322,7 +440,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		t.Run("should filter by state", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet,
 				"/api/v1/scheduler/executions?state=failure", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -333,7 +451,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		t.Run("should filter by time range", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet,
 				"/api/v1/scheduler/executions?start_time=1697529600000&end_time=1697616000000", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -348,7 +466,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 		t.Run("should return execution details", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet,
 				fmt.Sprintf("/api/v1/scheduler/executions/%s", executionID), nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -373,7 +491,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 
 		t.Run("should return 404 for non-existent execution", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/executions/999999", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -385,7 +503,7 @@ func TestSchedulerAPIContract(t *testing.T) {
 	t.Run("GET /api/v1/scheduler/stats - 获取统计数据", func(t *testing.T) {
 		t.Run("should return statistics", func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/scheduler/stats", nil)
-			req.Header.Set("Authorization", "Bearer test-token")
+			req.Header.Set("Authorization", authHeader)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)

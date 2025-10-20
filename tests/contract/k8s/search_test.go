@@ -62,13 +62,13 @@ func TestSearchContract(t *testing.T) {
 		var response struct {
 			Data struct {
 				Results []struct {
-					Kind       string            `json:"kind"`
-					Name       string            `json:"name"`
-					Namespace  string            `json:"namespace"`
-					Labels     map[string]string `json:"labels"`
-					Score      int               `json:"score"`
-					MatchType  string            `json:"match_type"`
-					CreatedAt  string            `json:"created"`
+					Kind      string            `json:"kind"`
+					Name      string            `json:"name"`
+					Namespace string            `json:"namespace"`
+					Labels    map[string]string `json:"labels"`
+					Score     int               `json:"score"`
+					MatchType string            `json:"match_type"`
+					CreatedAt string            `json:"created"`
 				} `json:"results"`
 			} `json:"data"`
 		}

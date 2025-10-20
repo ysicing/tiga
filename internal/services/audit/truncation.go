@@ -11,7 +11,8 @@ import (
 // T018: Object truncation strategy implementation
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T018
-//           .claude/specs/006-gitness-tiga/research.md Section 4 (Object Truncation)
+//
+//	.claude/specs/006-gitness-tiga/research.md Section 4 (Object Truncation)
 type TruncationResult struct {
 	TruncatedJSON      string   // Truncated JSON string
 	WasTruncated       bool     // Whether truncation occurred
@@ -36,12 +37,12 @@ const (
 // T018: Smart truncation algorithm
 //
 // Strategy:
-// 1. If object ≤ 64KB: No truncation
-// 2. If object > 64KB: Field-level truncation
-//    a. Identify large fields (>16KB)
-//    b. Truncate large fields individually
-//    c. Preserve small fields completely
-//    d. Maintain JSON structure validity
+//  1. If object ≤ 64KB: No truncation
+//  2. If object > 64KB: Field-level truncation
+//     a. Identify large fields (>16KB)
+//     b. Truncate large fields individually
+//     c. Preserve small fields completely
+//     d. Maintain JSON structure validity
 //
 // Returns:
 // - Truncated JSON string

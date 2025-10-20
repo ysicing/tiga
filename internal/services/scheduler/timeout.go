@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+
 	"github.com/ysicing/tiga/internal/models"
 )
 
@@ -13,7 +14,8 @@ import (
 // T015: Timeout control mechanism with Context and grace period
 //
 // Reference: .claude/specs/006-gitness-tiga/tasks.md T015
-//           .claude/specs/006-gitness-tiga/research.md Section 5 (Timeout Control)
+//
+//	.claude/specs/006-gitness-tiga/research.md Section 5 (Timeout Control)
 type TimeoutController struct {
 	defaultTimeout time.Duration // Default timeout duration
 	gracePeriod    time.Duration // Grace period for cleanup (30 seconds)
@@ -31,12 +33,12 @@ func NewTimeoutController(defaultTimeout time.Duration) *TimeoutController {
 // T015: Implements Context timeout with 30-second grace period
 //
 // Flow:
-// 1. Create timeout context with max_duration_seconds
-// 2. Execute task in goroutine
-// 3. If timeout:
-//    a. Cancel context (task should stop)
-//    b. Wait gracePeriod (30s) for cleanup
-//    c. If still running after grace period, mark as timed out
+//  1. Create timeout context with max_duration_seconds
+//  2. Execute task in goroutine
+//  3. If timeout:
+//     a. Cancel context (task should stop)
+//     b. Wait gracePeriod (30s) for cleanup
+//     c. If still running after grace period, mark as timed out
 func (tc *TimeoutController) ExecuteWithTimeout(
 	ctx context.Context,
 	task Task,

@@ -78,14 +78,14 @@ func TestObjectTruncation(t *testing.T) {
 			//     "data": strings.Repeat("x", 64*1024-50), // 留出 JSON 结构空间
 			// }
 			// exactObjectJSON, _ := json.Marshal(exactObject)
-			// 
+			//
 			// // 调整到恰好 64KB
 			// if len(exactObjectJSON) < maxObjectSize {
 			//     padding := maxObjectSize - len(exactObjectJSON)
 			//     exactObject["padding"] = strings.Repeat("x", padding-20)
 			//     exactObjectJSON, _ = json.Marshal(exactObject)
 			// }
-			// 
+			//
 			// assert.LessOrEqual(t, len(exactObjectJSON), maxObjectSize)
 
 			// 记录审计事件
@@ -184,7 +184,7 @@ func TestObjectTruncation(t *testing.T) {
 			// var truncatedObject map[string]interface{}
 			// err = json.Unmarshal([]byte(savedEvent.DiffObject.OldObject), &truncatedObject)
 			// require.NoError(t, err, "截断后应是有效 JSON")
-			// 
+			//
 			// // 验证关键字段仍存在
 			// assert.Contains(t, truncatedObject, "metadata", "顶层字段应保留")
 			// assert.Contains(t, truncatedObject, "spec")
@@ -229,15 +229,15 @@ func TestObjectTruncation(t *testing.T) {
 			// 验证截断
 			// savedEvent := getLatestAuditEvent(t, db)
 			// assert.True(t, savedEvent.DiffObject.NewObjectTruncated)
-			// 
+			//
 			// // 验证截断字段列表
 			// assert.Contains(t, savedEvent.DiffObject.TruncatedFields, "config",
 			//     "config 字段应被标记为截断")
-			// 
+			//
 			// // 验证小字段未截断
 			// var truncatedObject map[string]interface{}
 			// json.Unmarshal([]byte(savedEvent.DiffObject.NewObject), &truncatedObject)
-			// 
+			//
 			// assert.Equal(t, "test-db", truncatedObject["name"], "小字段应完整保留")
 			// assert.Equal(t, "mysql", truncatedObject["type"])
 			// assert.Equal(t, "Normal description", truncatedObject["description"])
@@ -279,19 +279,19 @@ func TestObjectTruncation(t *testing.T) {
 			// savedEvent := getLatestAuditEvent(t, db)
 			// var truncatedObject map[string]interface{}
 			// json.Unmarshal([]byte(savedEvent.DiffObject.NewObject), &truncatedObject)
-			// 
+			//
 			// // 所有小字段应完整保留
 			// assert.Equal(t, "uuid-1234", truncatedObject["id"])
 			// assert.Equal(t, "production-db", truncatedObject["name"])
 			// assert.Equal(t, "running", truncatedObject["status"])
 			// assert.Equal(t, "2025-10-19T12:00:00Z", truncatedObject["createdAt"])
 			// assert.Equal(t, float64(5), truncatedObject["replicas"])
-			// 
+			//
 			// // largeData 字段应被截断或移除
 			// if largeData, ok := truncatedObject["largeData"].(string); ok {
 			//     assert.Less(t, len(largeData), 120*1024, "大字段应被截断")
 			// }
-			// 
+			//
 			// // 验证截断字段列表
 			// assert.Contains(t, savedEvent.DiffObject.TruncatedFields, "largeData")
 
@@ -339,16 +339,16 @@ func TestObjectTruncation(t *testing.T) {
 			// 验证嵌套截断
 			// savedEvent := getLatestAuditEvent(t, db)
 			// assert.True(t, savedEvent.DiffObject.NewObjectTruncated)
-			// 
+			//
 			// // 验证截断字段路径
 			// assert.Contains(t, savedEvent.DiffObject.TruncatedFields, "metadata.annotations.largeAnnotation",
 			//     "嵌套字段应以路径表示")
 			// assert.Contains(t, savedEvent.DiffObject.TruncatedFields, "spec.config.largeConfig")
-			// 
+			//
 			// // 验证小字段保留
 			// var truncatedObject map[string]interface{}
 			// json.Unmarshal([]byte(savedEvent.DiffObject.NewObject), &truncatedObject)
-			// 
+			//
 			// metadata := truncatedObject["metadata"].(map[string]interface{})
 			// assert.Equal(t, "test-db", metadata["name"], "嵌套小字段应保留")
 
@@ -370,7 +370,7 @@ func TestObjectTruncation(t *testing.T) {
 			// smallNew := map[string]interface{}{"data": strings.Repeat("y", 15*1024)}
 			// oldJSON, _ := json.Marshal(smallOld)
 			// newJSON, _ := json.Marshal(smallNew)
-			// 
+			//
 			// event1 := &models.AuditEvent{
 			//     Action: "updated",
 			//     DiffObject: models.DiffObject{
@@ -379,7 +379,7 @@ func TestObjectTruncation(t *testing.T) {
 			//     },
 			// }
 			// auditService.RecordEvent(ctx, event1)
-			// 
+			//
 			// savedEvent1 := getLatestAuditEvent(t, db)
 			// assert.False(t, savedEvent1.DiffObject.OldObjectTruncated)
 			// assert.False(t, savedEvent1.DiffObject.NewObjectTruncated)
@@ -389,7 +389,7 @@ func TestObjectTruncation(t *testing.T) {
 			// smallNew2 := map[string]interface{}{"data": strings.Repeat("y", 20*1024)}
 			// largeOldJSON, _ := json.Marshal(largeOld)
 			// smallNew2JSON, _ := json.Marshal(smallNew2)
-			// 
+			//
 			// event2 := &models.AuditEvent{
 			//     Action: "updated",
 			//     DiffObject: models.DiffObject{
@@ -398,7 +398,7 @@ func TestObjectTruncation(t *testing.T) {
 			//     },
 			// }
 			// auditService.RecordEvent(ctx, event2)
-			// 
+			//
 			// savedEvent2 := getLatestAuditEvent(t, db)
 			// assert.True(t, savedEvent2.DiffObject.OldObjectTruncated)
 			// assert.False(t, savedEvent2.DiffObject.NewObjectTruncated)
@@ -406,7 +406,7 @@ func TestObjectTruncation(t *testing.T) {
 			// 场景 3: 两个对象都截断
 			// largeNew := map[string]interface{}{"data": strings.Repeat("z", 150*1024)}
 			// largeNewJSON, _ := json.Marshal(largeNew)
-			// 
+			//
 			// event3 := &models.AuditEvent{
 			//     Action: "updated",
 			//     DiffObject: models.DiffObject{
@@ -415,7 +415,7 @@ func TestObjectTruncation(t *testing.T) {
 			//     },
 			// }
 			// auditService.RecordEvent(ctx, event3)
-			// 
+			//
 			// savedEvent3 := getLatestAuditEvent(t, db)
 			// assert.True(t, savedEvent3.DiffObject.OldObjectTruncated)
 			// assert.True(t, savedEvent3.DiffObject.NewObjectTruncated)
@@ -454,17 +454,17 @@ func TestObjectTruncation(t *testing.T) {
 			// 验证截断字段列表
 			// savedEvent := getLatestAuditEvent(t, db)
 			// assert.True(t, savedEvent.DiffObject.NewObjectTruncated)
-			// 
+			//
 			// truncatedFields := savedEvent.DiffObject.TruncatedFields
 			// assert.NotEmpty(t, truncatedFields, "应记录截断字段列表")
-			// 
+			//
 			// // 验证大字段在列表中
 			// expectedFields := []string{"configData", "logData", "binaryData"}
 			// for _, field := range expectedFields {
-			//     assert.Contains(t, truncatedFields, field, 
+			//     assert.Contains(t, truncatedFields, field,
 			//         "大字段 %s 应在截断列表中", field)
 			// }
-			// 
+			//
 			// // 验证小字段不在列表中
 			// assert.NotContains(t, truncatedFields, "name")
 			// assert.NotContains(t, truncatedFields, "description")
@@ -563,7 +563,7 @@ func TestObjectTruncation(t *testing.T) {
 			//     },
 			// }
 			// err := auditService.RecordEvent(ctx, event)
-			// 
+			//
 			// // 应返回错误或截断为纯文本
 			// if err != nil {
 			//     assert.Contains(t, err.Error(), "invalid JSON")
@@ -605,7 +605,7 @@ func TestObjectTruncation(t *testing.T) {
 			// savedEvent := getLatestAuditEvent(t, db)
 			// assert.True(t, savedEvent.DiffObject.NewObjectTruncated)
 			// assert.LessOrEqual(t, len(savedEvent.DiffObject.NewObject), maxObjectSize)
-			// 
+			//
 			// // 验证仍是有效 JSON
 			// var truncatedObject map[string]interface{}
 			// err = json.Unmarshal([]byte(savedEvent.DiffObject.NewObject), &truncatedObject)
@@ -641,19 +641,19 @@ func TestObjectTruncation(t *testing.T) {
 			//             NewObject: string(largeObjectJSON),
 			//         },
 			//     }
-			// 
+			//
 			//     startTime := time.Now()
 			//     err := auditService.RecordEvent(ctx, event)
 			//     duration := time.Since(startTime)
-			// 
+			//
 			//     require.NoError(t, err)
 			//     totalDuration += duration
 			// }
-			// 
+			//
 			// avgDuration := totalDuration / 100
-			// assert.Less(t, avgDuration, 50*time.Millisecond, 
+			// assert.Less(t, avgDuration, 50*time.Millisecond,
 			//     "平均截断时间应 <50ms，实际: %v", avgDuration)
-			// 
+			//
 			// t.Logf("100 次截断平均耗时: %v", avgDuration)
 
 			t.Skip("等待截断性能优化")
@@ -757,7 +757,7 @@ func TestTruncationEdgeCases(t *testing.T) {
 			// var truncatedObject map[string]interface{}
 			// err = json.Unmarshal([]byte(savedEvent.DiffObject.NewObject), &truncatedObject)
 			// require.NoError(t, err, "截断后 Unicode 应仍有效")
-			// 
+			//
 			// // 验证小字段的 Unicode 完整保留
 			// assert.Equal(t, "测试数据库", truncatedObject["name"])
 			// assert.Contains(t, truncatedObject["description"].(string), "中文")

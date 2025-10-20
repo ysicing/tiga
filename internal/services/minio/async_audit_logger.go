@@ -7,8 +7,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/models"
-	repo "github.com/ysicing/tiga/internal/repository/minio"
 	"github.com/ysicing/tiga/internal/services/audit"
+
+	repo "github.com/ysicing/tiga/internal/repository/minio"
 )
 
 // AsyncAuditLogger provides non-blocking audit logging for MinIO operations.

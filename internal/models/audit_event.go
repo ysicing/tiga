@@ -10,16 +10,18 @@ import (
 // 用途：记录所有关键操作的审计日志，支持追溯和合规审查。不可修改和删除。
 //
 // 参考：.claude/specs/006-gitness-tiga/data-model.md 实体 4
-//       .claude/specs/006-gitness-tiga/audit-unification.md 方案 A
+//
+//	.claude/specs/006-gitness-tiga/audit-unification.md 方案 A
 type AuditEvent struct {
 	// 基础字段
-	ID        string `gorm:"type:varchar(255);primaryKey" json:"id"` // UUID
+	ID        string `gorm:"type:varchar(255);primaryKey" json:"id"`                                                                 // UUID
 	Timestamp int64  `gorm:"not null;index:idx_audit_events_timestamp;index:idx_audit_events_composite,priority:3" json:"timestamp"` // Unix 毫秒时间戳
 
 	// 操作信息
-	Action       Action       `gorm:"type:varchar(64);not null;index:idx_audit_events_action;index:idx_audit_events_composite,priority:2" json:"action"`
-	ResourceType ResourceType `gorm:"type:varchar(64);not null;index:idx_audit_events_resource_type;index:idx_audit_events_composite,priority:1" json:"resource_type"`
-	Resource     Resource     `gorm:"type:text;serializer:json" json:"resource"` // JSON 序列化
+	Action       Action        `gorm:"type:varchar(64);not null;index:idx_audit_events_action;index:idx_audit_events_composite,priority:2" json:"action"`
+	ResourceType ResourceType  `gorm:"type:varchar(64);not null;index:idx_audit_events_resource_type;index:idx_audit_events_composite,priority:1" json:"resource_type"`
+	Resource     Resource      `gorm:"type:text;serializer:json" json:"resource"`                                                  // JSON 序列化
+	Subsystem    SubsystemType `gorm:"type:varchar(32);not null;index:idx_audit_events_subsystem;default:'http'" json:"subsystem"` // 子系统标识
 
 	// 操作主体
 	User      Principal `gorm:"type:text;serializer:json" json:"user"`
@@ -59,7 +61,7 @@ func (ae *AuditEvent) SetCreatedAt(t time.Time) {
 // Resource 资源定义
 type Resource struct {
 	Type       ResourceType      `json:"type"`
-	Identifier string            `json:"identifier"` // 资源 ID
+	Identifier string            `json:"identifier"`     // 资源 ID
 	Data       map[string]string `json:"data,omitempty"` // 资源元数据（如 resourceName、clusterName）
 }
 
@@ -131,7 +133,7 @@ const (
 	ActionDisabled Action = "disabled"
 
 	// 特殊操作（参考 Gitness）
-	ActionBypassed  Action = "bypassed"   // 绕过检查
+	ActionBypassed  Action = "bypassed"  // 绕过检查
 	ActionForcePush Action = "forcePush" // 强制推送
 
 	// 认证操作
@@ -227,6 +229,10 @@ func (ae *AuditEvent) Validate() error {
 		return err
 	}
 	if err := ae.ResourceType.Validate(); err != nil {
+		return err
+	}
+	// T012: Validate Subsystem enum
+	if err := ae.Subsystem.Validate(); err != nil {
 		return err
 	}
 	if err := ae.User.Type.Validate(); err != nil {
@@ -325,4 +331,69 @@ func (ae *AuditEvent) UnmarshalNewObject(target interface{}) error {
 	}
 
 	return nil
+}
+
+// SubsystemType 子系统类型枚举
+// T012: 用于区分不同子系统的审计事件
+//
+// Reference: .claude/specs/006-gitness-tiga/audit-unification.md
+//
+// 统一维护所有 Tiga 子系统的审计类型
+type SubsystemType string
+
+const (
+	// SubsystemHTTP HTTP API 审计（通用 API 操作）
+	SubsystemHTTP SubsystemType = "http"
+
+	// 存储和中间件子系统
+	// SubsystemMinIO MinIO 对象存储操作审计
+	SubsystemMinIO SubsystemType = "minio"
+	// SubsystemDatabase 数据库管理操作审计
+	SubsystemDatabase SubsystemType = "database"
+	// SubsystemMiddleware 中间件管理操作审计（Redis、MySQL、PostgreSQL 等）
+	SubsystemMiddleware SubsystemType = "middleware"
+
+	// 容器和编排子系统
+	// SubsystemKubernetes Kubernetes 集群管理审计
+	SubsystemKubernetes SubsystemType = "kubernetes"
+	// SubsystemDocker Docker 实例管理审计
+	SubsystemDocker SubsystemType = "docker"
+
+	// 主机管理子系统
+	// SubsystemHost 主机监控和管理审计（VMs）
+	SubsystemHost SubsystemType = "host"
+	// SubsystemWebSSH SSH 终端会话审计
+	SubsystemWebSSH SubsystemType = "webssh"
+
+	// 系统管理子系统
+	// SubsystemScheduler 调度器任务审计
+	SubsystemScheduler SubsystemType = "scheduler"
+	// SubsystemAlert 告警系统审计
+	SubsystemAlert SubsystemType = "alert"
+	// SubsystemAuth 认证和授权审计
+	SubsystemAuth SubsystemType = "auth"
+
+	// 其他子系统
+	// SubsystemStorage 存储管理审计
+	SubsystemStorage SubsystemType = "storage"
+	// SubsystemWebServer Web 服务器管理审计
+	SubsystemWebServer SubsystemType = "webserver"
+)
+
+// Validate 验证子系统类型有效性
+func (st SubsystemType) Validate() error {
+	switch st {
+	case SubsystemHTTP, SubsystemMinIO, SubsystemDatabase, SubsystemScheduler,
+		SubsystemKubernetes, SubsystemDocker, SubsystemHost, SubsystemWebSSH,
+		SubsystemAlert, SubsystemAuth, SubsystemMiddleware, SubsystemStorage,
+		SubsystemWebServer:
+		return nil
+	default:
+		return fmt.Errorf("invalid subsystem type: %s", st)
+	}
+}
+
+// String 返回字符串表示
+func (st SubsystemType) String() string {
+	return string(st)
 }

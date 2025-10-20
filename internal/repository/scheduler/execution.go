@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ysicing/tiga/internal/models"
 	"gorm.io/gorm"
+
+	"github.com/ysicing/tiga/internal/models"
 )
 
 // ExecutionRepository 任务执行历史仓储接口
@@ -63,14 +64,14 @@ type TaskStats struct {
 
 // GlobalStats 全局统计数据
 type GlobalStats struct {
-	TotalTasks         int64
-	EnabledTasks       int64
-	TotalExecutions    int64
-	SuccessExecutions  int64
-	FailureExecutions  int64
-	SuccessRate        float64
-	AverageDurationMs  int64
-	TaskStats          []*TaskStats
+	TotalTasks        int64
+	EnabledTasks      int64
+	TotalExecutions   int64
+	SuccessExecutions int64
+	FailureExecutions int64
+	SuccessRate       float64
+	AverageDurationMs int64
+	TaskStats         []*TaskStats
 }
 
 // taskExecutionRepository TaskExecution 仓储实现

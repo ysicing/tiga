@@ -28,7 +28,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 设置测试环境
 			// db := setupTestDatabase(t)
 			// defer cleanupTestDatabase(t, db)
-			// 
+			//
 			// auditRepo := repository.NewAuditEventRepository(db)
 
 			// 准备测试数据：插入 10000 条审计记录
@@ -67,11 +67,11 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     "offset": 0,
 			// })
 			// queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Len(t, events, 10000, "应返回 10000 条记录")
 			// assert.Less(t, queryDuration, 2*time.Second, "查询应在 2 秒内完成")
-			// 
+			//
 			// t.Logf("查询 10000 条记录耗时: %v", queryDuration)
 
 			t.Skip("等待审计日志查询 API 实现")
@@ -84,7 +84,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 测试分页查询
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 1000 条记录
 			// for i := 0; i < 1000; i++ {
 			//     // ... 插入逻辑 ...
@@ -121,7 +121,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 准备测试数据（多种资源类型）
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// resourceTypes := []string{"database", "cluster", "pod", "deployment", "user"}
 			// for i := 0; i < 10000; i++ {
 			//     resourceType := resourceTypes[i%len(resourceTypes)]
@@ -135,11 +135,11 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     "limit":         2000,
 			// })
 			// queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.LessOrEqual(t, len(events), 2000, "应返回 ≤2000 条记录")
 			// assert.Less(t, queryDuration, 500*time.Millisecond, "过滤查询应在 500ms 内完成")
-			// 
+			//
 			// // 验证所有记录都是 database 类型
 			// for _, event := range events {
 			//     assert.Equal(t, "database", event.ResourceType)
@@ -155,7 +155,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 准备测试数据（多种操作类型）
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// actions := []string{"created", "updated", "deleted", "read"}
 			// for i := 0; i < 10000; i++ {
 			//     action := actions[i%len(actions)]
@@ -169,11 +169,11 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     "limit":  2500,
 			// })
 			// queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.LessOrEqual(t, len(events), 2500)
 			// assert.Less(t, queryDuration, 500*time.Millisecond)
-			// 
+			//
 			// // 验证所有记录都是 deleted 操作
 			// for _, event := range events {
 			//     assert.Equal(t, "deleted", event.Action)
@@ -189,7 +189,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 准备测试数据（不同时间点）
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// baseTime := time.Now().Add(-24 * time.Hour)
 			// for i := 0; i < 10000; i++ {
 			//     timestamp := baseTime.Add(time.Duration(i) * time.Minute)
@@ -199,7 +199,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// 测试时间范围过滤（查询最近 6 小时）
 			// endTime := time.Now()
 			// startTime := endTime.Add(-6 * time.Hour)
-			// 
+			//
 			// queryStartTime := time.Now()
 			// events, err := auditRepo.List(ctx, map[string]interface{}{
 			//     "start_time": startTime.UnixMilli(),
@@ -207,10 +207,10 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     "limit":      5000,
 			// })
 			// queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Less(t, queryDuration, 1*time.Second, "时间范围过滤应在 1 秒内完成")
-			// 
+			//
 			// // 验证所有记录都在时间范围内
 			// for _, event := range events {
 			//     assert.GreaterOrEqual(t, event.Timestamp, startTime.UnixMilli())
@@ -227,7 +227,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 准备测试数据
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 10000 条记录（混合各种属性）
 			// // ...
 
@@ -241,10 +241,10 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     "limit":         1000,
 			// })
 			// queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Less(t, queryDuration, 1*time.Second, "多条件查询应在 1 秒内完成")
-			// 
+			//
 			// // 验证所有条件都满足
 			// for _, event := range events {
 			//     assert.Equal(t, "database", event.ResourceType)
@@ -262,29 +262,29 @@ func TestAuditQueryPerformance(t *testing.T) {
 
 			// TODO: 验证索引存在
 			// db := setupTestDatabase(t)
-			// 
+			//
 			// // 检查索引是否存在（PostgreSQL 示例）
 			// var indexExists bool
 			// err := db.Raw(`
 			//     SELECT EXISTS (
-			//         SELECT 1 FROM pg_indexes 
-			//         WHERE tablename = 'audit_events' 
+			//         SELECT 1 FROM pg_indexes
+			//         WHERE tablename = 'audit_events'
 			//         AND indexname = 'idx_audit_events_resource_type'
 			//     )
 			// `).Scan(&indexExists).Error
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.True(t, indexExists, "resource_type 索引应存在")
 
 			// 验证查询使用索引（通过 EXPLAIN ANALYZE）
 			// var queryPlan string
 			// err = db.Raw(`
-			//     EXPLAIN ANALYZE 
-			//     SELECT * FROM audit_events 
-			//     WHERE resource_type = 'database' 
+			//     EXPLAIN ANALYZE
+			//     SELECT * FROM audit_events
+			//     WHERE resource_type = 'database'
 			//     LIMIT 1000
 			// `).Scan(&queryPlan).Error
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Contains(t, queryPlan, "Index Scan", "查询应使用索引扫描")
 
@@ -297,16 +297,16 @@ func TestAuditQueryPerformance(t *testing.T) {
 
 			// TODO: 验证 action 索引
 			// db := setupTestDatabase(t)
-			// 
+			//
 			// var indexExists bool
 			// err := db.Raw(`
 			//     SELECT EXISTS (
-			//         SELECT 1 FROM pg_indexes 
-			//         WHERE tablename = 'audit_events' 
+			//         SELECT 1 FROM pg_indexes
+			//         WHERE tablename = 'audit_events'
 			//         AND indexname = 'idx_audit_events_action'
 			//     )
 			// `).Scan(&indexExists).Error
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.True(t, indexExists, "action 索引应存在")
 
@@ -319,28 +319,28 @@ func TestAuditQueryPerformance(t *testing.T) {
 
 			// TODO: 验证 timestamp 索引
 			// db := setupTestDatabase(t)
-			// 
+			//
 			// var indexExists bool
 			// err := db.Raw(`
 			//     SELECT EXISTS (
-			//         SELECT 1 FROM pg_indexes 
-			//         WHERE tablename = 'audit_events' 
+			//         SELECT 1 FROM pg_indexes
+			//         WHERE tablename = 'audit_events'
 			//         AND indexname = 'idx_audit_events_timestamp'
 			//     )
 			// `).Scan(&indexExists).Error
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.True(t, indexExists, "timestamp 索引应存在")
 
 			// 验证时间范围查询使用索引
 			// var queryPlan string
 			// err = db.Raw(`
-			//     EXPLAIN ANALYZE 
-			//     SELECT * FROM audit_events 
-			//     WHERE timestamp BETWEEN ? AND ? 
+			//     EXPLAIN ANALYZE
+			//     SELECT * FROM audit_events
+			//     WHERE timestamp BETWEEN ? AND ?
 			//     LIMIT 1000
 			// `, time.Now().Add(-24*time.Hour).UnixMilli(), time.Now().UnixMilli()).Scan(&queryPlan).Error
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Contains(t, queryPlan, "Index", "时间范围查询应使用索引")
 
@@ -353,32 +353,32 @@ func TestAuditQueryPerformance(t *testing.T) {
 
 			// TODO: 验证复合索引
 			// db := setupTestDatabase(t)
-			// 
+			//
 			// // 检查复合索引（resource_type + timestamp）
 			// var indexExists bool
 			// err := db.Raw(`
 			//     SELECT EXISTS (
-			//         SELECT 1 FROM pg_indexes 
-			//         WHERE tablename = 'audit_events' 
+			//         SELECT 1 FROM pg_indexes
+			//         WHERE tablename = 'audit_events'
 			//         AND indexname = 'idx_audit_events_resource_type_timestamp'
 			//     )
 			// `).Scan(&indexExists).Error
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.True(t, indexExists, "复合索引应存在")
 
 			// 验证组合查询使用复合索引
 			// var queryPlan string
 			// err = db.Raw(`
-			//     EXPLAIN ANALYZE 
-			//     SELECT * FROM audit_events 
-			//     WHERE resource_type = 'database' 
-			//     AND timestamp > ? 
+			//     EXPLAIN ANALYZE
+			//     SELECT * FROM audit_events
+			//     WHERE resource_type = 'database'
+			//     AND timestamp > ?
 			//     LIMIT 1000
 			// `, time.Now().Add(-24*time.Hour).UnixMilli()).Scan(&queryPlan).Error
-			// 
+			//
 			// require.NoError(t, err)
-			// assert.Contains(t, queryPlan, "idx_audit_events_resource_type_timestamp", 
+			// assert.Contains(t, queryPlan, "idx_audit_events_resource_type_timestamp",
 			//     "组合查询应使用复合索引")
 
 			t.Skip("等待复合索引验证实现")
@@ -393,7 +393,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 准备大数据集
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 50000 条记录
 			// t.Log("插入 50000 条记录用于分页测试...")
 			// for i := 0; i < 50000; i++ {
@@ -403,7 +403,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// 测试多页查询性能
 			// pageSize := 100
 			// totalPages := 10
-			// 
+			//
 			// for page := 1; page <= totalPages; page++ {
 			//     queryStartTime := time.Now()
 			//     events, err := auditRepo.List(ctx, map[string]interface{}{
@@ -411,10 +411,10 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//         "offset": (page - 1) * pageSize,
 			//     })
 			//     queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			//     require.NoError(t, err)
 			//     assert.Len(t, events, pageSize, "每页应有 %d 条记录", pageSize)
-			//     assert.Less(t, queryDuration, 500*time.Millisecond, 
+			//     assert.Less(t, queryDuration, 500*time.Millisecond,
 			//         "第 %d 页查询应在 500ms 内完成", page)
 			// }
 
@@ -428,7 +428,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 测试深度分页（后面的页）
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 10000 条记录
 			// for i := 0; i < 10000; i++ {
 			//     // ... 插入逻辑 ...
@@ -441,10 +441,10 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     "offset": 8900,
 			// })
 			// queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Len(t, events, 100)
-			// assert.Less(t, queryDuration, 1*time.Second, 
+			// assert.Less(t, queryDuration, 1*time.Second,
 			//     "深度分页（offset=8900）应在 1 秒内完成")
 
 			// 注意：如果深度分页性能差，考虑使用 cursor-based pagination
@@ -461,7 +461,7 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// TODO: 准备测试数据
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 10000 条记录
 			// for i := 0; i < 10000; i++ {
 			//     // ... 插入逻辑 ...
@@ -472,38 +472,38 @@ func TestAuditQueryPerformance(t *testing.T) {
 			// var wg sync.WaitGroup
 			// errorCount := atomic.Int32{}
 			// slowQueryCount := atomic.Int32{}
-			// 
+			//
 			// startTime := time.Now()
-			// 
+			//
 			// for i := 0; i < concurrency; i++ {
 			//     wg.Add(1)
 			//     go func(idx int) {
 			//         defer wg.Done()
-			// 
+			//
 			//         queryStartTime := time.Now()
 			//         _, err := auditRepo.List(ctx, map[string]interface{}{
 			//             "limit":  100,
 			//             "offset": idx * 100,
 			//         })
 			//         queryDuration := time.Since(queryStartTime)
-			// 
+			//
 			//         if err != nil {
 			//             errorCount.Add(1)
 			//         }
-			// 
+			//
 			//         if queryDuration > 1*time.Second {
 			//             slowQueryCount.Add(1)
 			//         }
 			//     }(i)
 			// }
-			// 
+			//
 			// wg.Wait()
 			// totalDuration := time.Since(startTime)
-			// 
+			//
 			// assert.Equal(t, int32(0), errorCount.Load(), "不应有查询失败")
 			// assert.LessOrEqual(t, slowQueryCount.Load(), int32(5), "慢查询（>1秒）应 ≤5 个")
 			// assert.Less(t, totalDuration, 5*time.Second, "50 个并发查询应在 5 秒内全部完成")
-			// 
+			//
 			// t.Logf("50 个并发查询总耗时: %v", totalDuration)
 			// t.Logf("慢查询数量: %d", slowQueryCount.Load())
 
@@ -518,21 +518,21 @@ func TestAuditQueryPerformance(t *testing.T) {
 
 			// TODO: 验证连接池配置
 			// db := setupTestDatabase(t)
-			// 
+			//
 			// // 检查连接池配置
 			// sqlDB, err := db.DB()
 			// require.NoError(t, err)
-			// 
+			//
 			// stats := sqlDB.Stats()
 			// t.Logf("连接池统计: MaxOpenConnections=%d, OpenConnections=%d, InUse=%d, Idle=%d",
 			//     stats.MaxOpenConnections, stats.OpenConnections, stats.InUse, stats.Idle)
-			// 
+			//
 			// // 验证连接池设置合理
 			// assert.GreaterOrEqual(t, stats.MaxOpenConnections, 10, "最大连接数应 ≥10")
 
 			// 测试连接复用
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// for i := 0; i < 100; i++ {
 			//     _, err := auditRepo.List(ctx, map[string]interface{}{
 			//         "limit":  10,
@@ -540,11 +540,11 @@ func TestAuditQueryPerformance(t *testing.T) {
 			//     })
 			//     require.NoError(t, err)
 			// }
-			// 
+			//
 			// stats = sqlDB.Stats()
 			// t.Logf("100 次查询后: OpenConnections=%d, InUse=%d, Idle=%d",
 			//     stats.OpenConnections, stats.InUse, stats.Idle)
-			// 
+			//
 			// // 验证连接数没有无限增长
 			// assert.LessOrEqual(t, stats.OpenConnections, 20, "连接数应 ≤20（有效复用）")
 
@@ -567,7 +567,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// TODO: 准备测试数据
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 100 条记录（不同时间戳）
 			// for i := 0; i < 100; i++ {
 			//     timestamp := time.Now().Add(-time.Duration(i) * time.Minute)
@@ -578,9 +578,9 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// events, err := auditRepo.List(ctx, map[string]interface{}{
 			//     "limit": 100,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
-			// 
+			//
 			// // 验证时间戳降序
 			// for i := 0; i < len(events)-1; i++ {
 			//     assert.GreaterOrEqual(t, events[i].Timestamp, events[i+1].Timestamp,
@@ -599,9 +599,9 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// TODO: 准备测试数据（多个用户）
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// targetUserUID := "user-uuid-target"
-			// 
+			//
 			// // 插入 50 条 target 用户记录 + 50 条其他用户记录
 			// for i := 0; i < 50; i++ {
 			//     // ... 插入 target 用户记录 ...
@@ -615,10 +615,10 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			//     "user_uid": targetUserUID,
 			//     "limit":    100,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Len(t, events, 50, "应只返回 target 用户的 50 条记录")
-			// 
+			//
 			// // 验证所有记录都是 target 用户
 			// for _, event := range events {
 			//     assert.Equal(t, targetUserUID, event.User.UID)
@@ -634,9 +634,9 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// TODO: 准备测试数据（多个 IP）
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// targetIP := "192.168.1.100"
-			// 
+			//
 			// // 插入 30 条 target IP 记录 + 70 条其他 IP 记录
 			// for i := 0; i < 30; i++ {
 			//     // ... 插入 target IP 记录 ...
@@ -650,10 +650,10 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			//     "client_ip": targetIP,
 			//     "limit":     100,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Len(t, events, 30)
-			// 
+			//
 			// // 验证所有记录都是 target IP
 			// for _, event := range events {
 			//     assert.Equal(t, targetIP, event.ClientIP)
@@ -669,9 +669,9 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// TODO: 准备测试数据
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// targetRequestID := "req-uuid-target"
-			// 
+			//
 			// // 插入 1 条 target 请求记录 + 99 条其他请求记录
 			// // ... 插入逻辑 ...
 
@@ -680,7 +680,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			//     "request_id": targetRequestID,
 			//     "limit":      10,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Len(t, events, 1, "应只返回 1 条匹配记录")
 			// assert.Equal(t, targetRequestID, events[0].RequestID)
@@ -703,7 +703,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			//     "resource_type": "non_existent_type",
 			//     "limit":         100,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Empty(t, events, "应返回空数组（不是 nil）")
 
@@ -717,7 +717,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// TODO: 测试 limit = 0
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入一些记录
 			// for i := 0; i < 10; i++ {
 			//     // ... 插入逻辑 ...
@@ -727,7 +727,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// events, err := auditRepo.List(ctx, map[string]interface{}{
 			//     "limit": 0,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Empty(t, events, "limit = 0 应返回空数组")
 
@@ -741,7 +741,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			// TODO: 测试 offset 超出范围
 			// db := setupTestDatabase(t)
 			// auditRepo := repository.NewAuditEventRepository(db)
-			// 
+			//
 			// // 插入 100 条记录
 			// for i := 0; i < 100; i++ {
 			//     // ... 插入逻辑 ...
@@ -752,7 +752,7 @@ func TestAuditQueryCorrectness(t *testing.T) {
 			//     "limit":  10,
 			//     "offset": 150,
 			// })
-			// 
+			//
 			// require.NoError(t, err)
 			// assert.Empty(t, events, "offset 超出范围应返回空数组")
 
