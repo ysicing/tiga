@@ -2,32 +2,35 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/ysicing/tiga/internal/models"
-	"github.com/ysicing/tiga/internal/services/audit"
+	"github.com/google/uuid"
 
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
+	"github.com/ysicing/tiga/internal/models"
+	"github.com/ysicing/tiga/internal/repository"
+	"github.com/ysicing/tiga/internal/services/audit"
 )
 
 // AsyncAuditLogger provides non-blocking audit logging with batching for database operations.
-// It wraps the generic audit.AsyncLogger with database-specific interfaces.
+// T037: 迁移到统一 AuditEvent 模型
 type AsyncAuditLogger struct {
-	logger *audit.AsyncLogger[*models.DatabaseAuditLog]
+	logger *audit.AsyncLogger[*models.AuditEvent]
 }
 
 // AsyncAuditLoggerConfig holds configuration for the async audit logger.
 type AsyncAuditLoggerConfig = audit.Config
 
 // NewAsyncAuditLogger creates an async audit logger with the given configuration.
-func NewAsyncAuditLogger(repo *dbrepo.AuditLogRepository, config *AsyncAuditLoggerConfig) *AsyncAuditLogger {
-	logger := audit.NewAsyncLogger[*models.DatabaseAuditLog](repo, "Database", config)
+// T037: 使用统一的 AuditEventRepository
+func NewAsyncAuditLogger(repo repository.AuditEventRepository, config *AsyncAuditLoggerConfig) *AsyncAuditLogger {
+	logger := audit.NewAsyncLogger[*models.AuditEvent](repo, "Database", config)
 	return &AsyncAuditLogger{logger: logger}
 }
 
 // LogAction enqueues an audit entry for async processing.
-// This method is non-blocking and returns immediately.
+// T037: 将 Database 特定字段序列化到 Data 字段
 func (l *AsyncAuditLogger) LogAction(ctx context.Context, entry AuditEntry) error {
 	if entry.Operator == "" {
 		return fmt.Errorf("operator is required")
@@ -41,28 +44,67 @@ func (l *AsyncAuditLogger) LogAction(ctx context.Context, entry AuditEntry) erro
 		clientIP = ExtractClientIP(ctx)
 	}
 
-	details, err := marshalDetails(entry.Details)
-	if err != nil {
-		return err
+	// T037: 构建 Data 字段，包含 Database 特定信息
+	data := map[string]string{
+		"target_type": entry.TargetType,
+		"target_name": entry.TargetName,
+		"success":     fmt.Sprintf("%t", entry.Success),
 	}
 
-	log := &models.DatabaseAuditLog{
-		Operator:   entry.Operator,
-		Action:     entry.Action,
-		TargetType: entry.TargetType,
-		TargetName: entry.TargetName,
-		Details:    details,
-		Success:    entry.Success,
-		ClientIP:   clientIP,
-	}
+	// 添加实例 ID（如果提供）
 	if entry.InstanceID != nil {
-		log.InstanceID = entry.InstanceID
-	}
-	if entry.Error != nil {
-		log.ErrorMessage = entry.Error.Error()
+		data["instance_id"] = entry.InstanceID.String()
 	}
 
-	return l.logger.Enqueue(log)
+	// 添加错误信息（如果有）
+	if entry.Error != nil {
+		data["error_message"] = entry.Error.Error()
+	}
+
+	// 合并原有的 details
+	if entry.Details != nil {
+		detailsJSON, err := marshalDetails(entry.Details)
+		if err == nil && detailsJSON != "" {
+			var detailsMap map[string]interface{}
+			if err := json.Unmarshal([]byte(detailsJSON), &detailsMap); err == nil {
+				for k, v := range detailsMap {
+					if strVal, ok := v.(string); ok {
+						data[k] = strVal
+					} else {
+						jsonBytes, _ := json.Marshal(v)
+						data[k] = string(jsonBytes)
+					}
+				}
+			}
+		}
+	}
+
+	// T037: 映射到统一 AuditEvent 模型
+	auditEvent := &models.AuditEvent{
+		ID:        uuid.New().String(),
+		Timestamp: time.Now().UnixMilli(),
+		Subsystem: models.SubsystemDatabase, // T037: 设置子系统为 database
+		Action:    models.Action(entry.Action),
+		Resource: models.Resource{
+			Type: models.ResourceType(entry.TargetType),
+			Data: map[string]string{
+				"target_name": entry.TargetName,
+			},
+		},
+		User: models.Principal{
+			Username: entry.Operator,
+			Type:     models.PrincipalTypeUser,
+		},
+		ClientIP: clientIP,
+		Data:     data,
+	}
+
+	// 如果有实例 ID，设置 Resource.Identifier
+	if entry.InstanceID != nil {
+		auditEvent.Resource.Identifier = entry.InstanceID.String()
+	}
+
+	return l.logger.Enqueue(auditEvent)
 }
 
 // Shutdown gracefully shuts down the async audit logger.

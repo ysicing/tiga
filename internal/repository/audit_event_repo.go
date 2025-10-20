@@ -17,12 +17,17 @@ import (
 // 包含以下方法：
 // - Create(ctx, event) - 创建单个审计事件
 // - BatchCreate(ctx, events) - 批量创建（AsyncLogger 使用）
+// - CreateBatch(ctx, events) - audit.AuditRepository 接口要求
 type AuditEventRepository interface {
 	// Create 创建单个审计事件
 	Create(ctx context.Context, event *models.AuditEvent) error
 
 	// BatchCreate 批量创建审计事件（由 AsyncLogger 调用）
 	BatchCreate(ctx context.Context, events []*models.AuditEvent) error
+
+	// CreateBatch 批量创建（实现 audit.AuditRepository[*models.AuditEvent] 接口）
+	// T036-T037: MinIO 和 Database 迁移需要此方法
+	CreateBatch(ctx context.Context, events []*models.AuditEvent) error
 
 	// GetByID 根据 ID 查询单个审计事件
 	GetByID(ctx context.Context, id string) (*models.AuditEvent, error)
@@ -94,6 +99,13 @@ func (r *auditEventRepository) BatchCreate(ctx context.Context, events []*models
 	}
 
 	return nil
+}
+
+// CreateBatch 批量创建（实现 audit.AuditRepository[*models.AuditEvent] 接口）
+// T036-T037: MinIO 和 Database 迁移需要此方法
+// 这是 BatchCreate 的别名，用于满足 audit.AuditRepository 接口
+func (r *auditEventRepository) CreateBatch(ctx context.Context, events []*models.AuditEvent) error {
+	return r.BatchCreate(ctx, events)
 }
 
 // GetByID 根据 ID 查询单个审计事件

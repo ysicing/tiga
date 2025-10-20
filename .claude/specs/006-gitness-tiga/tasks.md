@@ -424,9 +424,9 @@
 
 **前提条件**：T012（AuditEvent 模型）、T020（AuditEventRepository）已完成
 
-- [ ] **T036** [可选] MinIO 改用统一审计
+- [x] **T036** [可选] MinIO 改用统一审计
   - 修改 MinIO 服务使用 `models.AuditEvent` 替换 `models.MinIOAuditLog`
-  - 将 MinIO 特定字段序列化到 `Metadata` JSONB 字段：
+  - 将 MinIO 特定字段序列化到 `Data` map 字段：
     ```json
     {
       "instance_id": "minio-uuid-1234",
@@ -444,9 +444,9 @@
   - **依赖**：T012、T020
   - **参考**：`audit-unification.md` 第三阶段
 
-- [ ] **T037** [可选] Database 改用统一审计
+- [x] **T037** [可选] Database 改用统一审计
   - 修改 Database 服务使用 `models.AuditEvent` 替换 `models.DatabaseAuditLog`
-  - 将 Database 特定字段序列化到 `Metadata` JSONB 字段：
+  - 将 Database 特定字段序列化到 `Data` map 字段：
     ```json
     {
       "instance_id": "db-uuid-5678",
