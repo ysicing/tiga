@@ -10,15 +10,26 @@ import {
 
 import { devopsAPI } from '@/lib/api-client'
 
-interface HostActivity {
+// T038: 适配统一审计 API 的数据结构
+interface AuditEvent {
   id: string
+  timestamp: number
   action: string
-  action_type: string
-  description: string
+  subsystem: string
+  resource: {
+    type: string
+    identifier: string
+    data: Record<string, string>
+  }
+  user: {
+    uid: string
+    username: string
+    type: string
+  }
+  client_ip: string
+  user_agent: string
+  data: Record<string, string>
   created_at: string
-  user_id?: string
-  client_ip?: string
-  metadata?: string
 }
 
 interface HostActivitiesTabProps {
@@ -71,9 +82,10 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
     )
   }
 
-  const activities = data?.activities || []
+  // T038: 适配统一审计 API 返回的数据结构
+  const events = (data?.events || []) as AuditEvent[]
 
-  if (activities.length === 0) {
+  if (events.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">暂无活动记录</p>
@@ -83,15 +95,17 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
 
   return (
     <div className="space-y-2">
-      {activities.map((activity: HostActivity) => {
-        const Icon = ACTION_ICONS[activity.action_type] || AlertCircle
-        const iconColor =
-          ACTION_TYPE_COLORS[activity.action_type] || 'bg-gray-500'
-        const actionLabel = ACTION_LABELS[activity.action] || activity.action
+      {events.map((event: AuditEvent) => {
+        // 从 data 字段提取 action_type 和 description
+        const actionType = event.data?.action_type || 'system'
+        const description = event.data?.description || ''
+        const Icon = ACTION_ICONS[actionType] || AlertCircle
+        const iconColor = ACTION_TYPE_COLORS[actionType] || 'bg-gray-500'
+        const actionLabel = ACTION_LABELS[event.action] || event.action
 
         return (
           <div
-            key={activity.id}
+            key={event.id}
             className="flex items-center gap-3 px-4 py-2 rounded-lg border hover:bg-accent/50 transition-colors"
           >
             {/* Icon */}
@@ -107,10 +121,10 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
             </div>
 
             {/* Description (optional, truncated) */}
-            {activity.description && (
+            {description && (
               <div className="flex-1 min-w-0">
                 <span className="text-sm text-muted-foreground truncate block">
-                  {activity.description}
+                  {description}
                 </span>
               </div>
             )}
@@ -119,7 +133,7 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
             <div className="flex-shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>
-                {new Date(activity.created_at).toLocaleString('zh-CN', {
+                {new Date(event.created_at).toLocaleString('zh-CN', {
                   month: '2-digit',
                   day: '2-digit',
                   hour: '2-digit',
@@ -129,10 +143,10 @@ export function HostActivitiesTab({ hostId }: HostActivitiesTabProps) {
             </div>
 
             {/* Client IP (if available) */}
-            {activity.client_ip && (
+            {event.client_ip && (
               <div className="flex-shrink-0 flex items-center gap-1 text-xs text-muted-foreground">
                 <Server className="h-3 w-3" />
-                <span>{activity.client_ip}</span>
+                <span>{event.client_ip}</span>
               </div>
             )}
           </div>

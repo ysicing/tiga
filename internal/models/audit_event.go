@@ -82,12 +82,14 @@ const (
 	PrincipalTypeService PrincipalType = "service"
 	// PrincipalTypeAnonymous 匿名用户
 	PrincipalTypeAnonymous PrincipalType = "anonymous"
+	// PrincipalTypeSystem 系统操作
+	PrincipalTypeSystem PrincipalType = "system"
 )
 
 // Validate 验证主体类型有效性
 func (pt PrincipalType) Validate() error {
 	switch pt {
-	case PrincipalTypeUser, PrincipalTypeService, PrincipalTypeAnonymous:
+	case PrincipalTypeUser, PrincipalTypeService, PrincipalTypeAnonymous, PrincipalTypeSystem:
 		return nil
 	default:
 		return fmt.Errorf("invalid principal type: %s", pt)
@@ -192,6 +194,9 @@ const (
 
 	// Scheduler 资源
 	ResourceTypeScheduledTask ResourceType = "scheduledTask"
+
+	// Host 资源（T038）
+	ResourceTypeHost ResourceType = "host"
 )
 
 // Validate 验证资源类型有效性
@@ -202,7 +207,7 @@ func (rt ResourceType) Validate() error {
 		ResourceTypeDatabase, ResourceTypeDatabaseInstance, ResourceTypeDatabaseUser,
 		ResourceTypeMinIO, ResourceTypeRedis, ResourceTypeMySQL, ResourceTypePostgreSQL,
 		ResourceTypeUser, ResourceTypeRole, ResourceTypeInstance,
-		ResourceTypeScheduledTask:
+		ResourceTypeScheduledTask, ResourceTypeHost:
 		return nil
 	default:
 		return fmt.Errorf("invalid resource type: %s", rt)

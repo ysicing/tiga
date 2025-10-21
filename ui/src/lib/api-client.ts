@@ -547,8 +547,13 @@ export const devopsAPI = {
         apiClient.get(`/vms/hosts/${id}/state/current`),
       getHistoryState: (id: string, params?: Record<string, any>) =>
         apiClient.get(`/vms/hosts/${id}/state/history`, params),
+      // T038: 主机活动现在使用统一审计 API
       getActivities: (id: string, params?: Record<string, any>) =>
-        apiClient.get(`/vms/hosts/${id}/activities`, params),
+        apiClient.get('/audit/events', {
+          ...params,
+          subsystem: 'host',
+          'resource.identifier': id,
+        }),
       regenerateSecretKey: (id: string) =>
         apiClient.post(`/vms/hosts/${id}/regenerate-key`),
       getAgentInstallCommand: (id: string) =>

@@ -37,6 +37,7 @@ type AgentManager struct {
 	hostRepo       repository.HostRepository
 	stateCollector *StateCollector
 	db             *gorm.DB
+	auditLogger    *AuditLogger // T038: 统一审计
 
 	// Active connections map: UUID -> Connection
 	connections sync.Map
@@ -48,11 +49,12 @@ type AgentManager struct {
 }
 
 // NewAgentManager creates a new AgentManager
-func NewAgentManager(hostRepo repository.HostRepository, stateCollector *StateCollector, db *gorm.DB) *AgentManager {
+func NewAgentManager(hostRepo repository.HostRepository, stateCollector *StateCollector, db *gorm.DB, auditLogger *AuditLogger) *AgentManager {
 	return &AgentManager{
 		hostRepo:          hostRepo,
 		stateCollector:    stateCollector,
 		db:                db,
+		auditLogger:       auditLogger,
 		heartbeatInterval: 30 * time.Second,
 		heartbeatTimeout:  90 * time.Second,
 	}
@@ -338,14 +340,18 @@ func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uuid.UUID, str
 			uuid, m.GetActiveConnectionCount(), durationStr, offlineDuration.Seconds())
 	}
 
-	activityLog := &models.HostActivityLog{
+	// Record agent connection activity (T038: 使用统一审计)
+	if err := m.auditLogger.LogActivity(context.Background(), AuditEntry{
 		HostNodeID:  hostNodeID,
+		UserID:      nil, // System action
+		Username:    "",
 		Action:      action,
 		ActionType:  models.ActivityTypeAgent,
 		Description: description,
 		Metadata:    metadata,
-	}
-	if err := m.db.Create(activityLog).Error; err != nil {
+		ClientIP:    "",
+		UserAgent:   "",
+	}); err != nil {
 		logrus.Warnf("Failed to record agent connection activity: %v", err)
 	}
 
@@ -368,15 +374,18 @@ func (m *AgentManager) DisconnectAgent(uuid string) {
 		now := time.Now()
 		m.db.Model(&models.HostNode{}).Where("id = ?", agentConn.HostNodeID).Update("last_active", now)
 
-		// Record activity log
-		activityLog := &models.HostActivityLog{
+		// Record agent disconnection activity (T038: 使用统一审计)
+		if err := m.auditLogger.LogActivity(context.Background(), AuditEntry{
 			HostNodeID:  agentConn.HostNodeID,
+			UserID:      nil, // System action
+			Username:    "",
 			Action:      models.ActivityAgentDisconnected,
 			ActionType:  models.ActivityTypeAgent,
 			Description: "Agent disconnected",
 			Metadata:    fmt.Sprintf(`{"uuid":"%s","connected_duration":"%s"}`, uuid, time.Since(agentConn.Connected).String()),
-		}
-		if err := m.db.Create(activityLog).Error; err != nil {
+			ClientIP:    "",
+			UserAgent:   "",
+		}); err != nil {
 			logrus.Warnf("Failed to record agent disconnection activity: %v", err)
 		}
 

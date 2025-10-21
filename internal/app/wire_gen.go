@@ -53,7 +53,8 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 		return nil, err
 	}
 	hostRepository := repository.NewHostRepository(gormDB)
-	hostMonitoringComponents := provideHostMonitoringComponents(hostRepository, gormDB)
+	auditEventRepository := repository.NewAuditEventRepository(gormDB)
+	hostMonitoringComponents := provideHostMonitoringComponents(hostRepository, gormDB, auditEventRepository)
 	stateCollector := provideStateCollector(hostMonitoringComponents)
 	agentManager := provideAgentManager(hostMonitoringComponents)
 	terminalManager := host.NewTerminalManager()
@@ -151,13 +152,17 @@ func provideAlertEngine(
 }
 
 // Handle StateCollector and AgentManager circular dependency
+// T038: Added AuditEventRepository for host audit logging
 func provideHostMonitoringComponents(
 	hostRepo repository.HostRepository, db2 *gorm.DB,
+	auditEventRepo repository.AuditEventRepository,
 ) *HostMonitoringComponents {
 
 	stateCollector := host.NewStateCollector(hostRepo)
 
-	agentManager := host.NewAgentManager(hostRepo, stateCollector, db2)
+	auditLogger := host.NewAuditLogger(auditEventRepo, nil)
+
+	agentManager := host.NewAgentManager(hostRepo, stateCollector, db2, auditLogger)
 
 	stateCollector.SetAgentManager(agentManager)
 
@@ -175,6 +180,11 @@ func provideStateCollector(components *HostMonitoringComponents) *host.StateColl
 // Extract AgentManager from HostMonitoringComponents
 func provideAgentManager(components *HostMonitoringComponents) *host.AgentManager {
 	return components.AgentManager
+}
+
+// T038: Provide AuditLogger for host subsystem (used by handlers)
+func provideHostAuditLogger(auditEventRepo repository.AuditEventRepository) *host.AuditLogger {
+	return host.NewAuditLogger(auditEventRepo, nil)
 }
 
 func provideHostService(

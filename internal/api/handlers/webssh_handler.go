@@ -34,15 +34,17 @@ type WebSSHHandler struct {
 	terminalMgr  *host.TerminalManager
 	agentManager *host.AgentManager
 	db           *gorm.DB
+	auditLogger  *host.AuditLogger // T038: 统一审计
 }
 
 // NewWebSSHHandler creates a new WebSSH handler
-func NewWebSSHHandler(sessionMgr *webssh.SessionManager, terminalMgr *host.TerminalManager, agentMgr *host.AgentManager, db *gorm.DB) *WebSSHHandler {
+func NewWebSSHHandler(sessionMgr *webssh.SessionManager, terminalMgr *host.TerminalManager, agentMgr *host.AgentManager, db *gorm.DB, auditLogger *host.AuditLogger) *WebSSHHandler {
 	return &WebSSHHandler{
 		sessionMgr:   sessionMgr,
 		terminalMgr:  terminalMgr,
 		agentManager: agentMgr,
 		db:           db,
+		auditLogger:  auditLogger,
 	}
 }
 
@@ -116,18 +118,18 @@ func (h *WebSSHHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	// Record activity log
-	activityLog := &models.HostActivityLog{
+	// Record activity log (T038: 使用统一审计)
+	if err := h.auditLogger.LogActivity(c.Request.Context(), host.AuditEntry{
 		HostNodeID:  hostUUID,
 		UserID:      &userID,
+		Username:    "", // Will be populated by audit logger if needed
 		Action:      models.ActivityTerminalCreated,
 		ActionType:  models.ActivityTypeTerminal,
 		Description: fmt.Sprintf("WebSSH terminal session created (Session ID: %s)", streamID),
 		Metadata:    fmt.Sprintf(`{"session_id":"%s","ws_session_id":"%s"}`, streamID, wsSession.SessionID),
 		ClientIP:    clientIP,
 		UserAgent:   c.Request.UserAgent(),
-	}
-	if err := h.db.Create(activityLog).Error; err != nil {
+	}); err != nil {
 		logrus.Warnf("Failed to record terminal creation activity: %v", err)
 		// Don't fail the request if activity logging fails
 	}
@@ -208,17 +210,18 @@ func (h *WebSSHHandler) HandleWebSocket(c *gin.Context) {
 			logrus.Debugf("session close error: %v", err)
 		}
 
-		// Record terminal closed activity
-		activityLog := &models.HostActivityLog{
+		// Record terminal closed activity (T038: 使用统一审计)
+		if err := h.auditLogger.LogActivity(c.Request.Context(), host.AuditEntry{
 			HostNodeID:  wsSession.HostNodeID,
 			UserID:      &wsSession.UserID,
+			Username:    "",
 			Action:      models.ActivityTerminalClosed,
 			ActionType:  models.ActivityTypeTerminal,
 			Description: fmt.Sprintf("WebSSH terminal session closed (Session ID: %s)", streamID),
 			Metadata:    fmt.Sprintf(`{"session_id":"%s","ws_session_id":"%s","status":"%s"}`, streamID, wsSession.SessionID, wsSession.Status),
 			ClientIP:    wsSession.ClientIP,
-		}
-		if err := h.db.Create(activityLog).Error; err != nil {
+			UserAgent:   "",
+		}); err != nil {
 			logrus.Warnf("Failed to record terminal closure activity: %v", err)
 		}
 	}()

@@ -215,9 +215,12 @@ func SetupRoutes(
 	hostHandler := handlers.NewHostHandler(hostService)
 	hostGroupHandler := handlers.NewHostGroupHandler(db)
 	serviceMonitorHandler := handlers.NewServiceMonitorHandler(probeService)
-	hostActivityHandler := handlers.NewHostActivityHandler(db)
+	// T038: hostActivityHandler 已移除，使用统一审计 API: /api/v1/audit/events?subsystem=host
 	monitorAlertHandler := handlers.NewMonitorAlertRuleHandler(monitorAlertRepo)
-	websshHandler := handlers.NewWebSSHHandler(sessionManager, terminalManager, agentManager, db)
+
+	// T038: Create host audit logger for handlers
+	hostAuditLogger := hostservices.NewAuditLogger(auditEventRepo, nil)
+	websshHandler := handlers.NewWebSSHHandler(sessionManager, terminalManager, agentManager, db, hostAuditLogger)
 	websocketHandler := handlers.NewWebSocketHandler(stateCollector)
 
 	// MinIO handlers
@@ -612,9 +615,9 @@ func SetupRoutes(
 					hostsGroup.GET("/:id/state/current", hostHandler.GetCurrentState)
 					hostsGroup.GET("/:id/state/history", hostHandler.GetHistoryState)
 
-					// Host activity logs
-					hostsGroup.GET("/:id/activities", hostActivityHandler.ListActivities)
-					hostsGroup.POST("/:id/activities", hostActivityHandler.CreateActivity)
+					// T038: Host activities API 已移除，使用统一审计 API
+					// GET /api/v1/audit/events?subsystem=host&resource.identifier=<host_id>
+					// POST 不再支持（审计由系统自动记录）
 
 					// Service probe history (for multi-line chart)
 					hostsGroup.GET("/:id/probe-history", serviceMonitorHandler.GetHostProbeHistory)
