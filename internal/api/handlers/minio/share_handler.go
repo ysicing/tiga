@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 
 	mrepo "github.com/ysicing/tiga/internal/repository/minio"
@@ -64,9 +63,6 @@ func (h *ShareHandler) CreateShare(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(getDB(c)))
-	_ = logger.LogOperation(c.Request.Context(), instanceID, "share", "object", req.Key, "create", "success", "", nil, "", c.ClientIP(), models.JSONB{"bucket": req.Bucket, "expiry": req.Expiry})
 	handlers.RespondCreated(c, gin.H{"id": link.ID, "instance_id": link.InstanceID, "bucket": link.BucketName, "key": link.ObjectKey, "url": url, "expires_at": link.ExpiresAt})
 }
 
@@ -117,8 +113,5 @@ func (h *ShareHandler) RevokeShare(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(getDB(c)))
-	_ = logger.LogOperation(c.Request.Context(), uuid.Nil, "share", "share", id, "revoke", "success", "", nil, "", c.ClientIP(), nil)
 	handlers.RespondSuccess(c, gin.H{"message": "share revoked"})
 }

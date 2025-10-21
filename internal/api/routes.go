@@ -102,7 +102,6 @@ func SetupRoutes(
 	dbDatabaseRepo := dbrepo.NewDatabaseRepository(db)
 	dbUserRepo := dbrepo.NewUserRepository(db)
 	dbPermissionRepo := dbrepo.NewPermissionRepository(db)
-	dbAuditLogRepo := dbrepo.NewAuditLogRepository(db)
 	dbQuerySessionRepo := dbrepo.NewQuerySessionRepository(db)
 
 	// Scheduler repositories (T013, T019)
@@ -125,7 +124,7 @@ func SetupRoutes(
 	dbDatabaseService := dbservices.NewDatabaseService(dbManager, dbDatabaseRepo)
 	dbUserService := dbservices.NewUserService(dbManager, dbUserRepo)
 	dbPermissionService := dbservices.NewPermissionService(dbManager, dbUserRepo, dbDatabaseRepo, dbPermissionRepo)
-	dbAuditLogger := dbservices.NewAuditLogger(dbAuditLogRepo)
+	dbAuditLogger := dbservices.NewAuditLogger(auditEventRepo) // T036-T037: 使用统一的 AuditEventRepository
 	dbQueryExecutor := dbservices.NewQueryExecutorWithConfig(
 		dbManager,
 		dbQuerySessionRepo,
@@ -172,7 +171,8 @@ func SetupRoutes(
 
 	// 2. Database audit cleanup task (daily at 2 AM)
 	// TODO: Get retention days from config (default: 90 days)
-	dbAuditCleanupTask := schedulerservices.NewDatabaseAuditCleanupTask(dbAuditLogRepo, 90)
+	// T036-T037: 使用统一的 AuditEventRepository
+	dbAuditCleanupTask := schedulerservices.NewDatabaseAuditCleanupTask(auditEventRepo, 90)
 	if err := schedulerService.AddCron(
 		"database_audit_cleanup",
 		"0 2 * * *", // Daily at 2:00 AM
@@ -209,7 +209,7 @@ func SetupRoutes(
 	dbUserHandler := databasehandlers.NewUserHandler(dbUserService, dbAuditLogger)
 	dbPermissionHandler := databasehandlers.NewPermissionHandler(dbPermissionService, dbAuditLogger)
 	dbQueryHandler := databasehandlers.NewQueryHandler(dbQueryExecutor, dbAuditLogger)
-	dbAuditHandler := databasehandlers.NewAuditHandler(dbAuditLogRepo)
+	// T036-T037: 审计 API 已统一到 /api/v1/audit，移除旧的 dbAuditHandler
 
 	// Host monitoring handlers
 	hostHandler := handlers.NewHostHandler(hostService)
@@ -485,7 +485,7 @@ func SetupRoutes(
 					queriesGroup.POST("/query", dbQueryHandler.ExecuteQuery)
 				}
 
-				databaseGroup.GET("/audit-logs", dbAuditHandler.ListAuditLogs)
+				// T036-T037: 审计查询已迁移到 /api/v1/audit?subsystem=database
 			}
 
 			// ==================== MinIO Subsystem ====================

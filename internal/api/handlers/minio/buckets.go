@@ -9,7 +9,6 @@ import (
 	"github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/repository"
 
-	mrepo "github.com/ysicing/tiga/internal/repository/minio"
 	msvc "github.com/ysicing/tiga/internal/services/minio"
 	pkmn "github.com/ysicing/tiga/pkg/minio"
 )
@@ -101,10 +100,6 @@ func (h *BucketHandler) CreateBucket(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	db := getDB(c)
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "bucket", "bucket", request.Name, "create", "success", "", nil, "", c.ClientIP(), nil)
 
 	handlers.RespondCreated(c, gin.H{
 		"name":     request.Name,
@@ -141,10 +136,6 @@ func (h *BucketHandler) DeleteBucket(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	db := getDB(c)
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "bucket", "bucket", bucketName, "delete", "success", "", nil, "", c.ClientIP(), nil)
 
 	handlers.RespondSuccess(c, gin.H{
 		"message": "Bucket deleted successfully",
@@ -236,10 +227,6 @@ func (h *BucketHandler) UpdateBucketPolicy(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	db := getDB(c)
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "bucket", "bucket", bucketName, "policy_update", "success", "", nil, "", c.ClientIP(), nil)
 
 	handlers.RespondSuccess(c, gin.H{"message": "Bucket policy updated"})
 }

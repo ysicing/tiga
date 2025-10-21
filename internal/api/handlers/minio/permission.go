@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 
 	mrepo "github.com/ysicing/tiga/internal/repository/minio"
@@ -62,9 +61,6 @@ func (h *PermissionHandler) GrantPermission(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "permission", "bucket", req.Bucket, "grant", "success", "", nil, "", c.ClientIP(), models.JSONB{"user": req.User, "prefix": req.Prefix, "perm": req.Permission})
 	handlers.RespondCreated(c, gin.H{"id": policyName, "instance_id": instance.ID.String(), "user": req.User, "bucket": req.Bucket, "prefix": req.Prefix, "permission": req.Permission})
 }
 
@@ -150,8 +146,5 @@ func (h *PermissionHandler) RevokePermission(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "permission", "policy", id, "revoke", "success", "", nil, "", c.ClientIP(), models.JSONB{"user": user})
 	handlers.RespondSuccess(c, gin.H{"message": "permission revoked"})
 }
