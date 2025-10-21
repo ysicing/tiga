@@ -134,7 +134,7 @@ func (r *InstanceRepository) ListInstances(ctx context.Context, filter *ListInst
 
 	// Apply filters
 	if filter.ServiceType != "" {
-		query = query.Where("service_type = ?", filter.ServiceType)
+		query = query.Where("type = ?", filter.ServiceType)
 	}
 
 	if filter.Status != "" {
@@ -170,7 +170,7 @@ func (r *InstanceRepository) ListInstances(ctx context.Context, filter *ListInst
 
 	if filter.Search != "" {
 		search := "%" + filter.Search + "%"
-		query = query.Where("name LIKE ? OR host LIKE ? OR description LIKE ?", search, search, search)
+		query = query.Where("name LIKE ? OR display_name LIKE ? OR description LIKE ?", search, search, search)
 	}
 
 	// Count total
@@ -198,7 +198,7 @@ func (r *InstanceRepository) ListInstances(ctx context.Context, filter *ListInst
 func (r *InstanceRepository) ListByServiceType(ctx context.Context, serviceType string) ([]*models.Instance, error) {
 	var instances []*models.Instance
 	err := r.db.WithContext(ctx).
-		Where("service_type = ?", serviceType).
+		Where("type = ?", serviceType).
 		Order("name ASC").
 		Find(&instances).Error
 
@@ -229,7 +229,7 @@ func (r *InstanceRepository) CountByServiceType(ctx context.Context, serviceType
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&models.Instance{}).
-		Where("service_type = ?", serviceType).
+		Where("type = ?", serviceType).
 		Count(&count).Error
 
 	if err != nil {
@@ -290,7 +290,7 @@ func (r *InstanceRepository) UpdateStatus(ctx context.Context, id uuid.UUID, sta
 // UpdateHealth updates instance health status
 func (r *InstanceRepository) UpdateHealth(ctx context.Context, id uuid.UUID, healthStatus string, healthMessage *string) error {
 	updates := map[string]interface{}{
-		"health_status": healthStatus,
+		"health": healthStatus,
 	}
 
 	if healthMessage != nil {
@@ -347,14 +347,14 @@ func (r *InstanceRepository) AddTags(ctx context.Context, id uuid.UUID, tags []s
 		tagMap[tag] = true
 	}
 
-	newTags := make([]string, 0, len(tagMap))
+	newTags := make(models.StringArray, 0, len(tagMap))
 	for tag := range tagMap {
 		newTags = append(newTags, tag)
 	}
 
-	return r.UpdateFields(ctx, id, map[string]interface{}{
-		"tags": newTags,
-	})
+	// Use Update instead of UpdateFields to leverage GORM's Value() method
+	instance.Tags = newTags
+	return r.Update(ctx, instance)
 }
 
 // RemoveTags removes tags from an instance
@@ -370,16 +370,16 @@ func (r *InstanceRepository) RemoveTags(ctx context.Context, id uuid.UUID, tags 
 		removeMap[tag] = true
 	}
 
-	newTags := make([]string, 0)
+	newTags := make(models.StringArray, 0)
 	for _, tag := range instance.Tags {
 		if !removeMap[tag] {
 			newTags = append(newTags, tag)
 		}
 	}
 
-	return r.UpdateFields(ctx, id, map[string]interface{}{
-		"tags": newTags,
-	})
+	// Use Update instead of UpdateFields to leverage GORM's Value() method
+	instance.Tags = newTags
+	return r.Update(ctx, instance)
 }
 
 // SearchByTag searches instances by tag (OR logic)
@@ -436,19 +436,19 @@ func (r *InstanceRepository) GetStatistics(ctx context.Context) (*InstanceStatis
 
 	// Group by service type
 	type ServiceTypeCount struct {
-		ServiceType string
-		Count       int64
+		Type  string
+		Count int64
 	}
 	var serviceTypeCounts []ServiceTypeCount
 	if err := r.db.WithContext(ctx).
 		Model(&models.Instance{}).
-		Select("service_type, COUNT(*) as count").
-		Group("service_type").
+		Select("type, COUNT(*) as count").
+		Group("type").
 		Scan(&serviceTypeCounts).Error; err != nil {
 		return nil, fmt.Errorf("failed to count by service type: %w", err)
 	}
 	for _, stc := range serviceTypeCounts {
-		stats.ByServiceType[stc.ServiceType] = stc.Count
+		stats.ByServiceType[stc.Type] = stc.Count
 	}
 
 	// Group by status
@@ -488,14 +488,14 @@ func (r *InstanceRepository) GetStatistics(ctx context.Context) (*InstanceStatis
 	// Healthy vs Unhealthy
 	if err := r.db.WithContext(ctx).
 		Model(&models.Instance{}).
-		Where("health_status = ?", "healthy").
+		Where("health = ?", "healthy").
 		Count(&stats.HealthyInstances).Error; err != nil {
 		return nil, fmt.Errorf("failed to count healthy instances: %w", err)
 	}
 
 	if err := r.db.WithContext(ctx).
 		Model(&models.Instance{}).
-		Where("health_status = ?", "unhealthy").
+		Where("health = ?", "unhealthy").
 		Count(&stats.UnhealthyInstances).Error; err != nil {
 		return nil, fmt.Errorf("failed to count unhealthy instances: %w", err)
 	}

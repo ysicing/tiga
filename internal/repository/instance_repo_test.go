@@ -514,8 +514,9 @@ func TestInstanceRepository_ListInstances(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expectedCount, len(results))
+			// Total should match the filtered count when not using pagination
 			if tc.filter.Page == 0 {
-				assert.Equal(t, int64(3), total)
+				assert.Equal(t, int64(tc.expectedCount), total)
 			}
 		})
 	}
