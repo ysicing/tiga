@@ -95,13 +95,15 @@ func (d *PostgresDriver) ListDatabases(ctx context.Context) ([]DatabaseInfo, err
 
 	const query = `
 SELECT
-    datname,
-    pg_encoding_to_char(encoding) AS encoding,
-    datcollate,
-    pg_database_size(datname) AS size_bytes
-FROM pg_database
-WHERE datistemplate = FALSE
-ORDER BY datname`
+    d.datname,
+    pg_encoding_to_char(d.encoding) AS encoding,
+    d.datcollate,
+    pg_database_size(d.datname) AS size_bytes,
+    r.rolname AS owner
+FROM pg_database d
+LEFT JOIN pg_roles r ON d.datdba = r.oid
+WHERE d.datistemplate = FALSE
+ORDER BY d.datname`
 
 	rows, err := d.db.QueryContext(ctx, query)
 	if err != nil {
@@ -112,7 +114,7 @@ ORDER BY datname`
 	var databases []DatabaseInfo
 	for rows.Next() {
 		var info DatabaseInfo
-		if err := rows.Scan(&info.Name, &info.Charset, &info.Collation, &info.SizeBytes); err != nil {
+		if err := rows.Scan(&info.Name, &info.Charset, &info.Collation, &info.SizeBytes, &info.Owner); err != nil {
 			return nil, fmt.Errorf("failed to scan postgres database row: %w", err)
 		}
 		info.TableCount = 0
@@ -238,8 +240,12 @@ func (d *PostgresDriver) CreateUser(ctx context.Context, opts CreateUserOptions)
 		return fmt.Errorf("password is required for postgres role creation")
 	}
 
-	stmt := fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD $1", quotePGIdentifier(opts.Username))
-	if _, err := d.db.ExecContext(ctx, stmt, opts.Password); err != nil {
+	// Note: PostgreSQL DDL statements (like CREATE ROLE) cannot use parameterized queries.
+	// We need to escape the password string literal directly.
+	stmt := fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD %s",
+		quotePGIdentifier(opts.Username),
+		quotePGStringLiteral(opts.Password))
+	if _, err := d.db.ExecContext(ctx, stmt); err != nil {
 		return fmt.Errorf("failed to create postgres role: %w", err)
 	}
 
@@ -290,8 +296,12 @@ func (d *PostgresDriver) UpdateUserPassword(ctx context.Context, username, passw
 		return fmt.Errorf("password is required")
 	}
 
-	stmt := fmt.Sprintf("ALTER ROLE %s WITH PASSWORD $1", quotePGIdentifier(username))
-	if _, err := d.db.ExecContext(ctx, stmt, password); err != nil {
+	// Note: PostgreSQL DDL statements (like ALTER ROLE) cannot use parameterized queries.
+	// We need to escape the password string literal directly.
+	stmt := fmt.Sprintf("ALTER ROLE %s WITH PASSWORD %s",
+		quotePGIdentifier(username),
+		quotePGStringLiteral(password))
+	if _, err := d.db.ExecContext(ctx, stmt); err != nil {
 		return fmt.Errorf("failed to update postgres password: %w", err)
 	}
 	return nil
@@ -382,4 +392,13 @@ func (d *PostgresDriver) GetUptime(ctx context.Context) (time.Duration, error) {
 
 func quotePGIdentifier(identifier string) string {
 	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
+}
+
+// quotePGStringLiteral escapes a string value for use in PostgreSQL SQL statements.
+// It wraps the string in single quotes and escapes any single quotes within the string.
+// This is used for password values in CREATE/ALTER ROLE statements.
+func quotePGStringLiteral(value string) string {
+	// Escape single quotes by doubling them: ' becomes ''
+	escaped := strings.ReplaceAll(value, `'`, `''`)
+	return `'` + escaped + `'`
 }

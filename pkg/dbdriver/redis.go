@@ -103,7 +103,24 @@ func (d *RedisDriver) ListDatabases(ctx context.Context) ([]DatabaseInfo, error)
 		return nil, fmt.Errorf("failed to query redis keyspace info: %w", err)
 	}
 
-	return parseRedisKeyspace(info), nil
+	databases := parseRedisKeyspace(info)
+
+	// If no databases have keys yet, return at least DB 0 (default database)
+	if len(databases) == 0 {
+		databases = []DatabaseInfo{
+			{
+				Name:     "db0",
+				KeyCount: 0,
+				Extra: map[string]interface{}{
+					"expires":      0,
+					"avg_ttl":      "0",
+					"volatileKeys": false,
+				},
+			},
+		}
+	}
+
+	return databases, nil
 }
 
 // CreateDatabase is not supported in Redis.
