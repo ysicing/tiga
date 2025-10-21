@@ -46,6 +46,7 @@ type User struct {
 
 	// Associations (database relations)
 	Instances []Instance `gorm:"foreignKey:OwnerID" json:"instances,omitempty"`
+	Roles     []Role     `gorm:"many2many:user_roles;" json:"roles,omitempty"`
 }
 
 // TableName overrides the table name

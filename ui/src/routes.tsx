@@ -259,8 +259,16 @@ export const router = createBrowserRouter([
         element: <UserFormPage />,
       },
       {
+        path: 'users/:id',
+        element: <div>用户详情页（待实现）</div>,
+      },
+      {
         path: 'users/:id/edit',
         element: <UserFormPage />,
+      },
+      {
+        path: 'users/:id/roles',
+        element: <div>用户角色管理页（待实现）</div>,
       },
       {
         path: 'settings',

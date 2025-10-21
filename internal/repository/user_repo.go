@@ -180,7 +180,10 @@ func (r *UserRepository) ListUsers(ctx context.Context, filter *ListUsersFilter)
 
 	// Fetch results
 	var users []*models.User
-	if err := query.Order("created_at DESC").Find(&users).Error; err != nil {
+	if err := query.
+		Preload("Roles").
+		Order("created_at DESC").
+		Find(&users).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to list users: %w", err)
 	}
 

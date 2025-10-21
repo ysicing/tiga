@@ -36,8 +36,8 @@ interface UserData {
   email: string
   full_name: string
   status: string
-  roles: string[]
-  last_login?: string
+  roles: Array<{ name: string }>
+  last_login_at?: string
   created_at: string
 }
 
@@ -106,7 +106,7 @@ export default function UsersPage() {
               className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
             />
           </Button>
-          <Button onClick={() => navigate('/users/new')}>
+          <Button onClick={() => navigate('/system/users/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add User
           </Button>
@@ -203,16 +203,16 @@ export default function UsersPage() {
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
                       {user.roles?.map((role) => (
-                        <Badge key={role} variant="outline" className="text-xs">
-                          {role}
+                        <Badge key={role.name} variant="outline" className="text-xs">
+                          {role.name}
                         </Badge>
                       )) || <span className="text-muted-foreground">-</span>}
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(user.status)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {user.last_login
-                      ? new Date(user.last_login).toLocaleString()
+                    {user.last_login_at
+                      ? new Date(user.last_login_at).toLocaleString()
                       : 'Never'}
                   </TableCell>
                   <TableCell className="text-right">
@@ -226,17 +226,17 @@ export default function UsersPage() {
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => navigate(`/users/${user.id}`)}
+                          onClick={() => navigate(`/system/users/${user.id}`)}
                         >
                           View Details
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => navigate(`/users/${user.id}/edit`)}
+                          onClick={() => navigate(`/system/users/${user.id}/edit`)}
                         >
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => navigate(`/users/${user.id}/roles`)}
+                          onClick={() => navigate(`/system/users/${user.id}/roles`)}
                         >
                           Manage Roles
                         </DropdownMenuItem>
