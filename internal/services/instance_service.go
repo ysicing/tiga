@@ -12,17 +12,28 @@ import (
 	"github.com/ysicing/tiga/internal/services/managers"
 )
 
+// InstanceRepositoryInterface defines the repository interface needed by InstanceService
+type InstanceRepositoryInterface interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Instance, error)
+	UpdateHealth(ctx context.Context, id uuid.UUID, healthStatus string, healthMessage *string) error
+}
+
+// ManagerFactory is a function that creates a new ServiceManager instance
+type ManagerFactory func() managers.ServiceManager
+
 // InstanceService manages service instances and their health/metrics
 type InstanceService struct {
-	instanceRepo    *repository.InstanceRepository
-	managerRegistry map[string]managers.ServiceManager
+	instanceRepo     InstanceRepositoryInterface
+	managerRegistry  map[string]managers.ServiceManager
+	managerFactories map[string]ManagerFactory // For testing: inject custom factories
 }
 
 // NewInstanceService creates a new instance service
 func NewInstanceService(instanceRepo *repository.InstanceRepository) *InstanceService {
 	return &InstanceService{
-		instanceRepo:    instanceRepo,
-		managerRegistry: make(map[string]managers.ServiceManager),
+		instanceRepo:     instanceRepo,
+		managerRegistry:  make(map[string]managers.ServiceManager),
+		managerFactories: make(map[string]ManagerFactory),
 	}
 }
 
@@ -54,7 +65,15 @@ func (s *InstanceService) getManagerForInstance(ctx context.Context, instance *m
 
 // cloneManager creates a new instance of a manager based on its type
 func (s *InstanceService) cloneManager(template managers.ServiceManager) managers.ServiceManager {
-	switch template.Type() {
+	managerType := template.Type()
+
+	// Check if a factory is registered (for testing)
+	if factory, ok := s.managerFactories[managerType]; ok {
+		return factory()
+	}
+
+	// Default: create new instances based on type
+	switch managerType {
 	case "minio":
 		return managers.NewMinIOManager()
 	case "mysql":

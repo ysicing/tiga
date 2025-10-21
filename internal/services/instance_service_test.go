@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -15,13 +14,7 @@ import (
 	"github.com/ysicing/tiga/internal/services/managers"
 )
 
-// InstanceRepository定义了instance service所需的repository接口
-type InstanceRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*models.Instance, error)
-	UpdateHealth(ctx context.Context, id uuid.UUID, healthStatus string, healthMessage *string) error
-}
-
-// MockInstanceRepository is a mock implementation of InstanceRepository
+// MockInstanceRepository is a mock implementation of InstanceRepositoryInterface
 type MockInstanceRepository struct {
 	mock.Mock
 }
@@ -95,21 +88,12 @@ func (m *MockServiceManager) GetInfo(ctx context.Context) (map[string]interface{
 
 // createMockInstanceService creates a test instance service with mock repository
 func createMockInstanceService(mockRepo *MockInstanceRepository) *InstanceService {
-	// 使用反射绕过类型检查 - 这是测试中的常见模式
-	// 我们知道 MockInstanceRepository 实现了所需的方法
-	service := &InstanceService{
-		managerRegistry: make(map[string]managers.ServiceManager),
+	// With the interface-based design, we can directly create the service with the mock
+	return &InstanceService{
+		instanceRepo:     mockRepo,
+		managerRegistry:  make(map[string]managers.ServiceManager),
+		managerFactories: make(map[string]ManagerFactory), // Initialize factory map for testing
 	}
-	// 使用 unsafe 方式设置私有字段
-	// 注意：这只用于测试
-	type instanceServiceForTest struct {
-		instanceRepo    interface{}
-		managerRegistry map[string]managers.ServiceManager
-	}
-	testService := (*instanceServiceForTest)(unsafe.Pointer(service))
-	testService.instanceRepo = mockRepo
-
-	return service
 }
 
 // TestNewInstanceService tests the creation of a new InstanceService
@@ -175,9 +159,14 @@ func TestGetHealthStatus_Success(t *testing.T) {
 		LastCheckTime: time.Now().Format(time.RFC3339),
 	}, nil)
 
-	// Create service and register manager
+	// Create service and register manager template
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
+
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
 
 	// Execute
 	health, err := service.GetHealthStatus(ctx, instanceID)
@@ -265,6 +254,11 @@ func TestGetHealthStatus_ConnectionFailed(t *testing.T) {
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
 
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
+
 	health, err := service.GetHealthStatus(ctx, instanceID)
 
 	assert.NoError(t, err)
@@ -301,6 +295,11 @@ func TestGetHealthStatus_HealthCheckFailed(t *testing.T) {
 
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
+
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
 
 	health, err := service.GetHealthStatus(ctx, instanceID)
 
@@ -345,6 +344,11 @@ func TestGetHealthStatus_UnhealthyService(t *testing.T) {
 
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
+
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
 
 	health, err := service.GetHealthStatus(ctx, instanceID)
 
@@ -392,6 +396,11 @@ func TestGetMetrics_Success(t *testing.T) {
 
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
+
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
 
 	metrics, err := service.GetMetrics(ctx, instanceID)
 
@@ -450,6 +459,11 @@ func TestGetMetrics_ConnectionFailed(t *testing.T) {
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
 
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
+
 	metrics, err := service.GetMetrics(ctx, instanceID)
 
 	assert.Error(t, err)
@@ -485,6 +499,11 @@ func TestGetMetrics_CollectionFailed(t *testing.T) {
 
 	service := createMockInstanceService(mockRepo)
 	service.RegisterManager("minio", mockManager)
+
+	// Inject factory to return the mock manager (for testing cloneManager)
+	service.managerFactories["minio"] = func() managers.ServiceManager {
+		return mockManager
+	}
 
 	metrics, err := service.GetMetrics(ctx, instanceID)
 
