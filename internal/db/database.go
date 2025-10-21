@@ -165,7 +165,7 @@ func (d *Database) AutoMigrate() error {
 		&models.ServiceAvailability{},
 		&models.ServiceHistory{}, // 30-day aggregated service history
 		&models.WebSSHSession{},
-		&models.HostActivityLog{},
+		// T038: HostActivityLog 已迁移到统一的 AuditEvent 模型（subsystem='host'）
 		&models.MonitorAlertRule{},
 		&models.MonitorAlertEvent{},
 		&models.AgentConnection{},
