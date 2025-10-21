@@ -60,9 +60,10 @@ func TestSecurityFilter_ValidateSQL(t *testing.T) {
 
 		// SQL injection attempts with comments
 		{
-			name:    "SQL injection with single-line comment",
-			query:   "SELECT * FROM users WHERE id = 1 -- DROP TABLE users",
-			wantErr: false, // Comment should be stripped, query becomes safe
+			name:        "SQL injection with single-line comment",
+			query:       "SELECT * FROM users WHERE id = 1 -- DROP TABLE users",
+			wantErr:     true, // Block SQL with dangerous keywords even in comments (defense-in-depth)
+			errContains: "DROP",
 		},
 		{
 			name:        "SQL injection with multi-line comment",
