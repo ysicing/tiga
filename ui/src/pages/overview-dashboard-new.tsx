@@ -6,7 +6,7 @@ import {
   IconContainer,
   IconDatabase,
   IconServer2,
-  IconSettings,
+  IconTool,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
@@ -23,11 +23,11 @@ import { UserMenu } from '@/components/user-menu'
 // Define main subsystems (not individual instance types)
 const SUBSYSTEMS = [
   {
-    id: 'devops',
-    name: 'subsystem.devops',
-    description: 'subsystem.devops.description',
-    icon: IconSettings,
-    path: '/devops',
+    id: 'system',
+    name: 'subsystem.system',
+    description: 'subsystem.system.description',
+    icon: IconTool,
+    path: '/system',
     color: 'bg-blue-500',
   },
   {

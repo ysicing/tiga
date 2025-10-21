@@ -182,6 +182,11 @@ func (r *auditEventRepository) DeleteOlderThan(ctx context.Context, before time.
 // applyFilters 应用过滤条件到查询
 // 统一的过滤逻辑，供 List 和 Count 方法使用
 func (r *auditEventRepository) applyFilters(query *gorm.DB, filter map[string]interface{}) *gorm.DB {
+	// 按子系统过滤
+	if subsystem, ok := filter["subsystem"].(string); ok && subsystem != "" {
+		query = query.Where("subsystem = ?", subsystem)
+	}
+
 	// 按操作类型过滤
 	if action, ok := filter["action"].(string); ok && action != "" {
 		query = query.Where("action = ?", action)

@@ -7,14 +7,16 @@ import {
 import { ProtectedRoute } from './components/protected-route'
 import { DbsLayout } from './layouts/dbs-layout'
 // Layouts
-import { DevOpsLayout } from './layouts/devops-layout'
+import { SystemLayout } from './layouts/system-layout'
 import { DockerLayout } from './layouts/docker-layout'
 import { K8sLayout } from './layouts/k8s-layout'
 import { MinIOLayout } from './layouts/minio-layout'
 import { VMsLayout } from './layouts/vms-layout'
 import { WebServerLayout } from './layouts/webserver-layout'
-// DevOps Platform Pages
-import AlertsPage from './pages/alerts'
+// System Management Pages
+import { SchedulerPage } from './pages/scheduler-page'
+import { AuditPage } from './pages/audit-page'
+import { SystemSettingsPage } from './pages/system-settings-page'
 import { CRListPage } from './pages/k8s/cr-list-page'
 import { CRDYAMLEditorPage } from './pages/k8s/crd-yaml-editor-page'
 import DatabaseManagementPage from './pages/database-management'
@@ -45,7 +47,6 @@ import { Overview } from './pages/k8s/overview'
 import { OverviewDashboard } from './pages/overview-dashboard-new'
 import { ResourceDetail } from './pages/k8s/resource-detail'
 import { ResourceList } from './pages/k8s/resource-list'
-import RoleFormPage from './pages/role-form'
 // K8s Cluster Management Pages
 import { ClusterFormPage } from './pages/k8s/cluster-form-page'
 import { ClusterListPage } from './pages/k8s/cluster-list-page'
@@ -87,8 +88,6 @@ import { ProxyClassDetail } from './pages/k8s/proxyclass-detail'
 // System Upgrade Pages
 import UpgradePlansListPage from './pages/k8s/upgrade-plans-list-page'
 import UpgradePlanDetail from './pages/k8s/upgrade-plan-detail'
-import RolesPage from './pages/roles'
-import { SettingsPage } from './pages/settings'
 import UserFormPage from './pages/user-form'
 import UsersPage from './pages/users'
 // WebServer Pages
@@ -228,24 +227,28 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  // DevOps 子系统
+  // System Management 子系统 - 系统管理
   {
-    path: '/devops',
+    path: '/system',
     element: (
       <InstallGuard>
         <ProtectedRoute>
-          <DevOpsLayout />
+          <SystemLayout />
         </ProtectedRoute>
       </InstallGuard>
     ),
     children: [
       {
         index: true,
-        element: <Navigate to="alerts" replace />,
+        element: <Navigate to="scheduler" replace />,
       },
       {
-        path: 'alerts',
-        element: <AlertsPage />,
+        path: 'scheduler',
+        element: <SchedulerPage />,
+      },
+      {
+        path: 'audit',
+        element: <AuditPage />,
       },
       {
         path: 'users',
@@ -260,20 +263,8 @@ export const router = createBrowserRouter([
         element: <UserFormPage />,
       },
       {
-        path: 'roles',
-        element: <RolesPage />,
-      },
-      {
-        path: 'roles/new',
-        element: <RoleFormPage />,
-      },
-      {
-        path: 'roles/:id/edit',
-        element: <RoleFormPage />,
-      },
-      {
         path: 'settings',
-        element: <SettingsPage />,
+        element: <SystemSettingsPage />,
       },
     ],
   },

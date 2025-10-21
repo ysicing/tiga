@@ -67,6 +67,10 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 	// Build filters
 	filters := make(map[string]interface{})
 
+	if subsystem := c.Query("subsystem"); subsystem != "" {
+		filters["subsystem"] = subsystem
+	}
+
 	if userUID := c.Query("user_uid"); userUID != "" {
 		filters["user_uid"] = userUID
 	}

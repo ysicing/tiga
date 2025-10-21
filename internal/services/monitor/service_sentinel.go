@@ -130,19 +130,44 @@ func (s *ServiceSentinel) Start() error {
 // Stop stops the sentinel
 func (s *ServiceSentinel) Stop() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if !s.running {
+		s.mu.Unlock()
 		return
 	}
 
 	close(s.stopCh)
 	s.running = false
+	s.mu.Unlock() // Release lock before flushing
 
-	// Flush remaining data
-	s.flushAllBatches()
+	// Wait a bit for workers to exit
+	time.Sleep(100 * time.Millisecond)
 
-	logrus.Info("ServiceSentinel stopped")
+	// Flush remaining data (with timeout to prevent blocking)
+	done := make(chan struct{})
+	go func() {
+		s.flushAllBatchesInternal()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logrus.Debug("Sentinel data flushed")
+	case <-time.After(2 * time.Second):
+		logrus.Warn("Sentinel flush timeout, some data may be lost")
+	}
+
+	logrus.Debug("ServiceSentinel stopped")
+}
+
+// flushAllBatchesInternal is an internal version that acquires the lock
+func (s *ServiceSentinel) flushAllBatchesInternal() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for key, batch := range s.pingBatch {
+		s.flushBatch(key, batch)
+	}
 }
 
 // ReportProbeResult submits a probe result to the sentinel
@@ -270,13 +295,9 @@ func (s *ServiceSentinel) flushWorker() {
 }
 
 // flushAllBatches flushes all pending batches to database
+// This is the public method that can be called externally
 func (s *ServiceSentinel) flushAllBatches() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for key, batch := range s.pingBatch {
-		s.flushBatch(key, batch)
-	}
+	s.flushAllBatchesInternal()
 }
 
 // rotationWorker performs daily data rotation at midnight

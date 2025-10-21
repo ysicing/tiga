@@ -100,8 +100,15 @@ func (s *ServiceProbeScheduler) Start() {
 
 // Stop stops the scheduler
 func (s *ServiceProbeScheduler) Stop() {
-	ctx := s.cron.Stop()
-	<-ctx.Done()
+	stopCtx := s.cron.Stop()
+
+	select {
+	case <-stopCtx.Done():
+		logrus.Debug("Probe scheduler cron stopped gracefully")
+	case <-time.After(3 * time.Second):
+		logrus.Warn("Probe scheduler cron timeout after 3s")
+	}
+
 	// Stop ServiceSentinel
 	s.sentinel.Stop()
 }
