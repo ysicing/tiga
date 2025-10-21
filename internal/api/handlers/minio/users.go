@@ -99,9 +99,6 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "user", "user", req.AccessKey, "create", "success", "", nil, "", c.ClientIP(), nil)
 	handlers.RespondCreated(c, gin.H{"access_key": req.AccessKey, "secret_key": req.SecretKey})
 }
 
@@ -135,9 +132,6 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		handlers.RespondInternalError(c, err)
 		return
 	}
-	// Audit
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "user", "user", username, "delete", "success", "", nil, "", c.ClientIP(), nil)
 
 	handlers.RespondSuccess(c, gin.H{"message": "user deleted"})
 }

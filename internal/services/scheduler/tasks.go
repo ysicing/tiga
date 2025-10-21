@@ -6,9 +6,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/alert"
-
-	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 )
 
 // AlertTask runs alert processing
@@ -33,14 +32,16 @@ func (t *AlertTask) Name() string {
 	return "alert_processing"
 }
 
-// DatabaseAuditCleanupTask cleans up old database audit logs
+// DatabaseAuditCleanupTask cleans up old audit events
+// T036-T037: 更新为使用统一的 AuditEventRepository
 type DatabaseAuditCleanupTask struct {
-	auditRepo     *dbrepo.AuditLogRepository
+	auditRepo     repository.AuditEventRepository
 	retentionDays int
 }
 
 // NewDatabaseAuditCleanupTask creates a new audit cleanup task
-func NewDatabaseAuditCleanupTask(auditRepo *dbrepo.AuditLogRepository, retentionDays int) *DatabaseAuditCleanupTask {
+// T036-T037: 使用统一的 AuditEventRepository
+func NewDatabaseAuditCleanupTask(auditRepo repository.AuditEventRepository, retentionDays int) *DatabaseAuditCleanupTask {
 	return &DatabaseAuditCleanupTask{
 		auditRepo:     auditRepo,
 		retentionDays: retentionDays,
@@ -51,16 +52,16 @@ func NewDatabaseAuditCleanupTask(auditRepo *dbrepo.AuditLogRepository, retention
 func (t *DatabaseAuditCleanupTask) Run(ctx context.Context) error {
 	cutoffDate := time.Now().AddDate(0, 0, -t.retentionDays)
 
-	logrus.Infof("Starting database audit log cleanup (retention: %d days, cutoff: %s)",
+	logrus.Infof("Starting audit event cleanup (retention: %d days, cutoff: %s)",
 		t.retentionDays, cutoffDate.Format("2006-01-02"))
 
-	deleted, err := t.auditRepo.DeleteOldLogs(ctx, cutoffDate)
+	deleted, err := t.auditRepo.DeleteOlderThan(ctx, cutoffDate)
 	if err != nil {
-		logrus.Errorf("Failed to cleanup database audit logs: %v", err)
+		logrus.Errorf("Failed to cleanup audit events: %v", err)
 		return err
 	}
 
-	logrus.Infof("Database audit log cleanup completed: deleted %d records", deleted)
+	logrus.Infof("Audit event cleanup completed: deleted %d records", deleted)
 	return nil
 }
 

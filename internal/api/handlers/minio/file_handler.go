@@ -9,10 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ysicing/tiga/internal/api/handlers"
-	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 
-	mrepo "github.com/ysicing/tiga/internal/repository/minio"
 	msvc "github.com/ysicing/tiga/internal/services/minio"
 )
 
@@ -110,9 +108,6 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	}
 
 	// Audit upload
-	db := getDB(c)
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "file", "object", name, "upload", "success", "", nil, "", c.ClientIP(), models.JSONB{"bucket": bucket, "size": info.Size})
 
 	handlers.RespondCreated(c, gin.H{"bucket": bucket, "key": name, "size": info.Size, "etag": info.ETag})
 }
@@ -207,8 +202,5 @@ func (h *FileHandler) Delete(c *gin.Context) {
 		return
 	}
 	// Audit delete
-	db := getDB(c)
-	logger := msvc.NewAuditLogger(mrepo.NewAuditRepository(db))
-	_ = logger.LogOperation(c.Request.Context(), instance.ID, "file", "object", "batch", "delete", "success", "", nil, "", c.ClientIP(), models.JSONB{"bucket": req.Bucket, "count": len(req.Keys)})
 	handlers.RespondSuccess(c, gin.H{"deleted": len(req.Keys)})
 }

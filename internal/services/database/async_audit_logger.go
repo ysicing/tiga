@@ -13,6 +13,24 @@ import (
 	"github.com/ysicing/tiga/internal/services/audit"
 )
 
+// contextKey is a type for context keys to avoid collisions
+type contextKey string
+
+const contextKeyClientIP contextKey = "client_ip"
+
+// AuditEntry represents an audit log entry for database operations
+type AuditEntry struct {
+	InstanceID *uuid.UUID
+	Operator   string
+	Action     string
+	TargetType string
+	TargetName string
+	Details    map[string]interface{}
+	Success    bool
+	Error      error
+	ClientIP   string
+}
+
 // AsyncAuditLogger provides non-blocking audit logging with batching for database operations.
 // T037: 迁移到统一 AuditEvent 模型
 type AsyncAuditLogger struct {
@@ -115,4 +133,31 @@ func (l *AsyncAuditLogger) Shutdown(timeout time.Duration) error {
 // ChannelStatus returns the current channel usage statistics.
 func (l *AsyncAuditLogger) ChannelStatus() (used, capacity int) {
 	return l.logger.ChannelStatus()
+}
+
+// ExtractClientIP extracts the client IP from context
+func ExtractClientIP(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if ip, ok := ctx.Value(contextKeyClientIP).(string); ok {
+		return ip
+	}
+	return ""
+}
+
+// marshalDetails marshals audit details to JSON string
+func marshalDetails(details map[string]interface{}) (string, error) {
+	if len(details) == 0 {
+		return "", nil
+	}
+	payload := map[string]interface{}{
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+		"details":   details,
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize audit details: %w", err)
+	}
+	return string(data), nil
 }

@@ -175,7 +175,6 @@ func (d *Database) AutoMigrate() error {
 		&models.MinIOUser{},
 		&models.BucketPermission{},
 		&models.MinIOShareLink{},
-		&models.MinIOAuditLog{},
 
 		// Database management
 		&models.DatabaseInstance{},
@@ -183,7 +182,11 @@ func (d *Database) AutoMigrate() error {
 		&models.DatabaseUser{},
 		&models.PermissionPolicy{},
 		&models.QuerySession{},
-		&models.DatabaseAuditLog{},
+
+		// Scheduler and unified audit (T001-T037)
+		&models.ScheduledTask{},
+		&models.TaskExecution{},
+		&models.AuditEvent{},
 	)
 
 	if err != nil {
