@@ -210,15 +210,35 @@ func (s *Scheduler) Start(ctx context.Context) {
 // Stop stops the scheduler
 // Enhanced in T013 to stop cron scheduler
 func (s *Scheduler) Stop() {
-	// Stop cron scheduler
-	ctx := s.cron.Stop()
-	<-ctx.Done() // Wait for cron to finish
+	// Stop cron scheduler with timeout
+	stopCtx := s.cron.Stop()
+
+	select {
+	case <-stopCtx.Done():
+		logrus.Debug("Cron tasks completed gracefully")
+	case <-time.After(5 * time.Second):
+		logrus.Warn("Cron tasks timeout after 5s, forcing shutdown")
+	}
 
 	// Stop other goroutines
 	close(s.stopCh)
 	close(s.manualTasks)
-	s.wg.Wait()
-	logrus.Info("Scheduler stopped")
+
+	// Wait for goroutines with timeout
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logrus.Debug("Scheduler goroutines stopped gracefully")
+	case <-time.After(3 * time.Second):
+		logrus.Warn("Scheduler goroutines timeout after 3s")
+	}
+
+	logrus.Debug("Scheduler stopped")
 }
 
 // runTask runs a task on a schedule

@@ -123,7 +123,7 @@ pkg/                       # 可复用包
 ui/src/
 ├── components/           # 可复用 UI 组件
 ├── pages/               # 路由页面组件
-├── layouts/             # 布局包装器（DevOps、K8s、MinIO 等）
+├── layouts/             # 布局包装器（System Management、VMs、K8s、MinIO、Databases、Docker、WebServer 等）
 ├── services/            # API 客户端服务
 ├── contexts/            # React 上下文（auth、cluster 等）
 ├── hooks/               # 自定义 React hooks
@@ -137,7 +137,14 @@ ui/src/
 
 **管理器模式（Manager Pattern）**：不同服务类型（MinIO、MySQL、Docker 等）实现统一的 `ServiceManager` 接口（位于 `internal/services/managers/`），由 `ManagerCoordinator` 协调管理。
 
-**多子系统设计**：UI 组织为多个子系统（VMs、K8s、MinIO、Middleware、Docker、Storage、WebServer），每个子系统有独立的布局和页面，从统一的概览仪表板访问。
+**多子系统设计**：UI 组织为多个子系统，每个子系统有独立的布局和页面，从统一的概览仪表板访问：
+- **System Management**（系统管理）：定时任务、审计日志、用户管理、全局配置（集群、OAuth、RBAC）
+- **VMs**（主机管理）：物理和虚拟服务器管理、SSH 访问、服务监控、告警规则
+- **K8s**（Kubernetes）：集群管理、工作负载、CRD 支持（OpenKruise、Tailscale、Traefik、System Upgrade）
+- **Databases**（数据库）：MySQL、PostgreSQL、Redis 实例管理、查询控制台、权限管理
+- **MinIO**（对象存储）：MinIO 实例管理、Bucket 管理、用户和策略配置
+- **Docker**（容器）：Docker 容器、镜像、网络管理
+- **WebServer**（Web 服务器）：Caddy Web 服务器和反向代理管理
 
 **中间件栈**：请求处理流程：CORS → Logger → Auth（JWT）→ RBAC → Rate Limit → Audit → Handler。
 

@@ -345,42 +345,57 @@ func (a *Application) Run(ctx context.Context) error {
 	<-quit
 
 	logrus.Info("Shutting down server...")
+	totalStart := time.Now()
 
 	// Shutdown gRPC server
 	if a.grpcServer != nil {
-		logrus.Info("Stopping gRPC server...")
+		stepStart := time.Now()
 		a.grpcServer.GracefulStop()
+		logrus.Infof("[1/7] ✓ gRPC server stopped (%v)", time.Since(stepStart))
 	}
 
 	// Shutdown HTTP server
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	stepStart := time.Now()
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := a.httpServer.Shutdown(shutdownCtx); err != nil {
-		logrus.Errorf("Server forced to shutdown: %v", err)
+		logrus.Warnf("[2/7] ✗ HTTP server forced shutdown (%v): %v", time.Since(stepStart), err)
+	} else {
+		logrus.Infof("[2/7] ✓ HTTP server stopped (%v)", time.Since(stepStart))
 	}
 
 	// Stop scheduler
+	stepStart = time.Now()
 	a.scheduler.Stop()
+	logrus.Infof("[3/7] ✓ Scheduler stopped (%v)", time.Since(stepStart))
 
 	// Stop service probe scheduler (includes ServiceSentinel)
 	if a.probeScheduler != nil {
+		stepStart = time.Now()
 		a.probeScheduler.Stop()
-		logrus.Info("Service probe scheduler stopped")
+		logrus.Infof("[4/7] ✓ Service probe scheduler stopped (%v)", time.Since(stepStart))
 	}
 
 	// Stop monitoring
+	stepStart = time.Now()
 	a.coordinator.StopMonitoring()
+	logrus.Infof("[5/7] ✓ Monitoring stopped (%v)", time.Since(stepStart))
 
 	// Disconnect all managers
+	stepStart = time.Now()
 	a.coordinator.DisconnectAll(ctx)
+	logrus.Infof("[6/7] ✓ All managers disconnected (%v)", time.Since(stepStart))
 
 	// Close database
+	stepStart = time.Now()
 	if err := a.db.Close(); err != nil {
-		logrus.Errorf("Failed to close database: %v", err)
+		logrus.Errorf("[7/7] ✗ Failed to close database (%v): %v", time.Since(stepStart), err)
+	} else {
+		logrus.Infof("[7/7] ✓ Database closed (%v)", time.Since(stepStart))
 	}
 
-	logrus.Info("Server exited")
+	logrus.Infof("✓ Server exited gracefully (total: %v)", time.Since(totalStart))
 	return nil
 }
 
