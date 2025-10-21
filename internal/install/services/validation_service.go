@@ -158,5 +158,27 @@ func (s *ValidationService) CreateAdminAccount(db *gorm.DB, admin models.AdminAc
 		return fmt.Errorf("failed to create admin account: %w", err)
 	}
 
+	// 查找并分配 admin 角色
+	var adminRole mainmodels.Role
+	if err := db.Where("name = ?", "admin").First(&adminRole).Error; err != nil {
+		// 如果找不到 admin 角色，记录警告但不失败（向后兼容）
+		if err == gorm.ErrRecordNotFound {
+			fmt.Printf("Warning: admin role not found, skipping role assignment\n")
+			return nil
+		}
+		return fmt.Errorf("failed to find admin role: %w", err)
+	}
+
+	// 创建用户角色关联
+	userRole := mainmodels.UserRole{
+		UserID:    user.ID,
+		RoleID:    adminRole.ID,
+		GrantedAt: user.CreatedAt,
+	}
+
+	if err := db.Create(&userRole).Error; err != nil {
+		return fmt.Errorf("failed to assign admin role: %w", err)
+	}
+
 	return nil
 }

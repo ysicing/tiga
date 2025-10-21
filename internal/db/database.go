@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/glebarez/sqlite"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -206,10 +207,108 @@ func (d *Database) AutoMigrate() error {
 func (d *Database) SeedDefaultData() error {
 	logrus.Info("Seeding default data...")
 
+	// Create default roles if not exist
+	if err := d.seedDefaultRoles(); err != nil {
+		logrus.Errorf("Failed to seed default roles: %v", err)
+		return err
+	}
+
 	// Note: Default host groups are no longer needed as we use simple string grouping
 	// Hosts will default to "默认分组" via model BeforeCreate hook
 
 	logrus.Info("Default data seeding completed")
+	return nil
+}
+
+// seedDefaultRoles creates default system roles
+func (d *Database) seedDefaultRoles() error {
+	defaultRoles := []struct {
+		Name        string
+		DisplayName string
+		Description string
+		IsSystem    bool
+		Permissions string
+	}{
+		{
+			Name:        "admin",
+			DisplayName: "平台管理员",
+			Description: "拥有系统所有权限，可以管理用户、角色和所有资源",
+			IsSystem:    true,
+			Permissions: `[
+				{"resource": "*", "actions": ["*"]},
+				{"resource": "user", "actions": ["create", "read", "update", "delete"]},
+				{"resource": "role", "actions": ["create", "read", "update", "delete"]},
+				{"resource": "instance", "actions": ["create", "read", "update", "delete"]},
+				{"resource": "cluster", "actions": ["create", "read", "update", "delete"]},
+				{"resource": "host", "actions": ["create", "read", "update", "delete"]},
+				{"resource": "database", "actions": ["create", "read", "update", "delete"]},
+				{"resource": "minio", "actions": ["create", "read", "update", "delete"]}
+			]`,
+		},
+		{
+			Name:        "user",
+			DisplayName: "普通用户",
+			Description: "可以查看和管理自己的资源",
+			IsSystem:    true,
+			Permissions: `[
+				{"resource": "instance", "actions": ["read", "update"]},
+				{"resource": "cluster", "actions": ["read"]},
+				{"resource": "host", "actions": ["read"]},
+				{"resource": "database", "actions": ["read", "query"]},
+				{"resource": "minio", "actions": ["read"]}
+			]`,
+		},
+		{
+			Name:        "viewer",
+			DisplayName: "只读用户",
+			Description: "只能查看系统资源，不能进行修改操作",
+			IsSystem:    true,
+			Permissions: `[
+				{"resource": "instance", "actions": ["read"]},
+				{"resource": "cluster", "actions": ["read"]},
+				{"resource": "host", "actions": ["read"]},
+				{"resource": "database", "actions": ["read"]},
+				{"resource": "minio", "actions": ["read"]}
+			]`,
+		},
+	}
+
+	for _, roleData := range defaultRoles {
+		// Check if role already exists
+		var existingRole models.Role
+		result := d.DB.Where("name = ?", roleData.Name).First(&existingRole)
+
+		if result.Error == gorm.ErrRecordNotFound {
+			// Role doesn't exist, create it
+			role := models.Role{
+				Name:        roleData.Name,
+				DisplayName: roleData.DisplayName,
+				Description: roleData.Description,
+				IsSystem:    roleData.IsSystem,
+			}
+
+			// Set permissions as raw JSON string
+			if err := d.DB.Exec(
+				"INSERT INTO roles (id, name, display_name, description, permissions, is_system, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+				uuid.New().String(),
+				role.Name,
+				role.DisplayName,
+				role.Description,
+				roleData.Permissions,
+				role.IsSystem,
+				time.Now(),
+				time.Now(),
+			).Error; err != nil {
+				return fmt.Errorf("failed to create role %s: %w", roleData.Name, err)
+			}
+			logrus.Infof("Created default role: %s (%s)", roleData.Name, roleData.DisplayName)
+		} else if result.Error != nil {
+			return fmt.Errorf("failed to check role %s: %w", roleData.Name, result.Error)
+		} else {
+			logrus.Debugf("Role %s already exists, skipping", roleData.Name)
+		}
+	}
+
 	return nil
 }
 

@@ -35,8 +35,8 @@ type ListUsersRequest struct {
 	Status   string   `form:"status"`
 	Roles    []string `form:"roles"`
 	Search   string   `form:"search"`
-	Page     int      `form:"page" binding:"min=1"`
-	PageSize int      `form:"page_size" binding:"min=1,max=100"`
+	Page     int      `form:"page"`
+	PageSize int      `form:"page_size" binding:"max=100"`
 }
 
 // ListUsers lists all users with pagination

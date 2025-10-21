@@ -88,6 +88,9 @@ func SetupRoutes(
 	alertRepo := repository.NewAlertRepository(db)
 	auditRepo := repository.NewAuditLogRepository(db)
 
+	// System user management repository
+	userRepo := repository.NewUserRepository(db)
+
 	// K8s repositories (Phase 0-3)
 	clusterRepo := repository.NewClusterRepository(db)
 	resourceHistoryRepo := repository.NewResourceHistoryRepository(db)
@@ -114,6 +117,9 @@ func SetupRoutes(
 	// Initialize session and login services using the shared jwtManager
 	sessionService := authservices.NewSessionService(db)
 	loginService := authservices.NewLoginService(db, jwtManager, sessionService)
+
+	// System user management service
+	rbacService := authservices.NewRBACService(db)
 
 	// Initialize services
 	instanceService := services.NewInstanceService(instanceRepo)
@@ -229,6 +235,9 @@ func SetupRoutes(
 
 	// Auth handler for /api/auth routes - using new system
 	authHandler := handlers.NewAuthHandler(loginService, sessionService, nil)
+
+	// System user management handler
+	userHandler := handlers.NewUserHandler(userRepo, rbacService)
 
 	// ==================== Auth Routes (No Auth Required /api/auth) ====================
 	// Note: These are at /api/auth (not /api/v1/auth) for compatibility with frontend
@@ -590,6 +599,21 @@ func SetupRoutes(
 				// Audit configuration
 				auditGroup.GET("/config", auditConfigHandler.GetConfig)
 				auditGroup.PUT("/config", auditConfigHandler.UpdateConfig)
+			}
+
+			// ==================== User Management Subsystem ====================
+			usersGroup := protected.Group("/users")
+			{
+				usersGroup.GET("", userHandler.ListUsers)
+				usersGroup.POST("", userHandler.CreateUser)
+				usersGroup.GET("/:user_id", userHandler.GetUser)
+				usersGroup.PATCH("/:user_id", userHandler.UpdateUser)
+				usersGroup.DELETE("/:user_id", userHandler.DeleteUser)
+
+				// User roles management
+				usersGroup.GET("/:user_id/roles", userHandler.GetUserRoles)
+				usersGroup.POST("/:user_id/roles", userHandler.AssignRole)
+				usersGroup.DELETE("/:user_id/roles/:role_id", userHandler.RevokeRole)
 			}
 
 			// User-specific audit logs
