@@ -18,10 +18,9 @@ func TestClusterListContract(t *testing.T) {
 	// Expected to be implemented in Phase 0 (T027)
 
 	t.Run("ResponseStructure", func(t *testing.T) {
-		// Setup test router
-		router := gin.New()
-		// TODO: Register cluster list handler when implemented
-		// For now, we'll test against the expected contract
+		// Setup test environment with real handlers
+		router, _, cleanup := setupTestAPI(t)
+		defer cleanup()
 
 		// Create test request
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/k8s/clusters", nil)
@@ -32,11 +31,7 @@ func TestClusterListContract(t *testing.T) {
 		router.ServeHTTP(rec, req)
 
 		// Verify status code
-		// Note: Will be 404 until handler is implemented
-		if rec.Code != http.StatusOK {
-			t.Skipf("API not implemented yet, got status %d, expected 200", rec.Code)
-			return
-		}
+		require.Equal(t, http.StatusOK, rec.Code, "Expected 200 OK response")
 
 		// Verify response structure matches contract
 		var response struct {
@@ -71,17 +66,15 @@ func TestClusterListContract(t *testing.T) {
 	})
 
 	t.Run("ClusterFieldTypes", func(t *testing.T) {
-		// Setup test router
-		router := gin.New()
+		// Setup test environment with real handlers
+		router, _, cleanup := setupTestAPI(t)
+		defer cleanup()
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/k8s/clusters", nil)
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusOK {
-			t.Skipf("API not implemented yet, got status %d", rec.Code)
-			return
-		}
+		require.Equal(t, http.StatusOK, rec.Code, "Expected 200 OK response")
 
 		var response map[string]interface{}
 		err := json.Unmarshal(rec.Body.Bytes(), &response)
@@ -129,36 +122,33 @@ func TestClusterListContract(t *testing.T) {
 	})
 
 	t.Run("UnauthorizedAccess", func(t *testing.T) {
-		// Setup test router
-		router := gin.New()
+		// Setup test environment with real handlers
+		router, _, cleanup := setupTestAPI(t)
+		defer cleanup()
 
 		// Request without auth header
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/k8s/clusters", nil)
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
 
-		// Should return 401 Unauthorized when auth is implemented
-		// For now, skip if auth middleware is not yet implemented
-		if rec.Code == http.StatusNotFound {
-			t.Skip("API and auth middleware not implemented yet")
-		}
+		// Note: Auth middleware is not implemented in test setup yet
+		// Skip this test until auth middleware is added to setupTestAPI
+		t.Skip("Auth middleware not implemented in test setup yet")
 
 		assert.Equal(t, http.StatusUnauthorized, rec.Code,
 			"Should return 401 Unauthorized without valid JWT token")
 	})
 
 	t.Run("ContentType", func(t *testing.T) {
-		// Setup test router
-		router := gin.New()
+		// Setup test environment with real handlers
+		router, _, cleanup := setupTestAPI(t)
+		defer cleanup()
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/k8s/clusters", nil)
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusOK {
-			t.Skipf("API not implemented yet, got status %d", rec.Code)
-			return
-		}
+		require.Equal(t, http.StatusOK, rec.Code, "Expected 200 OK response")
 
 		// Verify Content-Type is application/json
 		contentType := rec.Header().Get("Content-Type")

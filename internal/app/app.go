@@ -26,11 +26,13 @@ import (
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services"
+	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
 	"github.com/ysicing/tiga/internal/services/monitor"
+	"github.com/ysicing/tiga/internal/services/notification"
 	"github.com/ysicing/tiga/internal/services/prometheus"
 	"github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/crypto"
@@ -219,6 +221,11 @@ func (a *Application) Initialize(ctx context.Context) error {
 	proto.RegisterHostMonitorServer(a.grpcServer, grpcService)
 
 	logrus.Info("gRPC server initialized for Agent monitoring")
+
+	// T027: Register scheduled tasks to the enhanced scheduler
+	if err := a.registerScheduledTasks(ctx); err != nil {
+		return fmt.Errorf("failed to register scheduled tasks: %w", err)
+	}
 
 	return nil
 }
@@ -559,4 +566,53 @@ func (a *Application) restartProcess() error {
 	// Execute the new process, replacing the current one
 	// This works on Unix-like systems (Linux, macOS)
 	return syscall.Exec(executable, args, env)
+}
+
+// registerScheduledTasks registers all scheduled tasks to the scheduler
+// T027: Migrate existing tasks (alert_processing, database_audit_cleanup) to enhanced Scheduler
+func (a *Application) registerScheduledTasks(ctx context.Context) error {
+	logrus.Info("Registering scheduled tasks...")
+
+	// Create necessary repositories for tasks
+	alertRepo := repository.NewAlertRepository(a.db.DB)
+	metricsRepo := repository.NewMetricsRepository(a.db.DB)
+	auditEventRepo := repository.NewAuditEventRepository(a.db.DB)
+
+	// Create NotificationService for AlertProcessor
+	notificationSvc := notification.NewNotificationService()
+
+	// Create AlertProcessor
+	alertProcessor := alert.NewAlertProcessor(alertRepo, metricsRepo, notificationSvc, a.coordinator)
+
+	// Task 1: Alert Processing (runs every 5 minutes)
+	// T027: Use AddCron() method with cron expression
+	alertTask := scheduler.NewAlertTask(alertProcessor)
+	if err := a.scheduler.AddCron(
+		alertTask.Name(),
+		"*/5 * * * *", // Every 5 minutes
+		alertTask,
+	); err != nil {
+		return fmt.Errorf("failed to register alert_processing task: %w", err)
+	}
+	logrus.Info("alert_processing task registered successfully")
+
+	// Task 2: Database Audit Cleanup (runs daily at 2 AM)
+	// T027: Use AddCron() method with cron expression
+	retentionDays := 90 // Default retention period
+	if a.config.Audit.RetentionDays > 0 {
+		retentionDays = a.config.Audit.RetentionDays
+	}
+
+	auditCleanupTask := scheduler.NewDatabaseAuditCleanupTask(auditEventRepo, retentionDays)
+	if err := a.scheduler.AddCron(
+		auditCleanupTask.Name(),
+		"0 2 * * *", // Daily at 2 AM
+		auditCleanupTask,
+	); err != nil {
+		return fmt.Errorf("failed to register database_audit_cleanup task: %w", err)
+	}
+	logrus.Info("database_audit_cleanup task registered successfully")
+
+	logrus.Infof("Successfully registered %d scheduled tasks", 2)
+	return nil
 }

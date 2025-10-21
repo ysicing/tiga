@@ -5,6 +5,8 @@ import { ClusterManagement } from '@/components/settings/cluster-management'
 import { OAuthProviderManagement } from '@/components/settings/oauth-provider-management'
 import { RBACManagement } from '@/components/settings/rbac-management'
 import { UserManagement } from '@/components/settings/user-management'
+import { SchedulerManagement } from '@/components/settings/scheduler-management'
+import { AuditLogsManagement } from '@/components/settings/audit-logs-management'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -26,6 +28,16 @@ export function SettingsPage() {
             value: 'clusters',
             label: t('settings.tabs.clusters', 'Cluster'),
             content: <ClusterManagement />,
+          },
+          {
+            value: 'scheduler',
+            label: t('settings.tabs.scheduler', 'Scheduler'),
+            content: <SchedulerManagement />,
+          },
+          {
+            value: 'audit',
+            label: t('settings.tabs.audit', 'Audit Logs'),
+            content: <AuditLogsManagement />,
           },
           {
             value: 'oauth',
