@@ -165,7 +165,7 @@
 
 ### 数据模型 [P]
 
-- [ ] **T011** [P] TaskExecution 模型创建
+- [X] **T011** [P] TaskExecution 模型创建
   - 创建 GORM 模型，包含所有字段（参考 data-model.md）
   - 实现 `ExecutionState` 枚举和 `Validate()` 方法
   - 添加索引（task_name、state、started_at）
@@ -173,7 +173,7 @@
   - **验证**：模型可以编译，枚举验证正常
   - **参考**：`data-model.md` 实体 2
 
-- [ ] **T012** [P] 创建统一 AuditEvent 模型 🆕 统一审计
+- [X] **T012** [P] 创建统一 AuditEvent 模型 🆕 统一审计
   - 创建 GORM 模型 `models.AuditEvent`（替换分散的审计表）
   - 实现 `audit.AuditLog` 接口（`GetID()`、`SetCreatedAt()`）
   - 包含统一字段：
@@ -191,7 +191,7 @@
 
 ### Scheduler 核心服务
 
-- [ ] **T013** Scheduler 功能增强 ⚠️ 简化
+- [X] **T013** Scheduler 功能增强 ⚠️ 简化
   - **基于现有 `internal/services/scheduler/scheduler.go` 增强**：
     - 添加 `execRepo ExecutionRepository` 字段
     - 添加 `AddCron(name, cronExpr string, task Task)` 方法
@@ -204,7 +204,7 @@
   - **依赖**：T011
   - **参考**：`audit-report.md` 第 3.1 节
 
-- [ ] **T014** 任务执行历史记录
+- [X] **T014** 任务执行历史记录
   - 在 Scheduler 执行逻辑中添加历史记录写入
   - 实现状态转换跟踪（pending → running → success/failure/timeout）
   - 实现错误堆栈记录
@@ -213,7 +213,7 @@
   - **验证**：执行历史正确记录，T006 测试通过
   - **依赖**：T013
 
-- [ ] **T015** 超时控制机制（Context + 宽限期）
+- [X] **T015** 超时控制机制（Context + 宽限期）
   - 实现 Context 超时控制
   - 实现 30 秒宽限期机制
   - **文件**：`internal/services/scheduler/timeout.go`（新文件）
@@ -221,7 +221,7 @@
   - **依赖**：T013
   - **参考**：`research.md` 第 5 节
 
-- [ ] **T016** 任务统计数据计算
+- [X] **T016** 任务统计数据计算
   - 实现统计数据聚合（成功率、平均执行时间）
   - 实现单任务统计和全局统计
   - **文件**：`internal/services/scheduler/stats.go`（新文件）
@@ -231,7 +231,7 @@
 
 ### Audit 核心服务
 
-- [ ] **T017** Audit 中间件增强 🆕 使用统一审计
+- [X] **T017** Audit 中间件增强 🆕 使用统一审计
   - **基于现有 `internal/api/middleware/audit.go` 增强**：
     - 修改为使用统一 `audit.AsyncLogger[*models.AuditEvent]`（替换简单 Goroutine）
     - 在 `buildAuditLog()` 中构建 `AuditEvent` 对象
@@ -243,7 +243,7 @@
   - **依赖**：T012（AuditEvent 模型）、T018（TruncateObject）
   - **参考**：`audit-unification.md` 第二阶段
 
-- [ ] **T018** 对象截断策略实现（64KB 限制）
+- [X] **T018** 对象截断策略实现（64KB 限制）
   - 实现 `TruncateObject()` 方法（智能截断算法）
   - 保留 JSON 结构，截断字段值
   - 记录截断字段列表
@@ -253,14 +253,14 @@
 
 ### Repository 层 [P]
 
-- [ ] **T019** [P] Scheduler 仓储实现 ⚠️ 简化
+- [X] **T019** [P] Scheduler 仓储实现 ⚠️ 简化
   - 实现 `TaskExecutionRepository`（CRUD、历史查询、统计）
   - **无需实现**：TaskLockRepository（无分布式锁）
   - **文件**：`internal/repository/scheduler/execution.go`（新文件）
   - **验证**：仓储方法正常工作
   - **依赖**：T011
 
-- [ ] **T020** [P] 创建统一 AuditEventRepository 🆕 统一审计
+- [X] **T020** [P] 创建统一 AuditEventRepository 🆕 统一审计
   - 创建 `repository.AuditEventRepository`（新仓储）
   - 实现 `audit.AuditRepository[*models.AuditEvent]` 接口
   - 实现方法：
@@ -276,7 +276,7 @@
   - **依赖**：T012（AuditEvent 模型）
   - **参考**：`audit-unification.md` 第一阶段
 
-- [ ] **T021** [P] 查询索引设计和优化
+- [X] **T021** [P] 查询索引设计和优化
   - 创建复合索引（参考 data-model.md 简化版）
   - 验证索引使用（EXPLAIN 查询计划）
   - 优化慢查询
@@ -287,7 +287,7 @@
 
 ### API 处理器 [P]
 
-- [ ] **T022** [P] Scheduler API 处理器实现
+- [X] **T022** [P] Scheduler API 处理器实现
   - 实现 8 个端点处理器：
     - `ListTasks`、`GetTask`、`EnableTask`、`DisableTask`
     - `TriggerTask`（手动触发）、`ListExecutions`、`GetExecution`、`GetStats`
@@ -297,7 +297,7 @@
   - **依赖**：T013、T019
   - **参考**：`contracts/scheduler_api.yaml`
 
-- [ ] **T023** [P] Audit API 处理器实现
+- [X] **T023** [P] Audit API 处理器实现
   - 实现 4 个端点处理器：
     - `ListEvents`、`GetEvent`、`GetConfig`、`UpdateConfig`
   - 实现分页和过滤参数解析
@@ -310,7 +310,7 @@
 
 ## 阶段 3.4：前端实现 [P]
 
-- [ ] **T024** [P] Scheduler 管理页面
+- [X] **T024** [P] Scheduler 管理页面
   - 创建任务列表页（显示所有任务、启用/禁用状态）
   - 实现任务启用/禁用操作
   - 实现任务手动触发
@@ -318,7 +318,7 @@
   - **验证**：页面可以显示和操作任务
   - **依赖**：T022
 
-- [ ] **T025** [P] 任务执行历史页面
+- [X] **T025** [P] 任务执行历史页面
   - 创建执行历史列表页（分页、过滤）
   - 创建执行详情页（显示错误堆栈、执行时长）
   - 实现统计图表（成功率、执行时间趋势）
@@ -326,7 +326,7 @@
   - **验证**：页面可以查询和展示执行历史
   - **依赖**：T022
 
-- [ ] **T026** [P] 审计日志页面
+- [X] **T026** [P] 审计日志页面
   - 创建审计日志列表页（分页、多维度过滤）
   - 创建审计事件详情页
   - 实现差异对比组件（OldObject vs NewObject）
@@ -338,7 +338,7 @@
 
 ## 阶段 3.5：数据迁移和配置
 
-- [ ] **T027** 现有任务迁移到增强 Scheduler ⚠️ 简化
+- [X] **T027** 现有任务迁移到增强 Scheduler ⚠️ 简化
   - 迁移 `alert_processing` 任务（添加执行历史记录）
   - 迁移 `database_audit_cleanup` 任务
   - 更新任务注册逻辑（使用 `AddCron()` 方法）
@@ -346,7 +346,7 @@
   - **验证**：现有任务正常调度，执行历史正确记录
   - **依赖**：T013、T014
 
-- [ ] **T028** [P] 配置文件更新 ⚠️ 简化
+- [X] **T028** [P] 配置文件更新 ⚠️ 简化
   - 添加 Scheduler 配置（超时时间、最大重试次数）
   - 添加 Audit 配置（保留期、对象大小限制）
   - **无需添加**：分布式锁类型配置
@@ -358,14 +358,14 @@
 
 ## 阶段 3.6：优化和文档
 
-- [ ] **T029** [P] Swagger 文档生成
+- [X] **T029** [P] Swagger 文档生成
   - 为所有新 API 端点添加 Swagger 注释
   - 运行 `./scripts/generate-swagger.sh`
   - **文件**：处理器文件中的注释
   - **验证**：Swagger 文档正确显示新端点
   - **依赖**：T022、T023
 
-- [ ] **T030** [P] 部署文档更新 ⚠️ 简化
+- [X] **T030** [P] 部署文档更新 ⚠️ 简化
   - 更新部署指南（超时配置、保留期配置）
   - 添加性能调优建议
   - 添加故障排查指南
@@ -374,7 +374,7 @@
   - **验证**：文档清晰完整
   - **依赖**：T028
 
-- [ ] **T031** 代码质量检查
+- [X] **T031** 代码质量检查
   - 运行 `task lint` 并修复所有警告
   - 运行 `task gofmt` 格式化代码
   - 检查代码覆盖率（目标 80%）
@@ -382,7 +382,7 @@
   - **验证**：`task lint` 通过，覆盖率达标
   - **依赖**：所有实现任务
 
-- [ ] **T032** 手动验证（quickstart.md 场景）⚠️ 简化
+- [X] **T032** 手动验证（quickstart.md 场景）⚠️ 简化
   - 执行场景 1：单实例任务调度验证
   - 执行场景 2：任务执行历史查询
   - 执行场景 3：任务手动触发和失败处理
