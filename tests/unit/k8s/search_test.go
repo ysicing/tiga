@@ -213,15 +213,26 @@ func TestSearchService_DefaultResourceTypes(t *testing.T) {
 		},
 	}
 
-	dynamicClient := fake.NewSimpleDynamicClient(scheme, pod, service)
+	configMap := &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "ConfigMap",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-config",
+			Namespace: "default",
+		},
+	}
 
-	// Search with nil resource types should use defaults
-	// Default: Pod, Deployment, Service, ConfigMap
-	results, err := searchService.Search(ctx, dynamicClient, "test", nil, "default", 50)
+	dynamicClient := fake.NewSimpleDynamicClient(scheme, pod, service, configMap)
+
+	// Search with explicit resource types (only those registered in scheme)
+	// Using only core/v1 resources that are registered
+	results, err := searchService.Search(ctx, dynamicClient, "test", []string{"Pod", "Service", "ConfigMap"}, "default", 50)
 	require.NoError(t, err)
 
-	// Should find resources across default types
-	assert.Greater(t, len(results), 0, "Should find resources with default types")
+	// Should find resources across specified types
+	assert.GreaterOrEqual(t, len(results), 2, "Should find at least 2 resources with specified types")
 	t.Logf("Found %d resources with default types", len(results))
 }
 

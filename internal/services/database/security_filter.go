@@ -121,30 +121,51 @@ func (f *SecurityFilter) ValidateSQL(query string) error {
 }
 
 func (f *SecurityFilter) validateSingleSQL(statement string) error {
-	// Remove SQL comments to prevent comment-based injection
-	statement = removeComments(statement)
-	normalized := normalizeWhitespace(statement)
-	upper := strings.ToUpper(normalized)
+	// Remove SQL comments first to check if statement becomes empty
+	cleanedStatement := removeComments(statement)
+	if strings.TrimSpace(cleanedStatement) == "" {
+		// Empty statement after comment removal is safe
+		return nil
+	}
+
+	// Check the original statement (with comments) for dangerous keywords
+	// This prevents attackers from hiding dangerous SQL in comments
+	upper := strings.ToUpper(statement)
+	for _, banned := range f.bannedStatements {
+		bannedTrimmed := strings.TrimSpace(banned)
+		// Create pattern that matches word boundaries
+		// For "CREATE INDEX", also match "CREATE UNIQUE INDEX"
+		if strings.Contains(bannedTrimmed, "CREATE INDEX") {
+			pattern := regexp.MustCompile(`(?i)\bCREATE\s+(UNIQUE\s+)?INDEX\b`)
+			if pattern.MatchString(upper) {
+				return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, "CREATE INDEX")
+			}
+		} else if strings.Contains(bannedTrimmed, "CREATE ") {
+			// Handle other CREATE statements (CREATE TABLE, CREATE DATABASE, etc.)
+			parts := strings.Fields(bannedTrimmed)
+			if len(parts) == 2 {
+				pattern := regexp.MustCompile(`(?i)\b` + parts[0] + `\s+` + parts[1] + `\b`)
+				if pattern.MatchString(upper) {
+					return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, bannedTrimmed)
+				}
+			}
+		} else {
+			// For single-word keywords (DROP, TRUNCATE, ALTER, RENAME, etc.)
+			keyword := strings.TrimSpace(bannedTrimmed)
+			pattern := regexp.MustCompile(`(?i)\b` + keyword + `\b`)
+			if pattern.MatchString(upper) {
+				return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, keyword)
+			}
+		}
+	}
+
+	// Continue with cleaned statement for further validation
+	normalized := normalizeWhitespace(cleanedStatement)
+	upper = strings.ToUpper(normalized)
 
 	// Detect SQL injection patterns
 	if err := f.detectSQLInjection(upper); err != nil {
 		return err
-	}
-
-	// Use word boundary regex to prevent bypasses like "dr/**/op"
-	for _, banned := range f.bannedStatements {
-		bannedTrimmed := strings.TrimSpace(banned)
-		// Special handling for "CREATE INDEX" to match "CREATE UNIQUE INDEX" too
-		if bannedTrimmed == "CREATE INDEX" {
-			if strings.Contains(upper, "CREATE") && strings.Contains(upper, "INDEX") {
-				return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, bannedTrimmed)
-			}
-		} else {
-			pattern := regexp.MustCompile(`(?i)\b` + bannedTrimmed + `\b`)
-			if pattern.MatchString(upper) {
-				return fmt.Errorf("%w: %s", ErrSQLDangerousOperation, bannedTrimmed)
-			}
-		}
 	}
 
 	firstKeyword := extractFirstKeyword(upper)

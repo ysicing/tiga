@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/ysicing/tiga/internal/models"
 )
 
 func Test_Integration_Audit(t *testing.T) {
@@ -35,10 +36,15 @@ func Test_Integration_Audit(t *testing.T) {
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
 	}
 
-	// Verify an audit log exists for bucket create
-	type Row struct{ Count int }
+	// Verify an audit log exists in the unified audit_events table
+	// MinIO audit has been migrated to the unified audit system
 	var cnt int64
-	err := env.DB.Table("minio_audit_logs").Where("operation_type = ? AND resource_type = ? AND resource_name = ?", "bucket", "bucket", bucket).Count(&cnt).Error
+	err := env.DB.Model(&models.AuditEvent{}).
+		Where("subsystem = ? AND action = ? AND resource_type = ?",
+			models.SubsystemMinIO,
+			models.ActionCreated,
+			models.ResourceTypeMinIO).
+		Count(&cnt).Error
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, cnt, int64(1))
+	require.GreaterOrEqual(t, cnt, int64(1), "Should have at least one audit event for bucket creation")
 }
