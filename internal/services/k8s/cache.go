@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

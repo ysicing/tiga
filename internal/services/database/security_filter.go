@@ -44,7 +44,7 @@ var (
 	charFunctionPattern     = regexp.MustCompile(`(?i)\bCHAR\s*\(`)
 	concatPattern           = regexp.MustCompile(`(?i)\bCONCAT\s*\(`)
 	base64Pattern           = regexp.MustCompile(`[A-Za-z0-9+/]{20,}={0,2}`) // Potential Base64
-	multipleCommentsPattern = regexp.MustCompile(`(/\*.*?\*/.*){3,}`)         // 3+ comments (suspicious)
+	multipleCommentsPattern = regexp.MustCompile(`(/\*.*?\*/.*){3,}`)        // 3+ comments (suspicious)
 )
 
 // SecurityFilter validates SQL and Redis commands against the project's safety rules.

@@ -18,9 +18,9 @@ type ClientManager struct {
 func NewClientManager() *ClientManager {
 	return &ClientManager{
 		clients: expirable.NewLRU[string, *sdk.Client](
-			100,              // Maximum 100 MinIO clients
-			nil,              // No eviction callback needed
-			30*time.Minute,   // 30 minutes TTL
+			100,            // Maximum 100 MinIO clients
+			nil,            // No eviction callback needed
+			30*time.Minute, // 30 minutes TTL
 		),
 	}
 }

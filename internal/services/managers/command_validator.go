@@ -33,53 +33,53 @@ func NewCommandValidator() *CommandValidator {
 		},
 		// Blacklist of dangerous commands
 		blockedCommands: map[string]bool{
-			"rm":         true,
-			"rmdir":      true,
-			"dd":         true,
-			"mkfs":       true,
-			"fdisk":      true,
-			"shutdown":   true,
-			"reboot":     true,
-			"halt":       true,
-			"poweroff":   true,
-			"init":       true,
-			"kill":       true,
-			"killall":    true,
-			"pkill":      true,
-			"su":         true,
-			"sudo":       true,
-			"chmod":      true,
-			"chown":      true,
-			"chroot":     true,
-			"mount":      true,
-			"umount":     true,
-			"iptables":   true,
-			"nc":         true,
-			"netcat":     true,
-			"curl":       true, // Can be used to exfiltrate data
-			"wget":       true, // Can be used to download malicious files
-			"ssh":        true,
-			"scp":        true,
-			"telnet":     true,
-			"ftp":        true,
+			"rm":       true,
+			"rmdir":    true,
+			"dd":       true,
+			"mkfs":     true,
+			"fdisk":    true,
+			"shutdown": true,
+			"reboot":   true,
+			"halt":     true,
+			"poweroff": true,
+			"init":     true,
+			"kill":     true,
+			"killall":  true,
+			"pkill":    true,
+			"su":       true,
+			"sudo":     true,
+			"chmod":    true,
+			"chown":    true,
+			"chroot":   true,
+			"mount":    true,
+			"umount":   true,
+			"iptables": true,
+			"nc":       true,
+			"netcat":   true,
+			"curl":     true, // Can be used to exfiltrate data
+			"wget":     true, // Can be used to download malicious files
+			"ssh":      true,
+			"scp":      true,
+			"telnet":   true,
+			"ftp":      true,
 		},
 		// Blocked patterns in arguments
 		blockedPatterns: []string{
-			"&&",      // Command chaining
-			"||",      // Command chaining
-			";",       // Command separator
-			"|",       // Pipe
-			"<",       // Redirection
-			">",       // Redirection
-			"`",       // Command substitution
-			"$(",      // Command substitution
-			"${",      // Variable expansion
-			"../",     // Path traversal
-			"~",       // Home directory expansion
-			"*",       // Wildcard (can be dangerous)
-			"?",       // Wildcard
-			"\n",      // Newline injection
-			"\r",      // Carriage return injection
+			"&&",  // Command chaining
+			"||",  // Command chaining
+			";",   // Command separator
+			"|",   // Pipe
+			"<",   // Redirection
+			">",   // Redirection
+			"`",   // Command substitution
+			"$(",  // Command substitution
+			"${",  // Variable expansion
+			"../", // Path traversal
+			"~",   // Home directory expansion
+			"*",   // Wildcard (can be dangerous)
+			"?",   // Wildcard
+			"\n",  // Newline injection
+			"\r",  // Carriage return injection
 		},
 	}
 }

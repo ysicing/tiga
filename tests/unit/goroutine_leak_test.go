@@ -26,7 +26,8 @@ import (
 // preventing resource leaks from orphaned connections.
 //
 // Run with race detector to verify no data races:
-//   go test -race ./internal/services/managers/...
+//
+//	go test -race ./internal/services/managers/...
 func TestCoordinator_GetManager_RaceConditionFix(t *testing.T) {
 	t.Log("This test documents the double-check locking fix in coordinator.go:GetManager()")
 	t.Log("")
@@ -51,22 +52,23 @@ func TestCoordinator_GetManager_RaceConditionFix(t *testing.T) {
 // 4. For error paths AFTER Connect(), Disconnect() MUST be called
 //
 // Examples:
-//   ✓ Correct (handler pattern):
-//     if err := manager.Connect(ctx); err != nil {
-//         return err  // No Disconnect needed - connection failed
-//     }
-//     defer manager.Disconnect(ctx)  // ✓ Disconnect on all exit paths
 //
-//   ✗ Incorrect (missing defer):
-//     manager.Connect(ctx)
-//     // ... operations ...
-//     manager.Disconnect(ctx)  // ✗ Won't run if panic or early return
+//	✓ Correct (handler pattern):
+//	  if err := manager.Connect(ctx); err != nil {
+//	      return err  // No Disconnect needed - connection failed
+//	  }
+//	  defer manager.Disconnect(ctx)  // ✓ Disconnect on all exit paths
 //
-//   ✓ Correct (coordinator pattern):
-//     // Long-lived connection stored in map
-//     manager.Connect(ctx)
-//     c.managers[id] = manager  // Tracked for later cleanup
-//     // Cleanup in DisconnectAll() or RemoveManager()
+//	✗ Incorrect (missing defer):
+//	  manager.Connect(ctx)
+//	  // ... operations ...
+//	  manager.Disconnect(ctx)  // ✗ Won't run if panic or early return
+//
+//	✓ Correct (coordinator pattern):
+//	  // Long-lived connection stored in map
+//	  manager.Connect(ctx)
+//	  c.managers[id] = manager  // Tracked for later cleanup
+//	  // Cleanup in DisconnectAll() or RemoveManager()
 func TestManager_LifecycleBalance(t *testing.T) {
 	t.Log("This test documents proper manager lifecycle patterns")
 	t.Log("")
@@ -88,11 +90,12 @@ func TestManager_LifecycleBalance(t *testing.T) {
 // TestGoroutineLeakPrevention shows how to detect goroutine leaks in tests
 //
 // Use goroutine leak detection libraries:
-//   import "go.uber.org/goleak"
 //
-//   func TestMain(m *testing.M) {
-//       goleak.VerifyTestMain(m)
-//   }
+//	import "go.uber.org/goleak"
+//
+//	func TestMain(m *testing.M) {
+//	    goleak.VerifyTestMain(m)
+//	}
 //
 // This will fail tests if goroutines are leaked.
 func TestGoroutineLeakPrevention(t *testing.T) {

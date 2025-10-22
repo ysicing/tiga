@@ -137,7 +137,7 @@ func (h *LogHandler) ExecContainer(c *gin.Context) {
 
 	// Security: Log the command execution attempt
 	logrus.WithFields(logrus.Fields{
-		"user_id":      getUserID(c),      // Get from auth middleware context
+		"user_id":      getUserID(c), // Get from auth middleware context
 		"instance_id":  instanceID,
 		"container_id": containerID,
 		"command":      request.Cmd,

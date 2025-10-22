@@ -156,8 +156,8 @@ func syncClusters(cm *ClusterManager) error {
 
 	// Prepare updates outside the lock to minimize lock hold time
 	dbClusterMap := make(map[string]interface{})
-	updates := make(map[string]*ClientSet)      // Clusters to add/update
-	removals := make([]string, 0)               // Clusters to remove
+	updates := make(map[string]*ClientSet) // Clusters to add/update
+	removals := make([]string, 0)          // Clusters to remove
 	var newDefaultContext string
 
 	for _, cluster := range clusters {

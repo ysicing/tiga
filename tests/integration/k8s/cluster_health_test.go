@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"k8s.io/client-go/tools/clientcmd"
 
