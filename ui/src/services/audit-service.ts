@@ -36,18 +36,28 @@ export interface AuditEvent {
   request_id?: string
   data?: Record<string, string>
   created_at: string
+
+  // Computed/flattened fields for easier access in UI
+  resource_name?: string  // Extracted from resource.data.name or resource.identifier
+  user_name?: string      // Extracted from user.username
+  success?: boolean       // Derived from response status or error presence
+  error_message?: string  // Error message if operation failed
+  metadata?: Record<string, any>  // Additional metadata
 }
 
 export interface AuditEventsResponse {
-  events: AuditEvent[]
-  total: number
-  page: number
-  page_size: number
-  total_pages: number
+  data: AuditEvent[]
+  pagination: {
+    page: number
+    page_size: number
+    total: number
+    total_pages: number
+  }
 }
 
 export interface AuditConfig {
   retention_days: number
+  max_object_bytes?: number
 }
 
 export const SUBSYSTEMS = [
@@ -97,37 +107,29 @@ class AuditService {
     client_ip?: string
     request_id?: string
   }): Promise<AuditEventsResponse> {
-    const response = await apiClient.get('/audit/events', params)
-    const total = response.pagination?.total || 0
-    const pageSize = response.pagination?.page_size || 20
-    return {
-      events: response.data || [],
-      total,
-      page: response.pagination?.page || 1,
-      page_size: pageSize,
-      total_pages: Math.ceil(total / pageSize),
-    }
-  }
-
-  async getEvent(id: string): Promise<AuditEvent> {
-    const response = await apiClient.get('/audit/events/' + id)
+    const response = await apiClient.get('/audit/events', params) as AuditEventsResponse
     return response
   }
 
+  async getEvent(id: string): Promise<AuditEvent> {
+    const response = await apiClient.get('/audit/events/' + id) as { data: AuditEvent }
+    return response.data
+  }
+
   async getConfig(): Promise<AuditConfig> {
-    const response = await apiClient.get('/audit/config')
-    return response.data || response
+    const response = await apiClient.get('/audit/config') as { data: AuditConfig } | AuditConfig
+    return 'data' in response ? response.data : response
   }
 
   async search(query: string, limit?: number): Promise<AuditEvent[]> {
     const params = new URLSearchParams({ query })
     if (limit) params.append('limit', limit.toString())
-    const response = await apiClient.get('/audit/search?' + params.toString())
+    const response = await apiClient.get('/audit/search?' + params.toString()) as { events: AuditEvent[] }
     return response.events || []
   }
 
   async getStatistics(): Promise<Record<string, any>> {
-    const response = await apiClient.get('/audit/statistics')
+    const response = await apiClient.get('/audit/statistics') as Record<string, any>
     return response
   }
 }

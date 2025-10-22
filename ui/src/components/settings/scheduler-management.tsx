@@ -48,13 +48,14 @@ export function SchedulerManagement() {
   const triggerMutation = useMutation({
     mutationFn: (uid: string) => schedulerService.triggerTask(uid),
     onSuccess: (data) => {
+      const executionInfo = data.execution_uid
+        ? `Execution UID: ${data.execution_uid}`
+        : data.message || 'Task triggered successfully'
+
       toast.success(
         t('scheduler.trigger_success', 'Task Triggered'),
         {
-          description: t(
-            'scheduler.trigger_success_desc',
-            `Execution UID: ${data.execution_uid}`
-          ),
+          description: executionInfo,
         }
       )
       queryClient.invalidateQueries({ queryKey: ['scheduler'] })
