@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -558,6 +559,8 @@ func (c *Config) Validate() error {
 		errors = append(errors, "JWT_SECRET is not set (required for authentication)")
 	} else if len(c.JWT.Secret) < 32 {
 		errors = append(errors, "JWT_SECRET must be at least 32 characters")
+	} else if isWeakJWTSecret(c.JWT.Secret) {
+		errors = append(errors, "JWT_SECRET is too weak (common password detected)")
 	}
 
 	// Validate Encryption Key for database management
@@ -588,4 +591,69 @@ func (c *Config) ValidateOrExit() {
 		fmt.Fprintf(os.Stderr, "\nThen set them in config.yaml or as environment variables.\n")
 		os.Exit(1)
 	}
+}
+
+// isWeakJWTSecret checks if the JWT secret is a common weak password
+func isWeakJWTSecret(secret string) bool {
+	// List of common weak secrets (case-insensitive)
+	weakSecrets := []string{
+		"secret",
+		"password",
+		"jwt_secret",
+		"jwtsecret",
+		"tiga",
+		"admin",
+		"123456",
+		"changeme",
+		"default",
+		"test",
+		"development",
+		"dev",
+		"prod",
+		"production",
+	}
+
+	secretLower := strings.ToLower(secret)
+	for _, weak := range weakSecrets {
+		if secretLower == weak {
+			return true
+		}
+		// Also check if secret is just the weak password repeated
+		if strings.Contains(secretLower, strings.Repeat(weak, 2)) {
+			return true
+		}
+	}
+
+	// Check for very low entropy (same character repeated)
+	if isLowEntropy(secret) {
+		return true
+	}
+
+	return false
+}
+
+// isLowEntropy checks if the string has very low entropy (mostly same characters)
+func isLowEntropy(s string) bool {
+	if len(s) == 0 {
+		return true
+	}
+
+	charCount := make(map[rune]int)
+	for _, c := range s {
+		charCount[c]++
+	}
+
+	// If less than 8 unique characters in a 32+ character string, it's low entropy
+	if len(s) >= 32 && len(charCount) < 8 {
+		return true
+	}
+
+	// Check if any single character makes up more than 50% of the string
+	for _, count := range charCount {
+		if float64(count)/float64(len(s)) > 0.5 {
+			return true
+		}
+	}
+
+	return false
 }

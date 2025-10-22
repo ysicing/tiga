@@ -245,9 +245,16 @@ func (m *DockerManager) PruneImages(ctx context.Context, pruneAll bool) (*image.
 }
 
 // ExecContainer executes a command in a running container
+// Security: Commands are validated against a whitelist/blacklist before execution
 func (m *DockerManager) ExecContainer(ctx context.Context, containerID string, cmd []string) (string, error) {
 	if m.client == nil {
 		return "", ErrNotConnected
+	}
+
+	// Security: Validate command before execution
+	validator := NewCommandValidator()
+	if err := validator.ValidateCommand(cmd); err != nil {
+		return "", fmt.Errorf("command validation failed: %w", err)
 	}
 
 	execConfig := container.ExecOptions{

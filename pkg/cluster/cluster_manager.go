@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -24,7 +26,7 @@ type ClientSet struct {
 	K8sClient  *kube.K8sClient
 	PromClient *prometheus.Client
 
-	config        string
+	configHash    string // SHA256 hash of kubeconfig (not the actual config)
 	prometheusURL string
 }
 
@@ -33,6 +35,21 @@ type ClusterManager struct {
 	clusters       map[string]*ClientSet
 	defaultContext string
 	clusterRepo    *repository.ClusterRepository
+}
+
+// secureClear overwrites a byte slice with zeros to prevent sensitive data from
+// remaining in memory. This is a defense-in-depth measure against memory dumps.
+func secureClear(b []byte) {
+	for i := range b {
+		b[i] = 0
+	}
+}
+
+// hashConfig computes a SHA256 hash of the kubeconfig content for comparison purposes.
+// This allows us to detect configuration changes without storing the sensitive kubeconfig in memory.
+func hashConfig(content string) string {
+	hash := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(hash[:])
 }
 
 func createClientSetInCluster(clusterID uuid.UUID, name, prometheusURL string) (*ClientSet, error) {
@@ -45,16 +62,28 @@ func createClientSetInCluster(clusterID uuid.UUID, name, prometheusURL string) (
 }
 
 func createClientSetFromConfig(clusterID uuid.UUID, name, content, prometheusURL string) (*ClientSet, error) {
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(content))
+	// Convert string to byte slice for secure handling
+	configBytes := []byte(content)
+	defer secureClear(configBytes) // Clear sensitive data from memory after use
+
+	// Compute hash for future comparison (instead of storing the actual config)
+	configHash := hashConfig(content)
+
+	// Create REST config from kubeconfig
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig(configBytes)
 	if err != nil {
 		logrus.Warnf("Failed to create REST config for cluster %s: %v", name, err)
 		return nil, err
 	}
+
+	// Create client set
 	cs, err := newClientSet(clusterID, name, restConfig, prometheusURL)
 	if err != nil {
 		return nil, err
 	}
-	cs.config = content
+
+	// Store only the hash, not the actual config
+	cs.configHash = configHash
 
 	return cs, nil
 }
@@ -208,8 +237,9 @@ func shouldUpdateCluster(cs *ClientSet, cluster *models.Cluster) bool {
 		return true
 	}
 
-	// kubeconfig change
-	if cs.config != string(cluster.Config) {
+	// kubeconfig change - compare hashes instead of storing raw config
+	currentHash := hashConfig(string(cluster.Config))
+	if cs.configHash != currentHash {
 		logrus.Infof("Kubeconfig changed for cluster %s, updating", cluster.Name)
 		return true
 	}

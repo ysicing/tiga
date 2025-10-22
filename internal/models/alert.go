@@ -12,7 +12,7 @@ type Alert struct {
 	ID          uuid.UUID  `gorm:"type:char(36);primary_key" json:"id"`
 	Name        string     `gorm:"type:varchar(128);not null" json:"name"`
 	Description string     `gorm:"type:text" json:"description"`
-	InstanceID  *uuid.UUID `gorm:"type:char(36);index" json:"instance_id,omitempty"`
+	InstanceID  *uuid.UUID `gorm:"type:char(36);index:idx_instance_enabled" json:"instance_id,omitempty"`
 
 	// Rule configuration
 	RuleType   string `gorm:"type:varchar(32);not null" json:"rule_type"` // threshold, anomaly, rate
@@ -26,7 +26,7 @@ type Alert struct {
 	NotificationConfig   JSONB       `gorm:"type:text" json:"notification_config"`
 
 	// Status
-	Enabled   bool       `gorm:"default:true;index" json:"enabled"`
+	Enabled   bool       `gorm:"default:true;index:idx_instance_enabled" json:"enabled"`
 	Muted     bool       `gorm:"default:false" json:"muted"`
 	MuteUntil *time.Time `json:"mute_until,omitempty"`
 

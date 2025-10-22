@@ -36,6 +36,15 @@ var (
 	hexEncodingPattern  = regexp.MustCompile(`(?i)0x[0-9a-f]{2,}`)
 	sleepPattern        = regexp.MustCompile(`(?i)\b(SLEEP|BENCHMARK|WAITFOR)\b`)
 	stackedQueryPattern = regexp.MustCompile(`;\s*\w`)
+
+	// Enhanced injection patterns (H3)
+	booleanInjectionPattern = regexp.MustCompile(`(?i)(OR|AND)\s+\d+\s*=\s*\d+`)
+	tautologyPattern        = regexp.MustCompile(`(?i)(OR|AND)\s+(1\s*=\s*1|'1'\s*=\s*'1'|true|false)`)
+	commentInjectionPattern = regexp.MustCompile(`(?i)(#|--\s|/\*|\*/)`)
+	charFunctionPattern     = regexp.MustCompile(`(?i)\bCHAR\s*\(`)
+	concatPattern           = regexp.MustCompile(`(?i)\bCONCAT\s*\(`)
+	base64Pattern           = regexp.MustCompile(`[A-Za-z0-9+/]{20,}={0,2}`) // Potential Base64
+	multipleCommentsPattern = regexp.MustCompile(`(/\*.*?\*/.*){3,}`)         // 3+ comments (suspicious)
 )
 
 // SecurityFilter validates SQL and Redis commands against the project's safety rules.
@@ -210,6 +219,47 @@ func (f *SecurityFilter) detectSQLInjection(upperStatement string) error {
 		hexCount := len(hexEncodingPattern.FindAllString(upperStatement, -1))
 		if hexCount > 2 { // Allow limited hex values, but not excessive ones
 			return fmt.Errorf("%w: excessive hex encoding detected", ErrSQLInjectionPattern)
+		}
+	}
+
+	// H3: Enhanced injection pattern detection
+
+	// Boolean-based injection (e.g., "OR 1=1", "AND 2=2")
+	if booleanInjectionPattern.MatchString(upperStatement) {
+		return fmt.Errorf("%w: boolean-based injection (numeric comparison)", ErrSQLInjectionPattern)
+	}
+
+	// Tautology injection (e.g., "OR 1=1", "OR 'a'='a'", "OR TRUE")
+	if tautologyPattern.MatchString(upperStatement) {
+		return fmt.Errorf("%w: tautology-based injection", ErrSQLInjectionPattern)
+	}
+
+	// Multiple SQL comments (potential obfuscation)
+	if multipleCommentsPattern.MatchString(upperStatement) {
+		return fmt.Errorf("%w: multiple SQL comments detected (obfuscation attempt)", ErrSQLInjectionPattern)
+	}
+
+	// CHAR() function often used for encoding bypass
+	charCount := len(charFunctionPattern.FindAllString(upperStatement, -1))
+	if charCount > 3 { // Allow some CHAR() usage, but not excessive
+		return fmt.Errorf("%w: excessive CHAR() function usage", ErrSQLInjectionPattern)
+	}
+
+	// CONCAT() function chaining (potential encoding bypass)
+	concatCount := len(concatPattern.FindAllString(upperStatement, -1))
+	if concatCount > 5 { // Allow some CONCAT() usage, but not excessive
+		return fmt.Errorf("%w: excessive CONCAT() function usage", ErrSQLInjectionPattern)
+	}
+
+	// Potential Base64 encoding bypass
+	if base64Pattern.MatchString(upperStatement) {
+		base64Matches := base64Pattern.FindAllString(upperStatement, -1)
+		// Check if it's in a string literal (somewhat safe) vs raw in query (suspicious)
+		for _, match := range base64Matches {
+			// If Base64 string is not quoted, it's suspicious
+			if !strings.Contains(upperStatement, "'"+match+"'") && !strings.Contains(upperStatement, "\""+match+"\"") {
+				return fmt.Errorf("%w: unquoted Base64-like string detected", ErrSQLInjectionPattern)
+			}
 		}
 	}
 
