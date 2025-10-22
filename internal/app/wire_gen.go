@@ -10,8 +10,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/db"
@@ -29,6 +27,7 @@ import (
 	scheduler2 "github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/kube"
 	"gorm.io/gorm"
+	"time"
 )
 
 // Injectors from wire.go:
@@ -41,8 +40,9 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 		return nil, err
 	}
 	gormDB := provideGormDB(database)
+	taskRepository := scheduler.NewTaskRepository(gormDB)
 	executionRepository := scheduler.NewExecutionRepository(gormDB)
-	schedulerScheduler := scheduler2.NewScheduler(executionRepository)
+	schedulerScheduler := scheduler2.NewScheduler(taskRepository, executionRepository)
 	managerFactory := managers.NewManagerFactory()
 	instanceRepository := repository.NewInstanceRepository(gormDB)
 	metricsRepository := repository.NewMetricsRepository(gormDB)

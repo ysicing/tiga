@@ -220,6 +220,12 @@ func (s *ExpiryScheduler) getSeverityByDaysLeft(expiryDate *time.Time) models.Al
 	}
 }
 
+// CheckAllHosts performs an immediate check for all hosts
+// This is a public wrapper for the scheduler integration
+func (s *ExpiryScheduler) CheckAllHosts() {
+	s.checkExpiry()
+}
+
 // CheckHostExpiry performs an immediate check for a specific host
 func (s *ExpiryScheduler) CheckHostExpiry(ctx context.Context, hostID uint) error {
 	var host models.HostNode

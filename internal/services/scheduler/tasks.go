@@ -8,6 +8,8 @@ import (
 
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/alert"
+	"github.com/ysicing/tiga/internal/services/host"
+	"github.com/ysicing/tiga/internal/services/k8s"
 )
 
 // AlertTask runs alert processing
@@ -68,4 +70,51 @@ func (t *DatabaseAuditCleanupTask) Run(ctx context.Context) error {
 // Name returns the task name
 func (t *DatabaseAuditCleanupTask) Name() string {
 	return "database_audit_cleanup"
+}
+
+// HostExpiryCheckTask checks host expiry dates and generates alerts
+type HostExpiryCheckTask struct {
+	expiryScheduler *host.ExpiryScheduler
+}
+
+// NewHostExpiryCheckTask creates a new host expiry check task
+func NewHostExpiryCheckTask(expiryScheduler *host.ExpiryScheduler) *HostExpiryCheckTask {
+	return &HostExpiryCheckTask{
+		expiryScheduler: expiryScheduler,
+	}
+}
+
+// Run executes the host expiry check
+func (t *HostExpiryCheckTask) Run(ctx context.Context) error {
+	logrus.Debug("Running host expiry check task")
+	t.expiryScheduler.CheckAllHosts()
+	return nil
+}
+
+// Name returns the task name
+func (t *HostExpiryCheckTask) Name() string {
+	return "host_expiry_check"
+}
+
+// ClusterHealthCheckTask checks Kubernetes cluster health status
+type ClusterHealthCheckTask struct {
+	healthService *k8s.ClusterHealthService
+}
+
+// NewClusterHealthCheckTask creates a new cluster health check task
+func NewClusterHealthCheckTask(healthService *k8s.ClusterHealthService) *ClusterHealthCheckTask {
+	return &ClusterHealthCheckTask{
+		healthService: healthService,
+	}
+}
+
+// Run executes the cluster health check
+func (t *ClusterHealthCheckTask) Run(ctx context.Context) error {
+	logrus.Debug("Running cluster health check task")
+	return t.healthService.CheckAll(ctx)
+}
+
+// Name returns the task name
+func (t *ClusterHealthCheckTask) Name() string {
+	return "cluster_health_check"
 }
