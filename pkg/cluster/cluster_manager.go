@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,6 +29,7 @@ type ClientSet struct {
 }
 
 type ClusterManager struct {
+	mu             sync.RWMutex // Protects clusters map from concurrent access
 	clusters       map[string]*ClientSet
 	defaultContext string
 	clusterRepo    *repository.ClusterRepository
@@ -87,6 +89,9 @@ func newClientSet(clusterID uuid.UUID, name string, k8sConfig *rest.Config, prom
 }
 
 func (cm *ClusterManager) GetClientSet(clusterName string) (*ClientSet, error) {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
 	if len(cm.clusters) == 0 {
 		return nil, fmt.Errorf("no clusters available")
 	}
@@ -97,6 +102,9 @@ func (cm *ClusterManager) GetClientSet(clusterName string) (*ClientSet, error) {
 				return cs, nil
 			}
 		}
+		// Recursive call - unlock first to avoid deadlock
+		cm.mu.RUnlock()
+		defer cm.mu.RLock() // Re-acquire before defer unlock
 		return cm.GetClientSet(cm.defaultContext)
 	}
 	if cluster, ok := cm.clusters[clusterName]; ok {
@@ -116,16 +124,26 @@ func syncClusters(cm *ClusterManager) error {
 		time.Sleep(5 * time.Second)
 		return err
 	}
+
+	// Prepare updates outside the lock to minimize lock hold time
 	dbClusterMap := make(map[string]interface{})
+	updates := make(map[string]*ClientSet)      // Clusters to add/update
+	removals := make([]string, 0)               // Clusters to remove
+	var newDefaultContext string
+
 	for _, cluster := range clusters {
 		dbClusterMap[cluster.Name] = cluster
 		if cluster.IsDefault {
-			cm.defaultContext = cluster.Name
+			newDefaultContext = cluster.Name
 		}
+
+		// Get current cluster (with read lock)
+		cm.mu.RLock()
 		current, currentExist := cm.clusters[cluster.Name]
+		cm.mu.RUnlock()
+
 		if shouldUpdateCluster(current, cluster) {
 			if currentExist {
-				delete(cm.clusters, cluster.Name)
 				current.K8sClient.Stop(cluster.Name)
 			}
 			if cluster.Enable {
@@ -134,15 +152,41 @@ func syncClusters(cm *ClusterManager) error {
 					logrus.Warnf("Failed to build k8s client for cluster %s, in cluster: %t, err: %v", cluster.Name, cluster.InCluster, err)
 					continue
 				}
-				cm.clusters[cluster.Name] = clientSet
+				updates[cluster.Name] = clientSet
+			} else if currentExist {
+				// Cluster exists but is now disabled - mark for removal
+				removals = append(removals, cluster.Name)
 			}
 		}
 	}
+
+	// Check for clusters to remove (not in DB anymore)
+	cm.mu.RLock()
 	for name, clientSet := range cm.clusters {
 		if _, ok := dbClusterMap[name]; !ok {
-			delete(cm.clusters, name)
+			removals = append(removals, name)
 			clientSet.K8sClient.Stop(name)
 		}
+	}
+	cm.mu.RUnlock()
+
+	// Apply all changes with write lock
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	// Apply updates
+	for name, clientSet := range updates {
+		cm.clusters[name] = clientSet
+	}
+
+	// Apply removals
+	for _, name := range removals {
+		delete(cm.clusters, name)
+	}
+
+	// Update default context
+	if newDefaultContext != "" {
+		cm.defaultContext = newDefaultContext
 	}
 
 	return nil

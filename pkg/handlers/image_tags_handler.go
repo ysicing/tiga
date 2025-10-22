@@ -30,7 +30,16 @@ type dockerRegistry struct {
 func (d dockerRegistry) GetTags(ctx context.Context) ([]ImageTagInfo, error) {
 	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/tags?page_size=10&ordering=last_updated", d.repo)
 	logrus.Debugf("fetching tags from Docker Hub: %s", url)
-	resp, err := http.Get(url)
+
+	// Create request with context timeout
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		logrus.Errorf("failed to create request: %v", err)
+		return nil, nil
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		logrus.Errorf("failed to get tags from Docker Hub: %v", err)
 		return nil, nil
@@ -65,7 +74,16 @@ type containerRegistryV2 struct {
 
 func (d containerRegistryV2) GetTags(ctx context.Context) ([]ImageTagInfo, error) {
 	url := fmt.Sprintf("https://%s/v2/%s/tags/list", d.baseURL, d.repo)
-	resp, err := http.Get(url)
+
+	// Create request with context timeout
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		logrus.Errorf("failed to create request: %v", err)
+		return nil, nil
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		logrus.Errorf("failed to get tags from registry %s: %v", d.baseURL, err)
 		return nil, nil
