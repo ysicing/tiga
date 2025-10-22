@@ -145,7 +145,7 @@ export function AuditLogsManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {config ? Math.floor(config.max_object_bytes / 1024) : 0}{' '}
+              {config?.max_object_bytes ? Math.floor(config.max_object_bytes / 1024) : 64}{' '}
               <span className="text-sm font-normal">KB</span>
             </div>
           </CardContent>
@@ -316,7 +316,13 @@ export function AuditLogsManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {eventsData?.data.map((event) => (
+              {eventsData?.data.map((event) => {
+                // Extract flattened fields from nested structures
+                const resourceName = event.resource_name || event.resource?.data?.name || event.resource?.identifier
+                const userName = event.user_name || event.user?.username || event.user?.uid
+                const success = event.success !== undefined ? event.success : !event.error_message
+
+                return (
                 <TableRow key={event.id}>
                   <TableCell className="text-xs">
                     {formatTimestamp(event.timestamp)}
@@ -334,9 +340,9 @@ export function AuditLogsManagement() {
                   <TableCell>
                     <div className="text-xs">
                       <div className="font-medium">{event.resource_type}</div>
-                      {event.resource_name && (
+                      {resourceName && (
                         <div className="text-muted-foreground truncate max-w-xs">
-                          {event.resource_name}
+                          {resourceName}
                         </div>
                       )}
                     </div>
@@ -344,11 +350,11 @@ export function AuditLogsManagement() {
                   <TableCell className="text-xs">
                     <div className="flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {event.user_name || event.user_uid || 'System'}
+                      {userName || 'System'}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {event.success ? (
+                    {success ? (
                       <Badge variant="default" className="gap-1">
                         <CheckCircle2 className="h-3 w-3" />
                         {t('audit.success', 'Success')}
@@ -373,7 +379,8 @@ export function AuditLogsManagement() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                )
+              })}
             </TableBody>
           </Table>
 
@@ -431,6 +438,12 @@ function EventDetailDialog({
 
   if (!event) return null
 
+  // Extract computed fields from nested structures
+  const resourceName = event.resource_name || event.resource?.data?.name || event.resource?.identifier
+  const userName = event.user_name || event.user?.username || event.user?.uid
+  const success = event.success !== undefined ? event.success : !event.error_message
+  const eventMetadata = event.metadata || event.data
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
@@ -471,20 +484,20 @@ function EventDetailDialog({
                 </Label>
                 <div className="text-sm">{event.resource_type}</div>
               </div>
-              {event.resource_name && (
+              {resourceName && (
                 <div>
                   <Label className="text-xs text-muted-foreground">
                     {t('audit.resource_name', 'Resource Name')}
                   </Label>
-                  <div className="text-sm">{event.resource_name}</div>
+                  <div className="text-sm">{resourceName}</div>
                 </div>
               )}
-              {event.user_name && (
+              {userName && (
                 <div>
                   <Label className="text-xs text-muted-foreground">
                     {t('audit.user', 'User')}
                   </Label>
-                  <div className="text-sm">{event.user_name}</div>
+                  <div className="text-sm">{userName}</div>
                 </div>
               )}
               {event.client_ip && (
@@ -500,7 +513,7 @@ function EventDetailDialog({
                   {t('audit.status', 'Status')}
                 </Label>
                 <div>
-                  {event.success ? (
+                  {success ? (
                     <Badge variant="default">
                       {t('audit.success', 'Success')}
                     </Badge>
@@ -581,13 +594,13 @@ function EventDetailDialog({
             )}
 
             {/* Metadata */}
-            {event.metadata && Object.keys(event.metadata).length > 0 && (
+            {eventMetadata && Object.keys(eventMetadata).length > 0 && (
               <div>
                 <Label className="text-xs text-muted-foreground">
                   {t('audit.metadata', 'Metadata')}
                 </Label>
                 <pre className="text-xs bg-muted p-3 rounded-md mt-1 overflow-x-auto">
-                  {JSON.stringify(event.metadata, null, 2)}
+                  {JSON.stringify(eventMetadata, null, 2)}
                 </pre>
               </div>
             )}

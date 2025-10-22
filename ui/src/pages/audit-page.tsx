@@ -8,7 +8,6 @@ import {
   User,
   Database,
   CheckCircle2,
-  XCircle,
 } from 'lucide-react'
 
 import {

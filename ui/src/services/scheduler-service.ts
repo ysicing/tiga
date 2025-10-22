@@ -64,6 +64,7 @@ export interface ExecutionsResponse {
 
 export interface TriggerResponse {
   uid: string
+  execution_uid?: string  // Optional execution UID returned by some trigger endpoints
   message: string
 }
 
@@ -76,7 +77,10 @@ export interface SchedulerStats {
 
 class SchedulerService {
   async getTasks(): Promise<SchedulerTask[]> {
-    const response = await apiClient.get('/scheduler/tasks')
+    const response = await apiClient.get('/scheduler/tasks') as { data?: SchedulerTask[]; tasks?: SchedulerTask[] } | SchedulerTask[]
+    if (Array.isArray(response)) {
+      return response
+    }
     return response.data || response.tasks || []
   }
 
@@ -89,7 +93,7 @@ class SchedulerService {
     start_time?: number
     end_time?: number
   }): Promise<ExecutionsResponse> {
-    const response = await apiClient.get('/scheduler/executions', params)
+    const response = await apiClient.get('/scheduler/executions', params) as ExecutionsResponse
     return {
       data: response.data || [],
       pagination: response.pagination || {
@@ -102,12 +106,12 @@ class SchedulerService {
   }
 
   async triggerTask(taskUid: string): Promise<TriggerResponse> {
-    const response = await apiClient.post(`/scheduler/tasks/${taskUid}/trigger`)
+    const response = await apiClient.post(`/scheduler/tasks/${taskUid}/trigger`) as TriggerResponse
     return response
   }
 
   async getStats(): Promise<SchedulerStats> {
-    const response = await apiClient.get('/scheduler/stats')
+    const response = await apiClient.get('/scheduler/stats') as SchedulerStats
     return response
   }
 }
