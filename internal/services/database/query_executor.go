@@ -100,7 +100,7 @@ type QueryExecutionResponse struct {
 // ExecuteQuery runs a query/command against the target instance.
 func (e *QueryExecutor) ExecuteQuery(ctx context.Context, req QueryExecutionRequest) (*QueryExecutionResponse, error) {
 	if strings.TrimSpace(req.Query) == "" {
-		return nil, errors.New("query cannot be empty")
+		return nil, fmt.Errorf("query cannot be empty (received %d bytes, trimmed to 0)", len(req.Query))
 	}
 
 	start := time.Now()

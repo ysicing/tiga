@@ -250,22 +250,22 @@ func (m *DatabaseManager) performConnectionTest(ctx context.Context, input Creat
 
 func (m *DatabaseManager) validateCreateInput(input CreateInstanceInput) error {
 	if strings.TrimSpace(input.Name) == "" {
-		return errors.New("instance name is required")
+		return fmt.Errorf("instance name is required (got: %q)", input.Name)
 	}
 	if strings.TrimSpace(input.Type) == "" {
-		return errors.New("instance type is required")
+		return fmt.Errorf("instance type is required (got: %q)", input.Type)
 	}
 	if strings.TrimSpace(input.Host) == "" {
-		return errors.New("instance host is required")
+		return fmt.Errorf("instance host is required (got: %q)", input.Host)
 	}
 	if input.Port <= 0 {
-		return errors.New("instance port must be positive")
+		return fmt.Errorf("instance port must be positive (got: %d)", input.Port)
 	}
 	if strings.TrimSpace(input.Username) == "" {
-		return errors.New("instance username is required")
+		return fmt.Errorf("instance username is required (got: %q)", input.Username)
 	}
 	if input.Password == "" {
-		return errors.New("instance password is required")
+		return fmt.Errorf("instance password is required (length: %d)", len(input.Password))
 	}
 	return nil
 }
@@ -299,7 +299,7 @@ func normalizeDriverType(driverType string) string {
 func encryptSecret(plaintext string) (string, error) {
 	service := crypto.GetDefaultService()
 	if service == nil {
-		return "", errors.New("encryption service not initialised")
+		return "", fmt.Errorf("encryption service not initialised (plaintext length: %d bytes)", len(plaintext))
 	}
 	return service.Encrypt(plaintext)
 }
@@ -310,7 +310,7 @@ func decryptSecret(ciphertext string) (string, error) {
 	}
 	service := crypto.GetDefaultService()
 	if service == nil {
-		return "", errors.New("encryption service not initialised")
+		return "", fmt.Errorf("encryption service not initialised (ciphertext length: %d bytes)", len(ciphertext))
 	}
 	return service.Decrypt(ciphertext)
 }
