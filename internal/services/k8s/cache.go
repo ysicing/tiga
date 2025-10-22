@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -22,21 +23,42 @@ type CacheEntry struct {
 	mutex           sync.RWMutex
 }
 
-// CacheService handles caching of Kubernetes resources
+// CacheService handles caching of Kubernetes resources with LRU eviction
 type CacheService struct {
-	cache      map[string]*CacheEntry // Key: "clusterID:resourceType:namespace"
-	mu         sync.RWMutex
+	cache      *lru.Cache[string, *CacheEntry] // LRU cache with bounded size
+	mu         sync.RWMutex                    // Protects cache operations
 	defaultTTL time.Duration
+	maxEntries int
 }
 
+const (
+	// DefaultMaxCacheEntries is the default maximum number of cache entries
+	DefaultMaxCacheEntries = 1000
+	// DefaultCacheTTL is the default cache TTL
+	DefaultCacheTTL = 5 * time.Minute
+)
+
 // NewCacheService creates a new cache service with a default TTL of 5 minutes
+// and a maximum of 1000 entries (LRU eviction)
 func NewCacheService() *CacheService {
-	service := &CacheService{
-		cache:      make(map[string]*CacheEntry),
-		defaultTTL: 5 * time.Minute,
+	return NewCacheServiceWithConfig(DefaultMaxCacheEntries, DefaultCacheTTL)
+}
+
+// NewCacheServiceWithConfig creates a cache service with custom configuration
+func NewCacheServiceWithConfig(maxEntries int, ttl time.Duration) *CacheService {
+	cache, err := lru.New[string, *CacheEntry](maxEntries)
+	if err != nil {
+		// This should never happen with valid maxEntries
+		panic(fmt.Sprintf("failed to create LRU cache: %v", err))
 	}
 
-	// Start background cleanup goroutine
+	service := &CacheService{
+		cache:      cache,
+		defaultTTL: ttl,
+		maxEntries: maxEntries,
+	}
+
+	// Start background cleanup goroutine for expired entries
 	go service.cleanupExpired()
 
 	return service
@@ -45,7 +67,7 @@ func NewCacheService() *CacheService {
 // Get retrieves a cached resource list
 func (s *CacheService) Get(key string) ([]byte, bool) {
 	s.mu.RLock()
-	entry, exists := s.cache[key]
+	entry, exists := s.cache.Get(key) // LRU Get (thread-safe within LRU)
 	s.mu.RUnlock()
 
 	if !exists {
@@ -63,23 +85,24 @@ func (s *CacheService) Get(key string) ([]byte, bool) {
 	return entry.Data, true
 }
 
-// Set stores a resource list in cache
+// Set stores a resource list in cache with LRU eviction
 func (s *CacheService) Set(key string, data []byte, resourceVersion string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	entry, exists := s.cache[key]
+	entry, exists := s.cache.Get(key)
 	if !exists {
 		entry = &CacheEntry{}
-		s.cache[key] = entry
 	}
 
 	entry.mutex.Lock()
-	defer entry.mutex.Unlock()
-
 	entry.Data = data
 	entry.ResourceVersion = resourceVersion
 	entry.ExpiresAt = time.Now().Add(s.defaultTTL)
+	entry.mutex.Unlock()
+
+	// Add to LRU cache (will evict oldest if at capacity)
+	s.cache.Add(key, entry)
 }
 
 // Invalidate removes a cache entry
@@ -87,7 +110,7 @@ func (s *CacheService) Invalidate(key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	delete(s.cache, key)
+	s.cache.Remove(key)
 }
 
 // InvalidateByPrefix removes all cache entries with a given prefix
@@ -96,9 +119,11 @@ func (s *CacheService) InvalidateByPrefix(prefix string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for key := range s.cache {
+	// LRU cache requires iteration over keys
+	keys := s.cache.Keys()
+	for _, key := range keys {
 		if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
-			delete(s.cache, key)
+			s.cache.Remove(key)
 		}
 	}
 }
@@ -113,7 +138,7 @@ func (s *CacheService) CheckResourceVersion(
 	namespace string,
 ) (bool, error) {
 	s.mu.RLock()
-	entry, exists := s.cache[key]
+	entry, exists := s.cache.Get(key)
 	s.mu.RUnlock()
 
 	if !exists {
@@ -195,13 +220,20 @@ func (s *CacheService) cleanupExpired() {
 		now := time.Now()
 		s.mu.Lock()
 
-		for key, entry := range s.cache {
+		// Get all keys and check expiration
+		keys := s.cache.Keys()
+		for _, key := range keys {
+			entry, exists := s.cache.Get(key)
+			if !exists {
+				continue
+			}
+
 			entry.mutex.RLock()
 			expired := now.After(entry.ExpiresAt)
 			entry.mutex.RUnlock()
 
 			if expired {
-				delete(s.cache, key)
+				s.cache.Remove(key)
 			}
 		}
 
@@ -214,11 +246,17 @@ func (s *CacheService) Stats() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	totalEntries := len(s.cache)
+	totalEntries := s.cache.Len()
 	expiredEntries := 0
 	now := time.Now()
 
-	for _, entry := range s.cache {
+	keys := s.cache.Keys()
+	for _, key := range keys {
+		entry, exists := s.cache.Get(key)
+		if !exists {
+			continue
+		}
+
 		entry.mutex.RLock()
 		if now.After(entry.ExpiresAt) {
 			expiredEntries++
@@ -231,6 +269,7 @@ func (s *CacheService) Stats() map[string]interface{} {
 		"expired_entries": expiredEntries,
 		"valid_entries":   totalEntries - expiredEntries,
 		"ttl_minutes":     s.defaultTTL.Minutes(),
+		"max_entries":     s.maxEntries,
 	}
 }
 
@@ -239,7 +278,7 @@ func (s *CacheService) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.cache = make(map[string]*CacheEntry)
+	s.cache.Purge()
 }
 
 // GenerateCacheKey creates a consistent cache key

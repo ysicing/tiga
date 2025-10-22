@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/ysicing/tiga/internal/models"
@@ -79,7 +80,7 @@ func (s *ClusterHealthService) CheckAll(ctx context.Context) error {
 	return nil
 }
 
-// checkAllClusters performs health check on all enabled clusters
+// checkAllClusters performs health check on all enabled clusters concurrently
 func (s *ClusterHealthService) checkAllClusters(ctx context.Context) {
 	clusters, err := s.clusterRepo.GetAllEnabled(ctx)
 	if err != nil {
@@ -89,9 +90,39 @@ func (s *ClusterHealthService) checkAllClusters(ctx context.Context) {
 
 	logrus.Debugf("Health check: found %d enabled clusters", len(clusters))
 
-	for _, cluster := range clusters {
-		s.checkClusterHealth(ctx, cluster)
+	if len(clusters) == 0 {
+		return
 	}
+
+	// Use semaphore to limit concurrent health checks (max 5 concurrent)
+	sem := semaphore.NewWeighted(5)
+
+	for _, cluster := range clusters {
+		cluster := cluster // Capture loop variable
+
+		// Acquire semaphore (with context support for cancellation)
+		if err := sem.Acquire(ctx, 1); err != nil {
+			logrus.Warnf("Health check cancelled during semaphore acquisition: %v", err)
+			return
+		}
+
+		// Run health check concurrently
+		go func() {
+			defer sem.Release(1)
+
+			// Create timeout context for single cluster check (10 seconds)
+			checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			s.checkClusterHealth(checkCtx, cluster)
+		}()
+	}
+
+	// Wait for all health checks to complete (acquire all permits)
+	if err := sem.Acquire(ctx, 5); err != nil {
+		logrus.Warnf("Health check cancelled while waiting for completion: %v", err)
+	}
+	sem.Release(5) // Release permits for next round
 }
 
 // checkClusterHealth checks the health of a single cluster
