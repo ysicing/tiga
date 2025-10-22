@@ -11,7 +11,7 @@ const PrincipalSchema = z.object({
 const ResourceSchema = z.object({
   type: z.string(),
   identifier: z.string(),
-  data: z.record(z.string()).optional(),
+  data: z.record(z.string(), z.string()).optional(),
 })
 
 const DiffObjectSchema = z.object({
@@ -36,14 +36,14 @@ const AuditEventSchema = z.object({
   user_agent: z.string().optional(),
   request_method: z.string().optional(),
   request_id: z.string().optional(),
-  data: z.record(z.string()).optional(),
+  data: z.record(z.string(), z.string()).optional(),
   created_at: z.string(),
   // Computed fields
   resource_name: z.string().optional(),
   user_name: z.string().optional(),
   success: z.boolean().optional(),
   error_message: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 })
 
 const PaginationSchema = z.object({
