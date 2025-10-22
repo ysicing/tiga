@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -65,7 +64,7 @@ func (s *EncryptionService) loadOrGenerateKey() ([]byte, error) {
 		}
 
 		if len(key) != 32 { // AES-256 requires 32 bytes
-			return nil, errors.New("invalid key length, expected 32 bytes")
+			return nil, fmt.Errorf("invalid key length: expected 32 bytes, got %d", len(key))
 		}
 
 		return key, nil
@@ -140,7 +139,7 @@ func (s *EncryptionService) Decrypt(ciphertext string) (string, error) {
 	// Check minimum length (nonce + data)
 	nonceSize := s.gcm.NonceSize()
 	if len(decoded) < nonceSize {
-		return "", errors.New("ciphertext too short")
+		return "", fmt.Errorf("ciphertext too short: got %d bytes, need at least %d", len(decoded), nonceSize)
 	}
 
 	// Extract nonce and ciphertext
@@ -182,7 +181,7 @@ func (s *EncryptionService) DecryptBytes(ciphertext []byte) ([]byte, error) {
 	// Check minimum length
 	nonceSize := s.gcm.NonceSize()
 	if len(ciphertext) < nonceSize {
-		return nil, errors.New("ciphertext too short")
+		return nil, fmt.Errorf("ciphertext too short: got %d bytes, need at least %d", len(ciphertext), nonceSize)
 	}
 
 	// Extract nonce and ciphertext
@@ -255,7 +254,7 @@ func (s *EncryptionService) VerifyIntegrity() error {
 	}
 
 	if decrypted != testData {
-		return errors.New("integrity check failed: decrypted data does not match original")
+		return fmt.Errorf("integrity check failed: decrypted data does not match original (expected %q, got %q)", testData, decrypted)
 	}
 
 	return nil
