@@ -296,3 +296,232 @@ func BenchmarkAlertRepository_ListRules_WithPreload(b *testing.B) {
 		_, _, _ = repo.ListRules(context.Background(), filter)
 	}
 }
+
+func TestAlertRepository_GetRuleByID_NoN1Query(t *testing.T) {
+	db, counter := setupTestDBForN1(t)
+	repo := repository.NewAlertRepository(db)
+
+	ownerID := uuid.New()
+
+	// Create test instance
+	instance := &models.Instance{
+		Name:       "test-instance",
+		Type:       "mysql",
+		Connection: models.JSONB{"host": "localhost", "port": 3306},
+		Status:     "running",
+		OwnerID:    ownerID,
+	}
+	err := db.Create(instance).Error
+	require.NoError(t, err)
+
+	// Create test alert rule
+	alert := &models.Alert{
+		Name:        "test-alert",
+		Description: "Test alert for GetRuleByID",
+		InstanceID:  &instance.ID,
+		RuleType:    "threshold",
+		RuleConfig:  models.JSONB{},
+		Severity:    "critical",
+		Enabled:     true,
+	}
+	err = repo.CreateRule(context.Background(), alert)
+	require.NoError(t, err)
+
+	// Reset counter before test query
+	counter.QueryCount = 0
+
+	// Get rule by ID with Preload
+	rule, err := repo.GetRuleByID(context.Background(), alert.ID)
+
+	require.NoError(t, err)
+	assert.NotNil(t, rule)
+	assert.Equal(t, "test-alert", rule.Name)
+
+	// Verify no N+1 query: should be 1 query (with join/preload)
+	t.Logf("Query count with Preload: %d", counter.QueryCount)
+	assert.LessOrEqual(t, counter.QueryCount, 2, "Should not have N+1 queries with Preload")
+
+	// Verify instance is loaded
+	assert.NotNil(t, rule.Instance, "Instance should be preloaded")
+	assert.Equal(t, instance.ID, rule.Instance.ID)
+	assert.Equal(t, "test-instance", rule.Instance.Name)
+}
+
+func TestAlertRepository_GetRuleByName_NoN1Query(t *testing.T) {
+	db, counter := setupTestDBForN1(t)
+	repo := repository.NewAlertRepository(db)
+
+	ownerID := uuid.New()
+
+	// Create test instance
+	instance := &models.Instance{
+		Name:       "test-instance-2",
+		Type:       "postgresql",
+		Connection: models.JSONB{"host": "localhost", "port": 5432},
+		Status:     "running",
+		OwnerID:    ownerID,
+	}
+	err := db.Create(instance).Error
+	require.NoError(t, err)
+
+	// Create test alert rule
+	alert := &models.Alert{
+		Name:        "unique-alert-name",
+		Description: "Test alert for GetRuleByName",
+		InstanceID:  &instance.ID,
+		RuleType:    "anomaly",
+		RuleConfig:  models.JSONB{},
+		Severity:    "warning",
+		Enabled:     true,
+	}
+	err = repo.CreateRule(context.Background(), alert)
+	require.NoError(t, err)
+
+	// Reset counter before test query
+	counter.QueryCount = 0
+
+	// Get rule by name with Preload
+	rule, err := repo.GetRuleByName(context.Background(), "unique-alert-name")
+
+	require.NoError(t, err)
+	assert.NotNil(t, rule)
+	assert.Equal(t, alert.ID, rule.ID)
+
+	// Verify no N+1 query
+	t.Logf("Query count with Preload: %d", counter.QueryCount)
+	assert.LessOrEqual(t, counter.QueryCount, 2, "Should not have N+1 queries with Preload")
+
+	// Verify instance is loaded
+	assert.NotNil(t, rule.Instance, "Instance should be preloaded")
+	assert.Equal(t, instance.ID, rule.Instance.ID)
+	assert.Equal(t, "test-instance-2", rule.Instance.Name)
+}
+
+func TestAlertRepository_GetEventByID_NoN1Query(t *testing.T) {
+	db, counter := setupTestDBForN1(t)
+	repo := repository.NewAlertRepository(db)
+
+	ownerID := uuid.New()
+
+	// Create test instance
+	instance := &models.Instance{
+		Name:       "event-instance",
+		Type:       "redis",
+		Connection: models.JSONB{"host": "localhost", "port": 6379},
+		Status:     "running",
+		OwnerID:    ownerID,
+	}
+	err := db.Create(instance).Error
+	require.NoError(t, err)
+
+	// Create test alert rule
+	alert := &models.Alert{
+		Name:        "event-alert",
+		Description: "Test alert for event",
+		InstanceID:  &instance.ID,
+		RuleType:    "threshold",
+		RuleConfig:  models.JSONB{},
+		Severity:    "critical",
+		Enabled:     true,
+	}
+	err = repo.CreateRule(context.Background(), alert)
+	require.NoError(t, err)
+
+	// Create test alert event
+	event := &models.AlertEvent{
+		AlertID:    alert.ID,
+		InstanceID: instance.ID,
+		Status:     "firing",
+		Message:    "Test alert event",
+		Details:    models.JSONB{},
+		StartedAt:  time.Now(),
+	}
+	err = repo.CreateEvent(context.Background(), event)
+	require.NoError(t, err)
+
+	// Reset counter before test query
+	counter.QueryCount = 0
+
+	// Get event by ID with Preload
+	retrievedEvent, err := repo.GetEventByID(context.Background(), event.ID)
+
+	require.NoError(t, err)
+	assert.NotNil(t, retrievedEvent)
+	assert.Equal(t, "Test alert event", retrievedEvent.Message)
+
+	// Verify no N+1 query: should be 1 query with joins/preloads
+	t.Logf("Query count with Preload: %d", counter.QueryCount)
+	assert.LessOrEqual(t, counter.QueryCount, 3, "Should not have N+1 queries with Preload")
+
+	// Verify both Alert and Instance are loaded
+	assert.NotNil(t, retrievedEvent.Alert, "Alert should be preloaded")
+	assert.Equal(t, alert.ID, retrievedEvent.Alert.ID)
+	assert.Equal(t, "event-alert", retrievedEvent.Alert.Name)
+
+	assert.NotNil(t, retrievedEvent.Instance, "Instance should be preloaded")
+	assert.Equal(t, instance.ID, retrievedEvent.Instance.ID)
+	assert.Equal(t, "event-instance", retrievedEvent.Instance.Name)
+}
+
+func TestAlertRepository_ListActiveEvents_NoN1Query(t *testing.T) {
+	db, counter := setupTestDBForN1(t)
+	repo := repository.NewAlertRepository(db)
+
+	ownerID := uuid.New()
+
+	// Create test instances and alerts
+	for i := 0; i < 3; i++ {
+		instance := &models.Instance{
+			Name:       "active-instance-" + string(rune('A'+i)),
+			Type:       "mysql",
+			Connection: models.JSONB{"host": "localhost"},
+			Status:     "running",
+			OwnerID:    ownerID,
+		}
+		err := db.Create(instance).Error
+		require.NoError(t, err)
+
+		alert := &models.Alert{
+			Name:        "active-alert-" + string(rune('A'+i)),
+			Description: "Active alert",
+			InstanceID:  &instance.ID,
+			RuleType:    "threshold",
+			RuleConfig:  models.JSONB{},
+			Severity:    "critical",
+			Enabled:     true,
+		}
+		err = repo.CreateRule(context.Background(), alert)
+		require.NoError(t, err)
+
+		// Create firing events
+		event := &models.AlertEvent{
+			AlertID:    alert.ID,
+			InstanceID: instance.ID,
+			Status:     "firing",
+			Message:    "Active event",
+			StartedAt:  time.Now(),
+		}
+		err = repo.CreateEvent(context.Background(), event)
+		require.NoError(t, err)
+	}
+
+	// Reset counter before test query
+	counter.QueryCount = 0
+
+	// List active events with Preload
+	events, err := repo.ListActiveEvents(context.Background())
+
+	require.NoError(t, err)
+	assert.Len(t, events, 3)
+
+	// Verify no N+1 query
+	t.Logf("Query count with Preload: %d", counter.QueryCount)
+	assert.LessOrEqual(t, counter.QueryCount, 3, "Should not have N+1 queries with Preload")
+
+	// Verify both Alert and Instance are loaded for all events
+	for _, event := range events {
+		assert.Equal(t, "firing", event.Status)
+		assert.NotNil(t, event.Alert, "Alert should be preloaded")
+		assert.NotNil(t, event.Instance, "Instance should be preloaded")
+	}
+}

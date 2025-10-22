@@ -84,7 +84,7 @@ func Test_shouldUpdateCluster(t *testing.T) {
 					K8sClient: &kube.K8sClient{
 						ClientSet: &kubernetes.Clientset{},
 					},
-					config: "test-config",
+					configHash: hashConfig("test-config"),
 				},
 				cluster: &models.Cluster{Name: "test", Enable: true, Config: "test-config-new"},
 			},
@@ -142,7 +142,7 @@ func Test_shouldUpdateCluster(t *testing.T) {
 				K8sClient: &kube.K8sClient{
 					ClientSet: &kubernetes.Clientset{DiscoveryClient: &discovery.DiscoveryClient{}},
 				},
-				config:        "test-config",
+				configHash:    hashConfig("test-config"),
 				prometheusURL: "test-prometheus-url",
 			}
 			cluster := &models.Cluster{

@@ -48,12 +48,21 @@ func NewManagerCoordinator(
 
 // GetManager gets or creates a manager for an instance
 func (c *ManagerCoordinator) GetManager(ctx context.Context, instanceID uuid.UUID) (ServiceManager, error) {
-	// Check if manager already exists
+	// Check if manager already exists (first check with read lock)
 	c.managersMu.RLock()
 	manager, exists := c.managers[instanceID]
 	c.managersMu.RUnlock()
 
 	if exists {
+		return manager, nil
+	}
+
+	// Acquire write lock for creation
+	c.managersMu.Lock()
+	defer c.managersMu.Unlock()
+
+	// Double-check: another goroutine might have created the manager
+	if manager, exists := c.managers[instanceID]; exists {
 		return manager, nil
 	}
 
@@ -79,10 +88,8 @@ func (c *ManagerCoordinator) GetManager(ctx context.Context, instanceID uuid.UUI
 		return nil, fmt.Errorf("failed to connect manager: %w", err)
 	}
 
-	// Store manager
-	c.managersMu.Lock()
+	// Store manager (already holding write lock)
 	c.managers[instanceID] = manager
-	c.managersMu.Unlock()
 
 	logrus.Infof("Created and connected manager for instance %s (type: %s)", instanceID, instance.Type)
 

@@ -11,15 +11,15 @@ import (
 type AlertEvent struct {
 	ID         uuid.UUID `gorm:"type:char(36);primary_key" json:"id"`
 	AlertID    uuid.UUID `gorm:"type:char(36);not null;index" json:"alert_id"`
-	InstanceID uuid.UUID `gorm:"type:char(36);not null;index" json:"instance_id"`
+	InstanceID uuid.UUID `gorm:"type:char(36);not null;index:idx_instance_status" json:"instance_id"`
 
 	// Event information
-	Status  string `gorm:"type:varchar(32);not null;index" json:"status"` // firing, resolved
+	Status  string `gorm:"type:varchar(32);not null;index:idx_status_time,priority:1;index:idx_instance_status" json:"status"` // firing, resolved
 	Message string `gorm:"type:text;not null" json:"message"`
 	Details JSONB  `gorm:"type:text" json:"details"`
 
 	// Timestamps
-	StartedAt  time.Time  `gorm:"not null;index" json:"started_at"`
+	StartedAt  time.Time  `gorm:"not null;index:idx_status_time,priority:2" json:"started_at"`
 	ResolvedAt *time.Time `json:"resolved_at,omitempty"`
 
 	// Notification status

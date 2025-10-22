@@ -13,14 +13,21 @@ import (
 
 // SessionService manages user sessions
 type SessionService struct {
-	db *gorm.DB
+	db                 *gorm.DB
+	maxSessionsPerUser int // Maximum concurrent sessions per user (0 = unlimited)
 }
 
 // NewSessionService creates a new SessionService
 func NewSessionService(db *gorm.DB) *SessionService {
 	return &SessionService{
-		db: db,
+		db:                 db,
+		maxSessionsPerUser: 5, // Default: 5 concurrent sessions per user
 	}
+}
+
+// SetMaxSessionsPerUser sets the maximum concurrent sessions per user
+func (s *SessionService) SetMaxSessionsPerUser(max int) {
+	s.maxSessionsPerUser = max
 }
 
 // CreateSessionRequest represents a session creation request
@@ -36,6 +43,24 @@ type CreateSessionRequest struct {
 
 // CreateSession creates a new session
 func (s *SessionService) CreateSession(ctx context.Context, req *CreateSessionRequest) (*models.Session, error) {
+	// Enforce maximum concurrent sessions per user (if configured)
+	if s.maxSessionsPerUser > 0 {
+		// Count current active sessions for this user
+		activeCount, err := s.CountActiveSessions(ctx, req.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to count active sessions: %w", err)
+		}
+
+		// If at or over limit, invalidate oldest session(s)
+		if activeCount >= int64(s.maxSessionsPerUser) {
+			sessionsToRemove := activeCount - int64(s.maxSessionsPerUser) + 1
+			if err := s.invalidateOldestSessions(ctx, req.UserID, int(sessionsToRemove)); err != nil {
+				// Log error but don't fail the login - cleanup is best effort
+				fmt.Printf("Warning: failed to cleanup old sessions for user %s: %v\n", req.UserID, err)
+			}
+		}
+	}
+
 	session := &models.Session{
 		UserID:         req.UserID,
 		Token:          req.Token,
@@ -53,6 +78,44 @@ func (s *SessionService) CreateSession(ctx context.Context, req *CreateSessionRe
 	}
 
 	return session, nil
+}
+
+// invalidateOldestSessions invalidates the N oldest active sessions for a user
+func (s *SessionService) invalidateOldestSessions(ctx context.Context, userID uuid.UUID, count int) error {
+	// Get oldest active sessions
+	var oldSessions []models.Session
+	err := s.db.WithContext(ctx).
+		Where("user_id = ? AND is_active = ? AND expires_at > ?", userID, true, time.Now()).
+		Order("last_activity_at ASC"). // Oldest first
+		Limit(count).
+		Find(&oldSessions).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to query old sessions: %w", err)
+	}
+
+	// Extract session IDs
+	var sessionIDs []uuid.UUID
+	for _, session := range oldSessions {
+		sessionIDs = append(sessionIDs, session.ID)
+	}
+
+	if len(sessionIDs) == 0 {
+		return nil // Nothing to invalidate
+	}
+
+	// Batch invalidate
+	err = s.db.WithContext(ctx).
+		Model(&models.Session{}).
+		Where("id IN ?", sessionIDs).
+		Update("is_active", false).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to invalidate old sessions: %w", err)
+	}
+
+	fmt.Printf("Invalidated %d old session(s) for user %s (concurrent session limit enforcement)\n", len(sessionIDs), userID)
+	return nil
 }
 
 // GetSession retrieves a session by ID

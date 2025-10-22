@@ -35,6 +35,7 @@ func (r *AlertRepository) CreateRule(ctx context.Context, rule *models.Alert) er
 func (r *AlertRepository) GetRuleByID(ctx context.Context, id uuid.UUID) (*models.Alert, error) {
 	var rule models.Alert
 	err := r.db.WithContext(ctx).
+		Preload("Instance").
 		Where("id = ?", id).
 		First(&rule).Error
 
@@ -52,6 +53,7 @@ func (r *AlertRepository) GetRuleByID(ctx context.Context, id uuid.UUID) (*model
 func (r *AlertRepository) GetRuleByName(ctx context.Context, name string) (*models.Alert, error) {
 	var rule models.Alert
 	err := r.db.WithContext(ctx).
+		Preload("Instance").
 		Where("name = ?", name).
 		First(&rule).Error
 
@@ -205,6 +207,7 @@ func (r *AlertRepository) GetEventByID(ctx context.Context, id uuid.UUID) (*mode
 	var event models.AlertEvent
 	err := r.db.WithContext(ctx).
 		Preload("Alert").
+		Preload("Instance").
 		Where("id = ?", id).
 		First(&event).Error
 
@@ -254,7 +257,9 @@ type ListEventsFilter struct {
 
 // ListEvents retrieves a paginated list of alert events with filters
 func (r *AlertRepository) ListEvents(ctx context.Context, filter *ListEventsFilter) ([]*models.AlertEvent, int64, error) {
-	query := r.db.WithContext(ctx).Preload("Alert")
+	query := r.db.WithContext(ctx).
+		Preload("Alert").
+		Preload("Instance")
 
 	// Apply filters
 	if filter.AlertID != nil {
@@ -309,6 +314,7 @@ func (r *AlertRepository) ListActiveEvents(ctx context.Context) ([]*models.Alert
 	var events []*models.AlertEvent
 	err := r.db.WithContext(ctx).
 		Preload("Alert").
+		Preload("Instance").
 		Where("status = ?", "firing").
 		Order("started_at DESC").
 		Find(&events).Error
@@ -325,6 +331,7 @@ func (r *AlertRepository) ListEventsByInstance(ctx context.Context, instanceID u
 	var events []*models.AlertEvent
 	err := r.db.WithContext(ctx).
 		Preload("Alert").
+		Preload("Instance").
 		Where("instance_id = ?", instanceID).
 		Order("started_at DESC").
 		Find(&events).Error
