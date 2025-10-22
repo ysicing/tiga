@@ -17,7 +17,7 @@ const SchedulerTaskSchema = z.object({
   timeout_grace_period: z.number().optional(),
   max_concurrent: z.number().optional(),
   priority: z.number().optional(),
-  labels: z.record(z.string()).optional(),
+  labels: z.record(z.string(), z.string()).optional(),
   data: z.string().optional(),
   total_executions: z.number(),
   success_executions: z.number(),
