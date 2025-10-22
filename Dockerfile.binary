@@ -1,0 +1,11 @@
+FROM gcr.io/distroless/static:nonroot
+
+ARG TARGETARCH
+
+WORKDIR /app
+
+COPY bin/tiga-$TARGETARCH ./tiga
+
+EXPOSE 12306
+
+CMD ["./tiga"]

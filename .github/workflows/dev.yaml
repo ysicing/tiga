@@ -69,11 +69,21 @@ jobs:
           go-version: 'stable'
           cache: true
 
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        run: task cross-compile
+
       - name: Build and push dev image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
+          file: Dockerfile.binary
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
