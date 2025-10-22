@@ -1,9 +1,13 @@
-name: Release
+name: Dev Build
 
 on:
   push:
-    tags:
-      - 'v[0-9]+\.[0-9]+\.[0-9]+'
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/release.yaml'
 
 env:
   IMAGE_NAME: tiga
@@ -11,26 +15,31 @@ env:
   NODE_VERSION: "24"
 
 jobs:
-  # Push image to GitHub Packages.
-  # See also https://docs.docker.com/docker-hub/builds/
-  push:
+  build:
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'ysicing' }}
     permissions:
       packages: write
-      contents: write
-    outputs:
-      tag_name: ${{ steps.check_version.outputs.tag_name }}
+      contents: read
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Generate timestamp tag
+        id: timestamp
+        run: |
+          TIMESTAMP=$(date +%Y%m%d)
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "Building dev image with timestamp: $TIMESTAMP"
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Login to Docker hub Registry
         uses: docker/login-action@v3
         with:
@@ -39,12 +48,14 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -61,19 +72,13 @@ jobs:
       - name: Install deps
         run: make deps
 
-      - name: Check version
-        id: check_version
-        run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-
       - name: Build
         run: make cross-compile
 
       - name: Package binaries
         run: make package-binaries
 
-      - name: Build and push image
+      - name: Build and push dev image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -82,22 +87,11 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.check_version.outputs.tag_name }}
-            ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.check_version.outputs.tag_name }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
-            ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
-          labels: runnumber=${{ github.run_id }}
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.check_version.outputs.tag_name }}
-          name: ${{ steps.check_version.outputs.tag_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          files: |
-            bin/tiga-*-${{ steps.check_version.outputs.tag_name }}.tar.gz
-            tiga-*.tgz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:dev
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:dev-${{ steps.timestamp.outputs.timestamp }}
+            ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:dev
+            ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:dev-${{ steps.timestamp.outputs.timestamp }}
+          labels: |
+            runnumber=${{ github.run_id }}
+            branch=${{ github.ref_name }}
+            commit=${{ github.sha }}

@@ -190,8 +190,6 @@ author: Claude Code PM System
 ## 🔗 相关链接
 
 - **GitHub 仓库**: https://github.com/ysicing/tiga
-- **在线 Demo**: https://tiga-demo.zzde.me
-- **文档**: https://tiga.zzde.me
 - **Issue 追踪**: https://github.com/ysicing/tiga/issues
 
 ## 📋 依赖项

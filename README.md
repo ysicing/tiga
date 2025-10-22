@@ -11,8 +11,6 @@ _一个现代化、直观的 DevOps Dashboard_
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org)
 [![License](https://img.shields.io/badge/License-Apache-green.svg)](LICENSE)
 
-[**在线 Demo**](https://tiga-demo.zzde.me) | [**文档**](https://tiga.zzde.me)
-<br>
 [English](./README.md) | **中文**
 
 </div>
@@ -69,8 +67,6 @@ _全面的集群概览，包含实时指标和资源统计_
 ---
 
 ## 🚀 快速开始
-
-有关详细说明，请参阅[文档](https://tiga.zzde.me/guide/installation.html)。
 
 ### Docker
 
@@ -141,11 +137,9 @@ docker run --rm -p 8080:8080 ghcr.io/ysicing/tiga:latest
 
 ## 🔍 问题排查
 
-有关问题排查，请参阅[文档](https://tiga.zzde.me)。
-
 ## 🤝 贡献
 
-我们欢迎贡献！请参阅我们的[贡献指南](https://tiga.zzde.me/zh/faq.html#%E6%88%91%E5%9C%A8%E5%93%AA%E9%87%8C%E5%8F%AF%E4%BB%A5%E8%8E%B7%E5%BE%97%E5%B8%AE%E5%8A%A9)了解如何参与。
+我们欢迎贡献，直接PR即可。
 
 ## 📄 许可证
 

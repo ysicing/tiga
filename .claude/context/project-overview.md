@@ -270,8 +270,6 @@ helm install tiga tiga/tiga -n kube-system
 ## 📝 相关资源
 
 - **GitHub**: https://github.com/ysicing/tiga
-- **文档**: https://tiga.zzde.me
-- **Demo**: https://tiga-demo.zzde.me
 - **Issue 追踪**: https://github.com/ysicing/tiga/issues
 
 ---

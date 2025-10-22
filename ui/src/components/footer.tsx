@@ -11,7 +11,7 @@ export function Footer() {
           </p>
           <div className="flex space-x-6 text-sm text-gray-500">
             <a
-              href="https://tiga.zzde.com"
+              href="https://tiga.ysicing.cloud"
               target="_blank"
               className="hover:text-gray-700 transition-colors"
             >

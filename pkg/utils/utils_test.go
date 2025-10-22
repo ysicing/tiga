@@ -12,7 +12,7 @@ func TestGetImageRegistryAndRepo(t *testing.T) {
 	}{
 		{"nginx", "", "library/nginx"},
 		{"nginx:latest", "", "library/nginx"},
-		{"zzde/tiga:latest", "", "zzde/tiga"},
+		{"ysicing/tiga:latest", "", "ysicing/tiga"},
 		{"docker.io/library/nginx", "docker.io", "library/nginx"},
 		{"docker.io/library/nginx:latest", "docker.io", "library/nginx"},
 		{"gcr.io/my-project/my-image", "gcr.io", "my-project/my-image"},
