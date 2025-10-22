@@ -72,6 +72,13 @@ func (s *ClusterHealthService) Stop() {
 	close(s.stopCh)
 }
 
+// CheckAll performs an immediate health check on all enabled clusters
+// This is a public wrapper for the scheduler integration
+func (s *ClusterHealthService) CheckAll(ctx context.Context) error {
+	s.checkAllClusters(ctx)
+	return nil
+}
+
 // checkAllClusters performs health check on all enabled clusters
 func (s *ClusterHealthService) checkAllClusters(ctx context.Context) {
 	clusters, err := s.clusterRepo.GetAllEnabled(ctx)

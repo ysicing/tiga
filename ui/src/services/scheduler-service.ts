@@ -28,17 +28,38 @@ export interface SchedulerTask {
 }
 
 export interface SchedulerExecution {
-  id: string
+  id: number
   task_uid: string
-  state: string
+  task_name: string
+  task_type: string
+  execution_uid: string
+  run_by: string
+  scheduled_at: string
   started_at: string
-  duration: number
-  result: string
+  finished_at?: string
+  state: string
+  result?: string
+  error?: string
+  error_message?: string
+  error_stack?: string
+  duration_ms: number
+  progress: number
+  retry_count: number
+  trigger_type: string
+  trigger_by?: string
+  triggered_by?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface ExecutionsResponse {
-  executions: SchedulerExecution[]
-  total: number
+  data: SchedulerExecution[]
+  pagination: {
+    page: number
+    page_size: number
+    total: number
+    total_pages: number
+  }
 }
 
 export interface TriggerResponse {
@@ -62,6 +83,7 @@ class SchedulerService {
   async getExecutions(params?: {
     page?: number
     page_size?: number
+    task_uid?: string
     task_name?: string
     state?: string
     start_time?: number
@@ -69,8 +91,13 @@ class SchedulerService {
   }): Promise<ExecutionsResponse> {
     const response = await apiClient.get('/scheduler/executions', params)
     return {
-      executions: response.data || [],
-      total: response.pagination?.total || 0,
+      data: response.data || [],
+      pagination: response.pagination || {
+        page: 1,
+        page_size: 20,
+        total: 0,
+        total_pages: 0,
+      },
     }
   }
 

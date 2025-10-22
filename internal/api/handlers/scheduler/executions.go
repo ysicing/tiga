@@ -22,12 +22,14 @@ import (
 //	.claude/specs/006-gitness-tiga/contracts/scheduler_api.yaml
 type ExecutionHandler struct {
 	execRepo schedulerrepo.ExecutionRepository
+	taskRepo schedulerrepo.TaskRepository
 }
 
 // NewExecutionHandler creates a new execution handler
-func NewExecutionHandler(execRepo schedulerrepo.ExecutionRepository) *ExecutionHandler {
+func NewExecutionHandler(execRepo schedulerrepo.ExecutionRepository, taskRepo schedulerrepo.TaskRepository) *ExecutionHandler {
 	return &ExecutionHandler{
 		execRepo: execRepo,
+		taskRepo: taskRepo,
 	}
 }
 
@@ -65,7 +67,17 @@ func (h *ExecutionHandler) ListExecutions(c *gin.Context) {
 	// Build filters
 	filters := make(map[string]interface{})
 
-	if taskName := c.Query("task_name"); taskName != "" {
+	// Support both task_name and task_uid filters
+	if taskUID := c.Query("task_uid"); taskUID != "" {
+		// Query task by UID to get task name
+		task, err := h.taskRepo.GetByUID(c.Request.Context(), taskUID)
+		if err != nil {
+			logrus.Errorf("Failed to get task by UID %s: %v", taskUID, err)
+			handlers.RespondErrorWithMessage(c, http.StatusNotFound, err, "Task not found")
+			return
+		}
+		filters["task_name"] = task.Name
+	} else if taskName := c.Query("task_name"); taskName != "" {
 		filters["task_name"] = taskName
 	}
 

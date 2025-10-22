@@ -156,7 +156,7 @@ func SetupRoutes(
 	expiryScheduler.Start()
 
 	// Scheduler service (T013)
-	schedulerService := schedulerservices.NewScheduler(schedulerExecutionRepo)
+	schedulerService := schedulerservices.NewScheduler(schedulerTaskRepo, schedulerExecutionRepo)
 	schedulerService.Start(context.Background()) // Start the scheduler background worker
 
 	// T027: Register existing tasks with Scheduler
@@ -198,7 +198,7 @@ func SetupRoutes(
 
 	// Scheduler handlers (T022)
 	schedulerTaskHandler := schedulerhandlers.NewTaskHandler(schedulerTaskRepo, schedulerService)
-	schedulerExecutionHandler := schedulerhandlers.NewExecutionHandler(schedulerExecutionRepo)
+	schedulerExecutionHandler := schedulerhandlers.NewExecutionHandler(schedulerExecutionRepo, schedulerTaskRepo)
 	schedulerStatsCalculator := schedulerservices.NewStatsCalculator(schedulerExecutionRepo)
 	schedulerStatsHandler := schedulerhandlers.NewStatsHandler(schedulerStatsCalculator)
 

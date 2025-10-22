@@ -42,6 +42,7 @@ type Scheduler struct {
 	mu          sync.RWMutex
 	stopCh      chan struct{}
 	wg          sync.WaitGroup
+	taskRepo    scheduler.TaskRepository      // Task repository for database persistence
 	execRepo    scheduler.ExecutionRepository // T013: Execution history repository
 	cron        *cron.Cron                    // T013: Cron scheduler
 	instanceID  string                        // T013: Scheduler instance ID
@@ -49,13 +50,14 @@ type Scheduler struct {
 }
 
 // NewScheduler creates a new scheduler
-// Enhanced in T013 to accept ExecutionRepository
-func NewScheduler(execRepo scheduler.ExecutionRepository) *Scheduler {
+// Enhanced in T013 to accept ExecutionRepository and TaskRepository
+func NewScheduler(taskRepo scheduler.TaskRepository, execRepo scheduler.ExecutionRepository) *Scheduler {
 	instanceID := fmt.Sprintf("scheduler-%s", uuid.New().String()[:8])
 
 	return &Scheduler{
 		schedules:   make(map[string]*Schedule),
 		stopCh:      make(chan struct{}),
+		taskRepo:    taskRepo,
 		execRepo:    execRepo,
 		cron:        cron.New(),
 		instanceID:  instanceID,
@@ -102,6 +104,47 @@ func (s *Scheduler) AddCron(name string, cronExpr string, task Task) error {
 	})
 	if err != nil {
 		return fmt.Errorf("invalid cron expression: %w", err)
+	}
+
+	// Calculate next run time
+	entry := s.cron.Entry(entryID)
+	nextRun := entry.Next
+
+	// Check if task already exists in database (upsert pattern)
+	existingTask, err := s.taskRepo.GetByName(context.Background(), name)
+	if err == nil {
+		// Task exists, update it
+		existingTask.CronExpr = cronExpr
+		existingTask.NextRun = &nextRun
+		existingTask.Enabled = true
+		existingTask.Type = "cron"
+		existingTask.Description = task.Name()
+		if updateErr := s.taskRepo.Update(context.Background(), existingTask); updateErr != nil {
+			logrus.Warnf("Failed to update task %s in database: %v", name, updateErr)
+		} else {
+			logrus.Debugf("Updated existing task %s in database", name)
+		}
+		// Use existing task UID
+		taskUID = existingTask.UID
+	} else {
+		// Task doesn't exist, create it
+		scheduledTask := &models.ScheduledTask{
+			UID:                taskUID,
+			Name:               name,
+			Type:               "cron",
+			Description:        task.Name(),
+			IsRecurring:        true,
+			CronExpr:           cronExpr,
+			NextRun:            &nextRun,
+			Enabled:            true,
+			MaxDurationSeconds: 1800, // 30 minutes default
+		}
+
+		if createErr := s.taskRepo.Create(context.Background(), scheduledTask); createErr != nil {
+			logrus.Warnf("Failed to create task %s in database: %v", name, createErr)
+		} else {
+			logrus.Debugf("Created new task %s in database", name)
+		}
 	}
 
 	s.schedules[name] = &Schedule{
@@ -323,11 +366,44 @@ func (s *Scheduler) executeTask(ctx context.Context, name string, schedule *Sche
 		recorder,
 	)
 
+	// Update task statistics
+	if s.taskRepo != nil {
+		s.updateTaskStatistics(ctx, schedule.TaskUID, err == nil)
+	}
+
 	// Log result
 	if err != nil {
 		logrus.Errorf("Task %s failed: %v", name, err)
 	} else {
 		logrus.Infof("Task %s completed successfully in %dms", name, execution.DurationMs)
+	}
+}
+
+// updateTaskStatistics updates the task execution statistics
+func (s *Scheduler) updateTaskStatistics(ctx context.Context, taskUID string, success bool) {
+	// Get task from database
+	task, err := s.taskRepo.GetByUID(ctx, taskUID)
+	if err != nil {
+		logrus.Errorf("Failed to get task %s for statistics update: %v", taskUID, err)
+		return
+	}
+
+	// Increment execution counters
+	task.IncrementExecutions(success)
+
+	// Update NextRun for cron-based tasks
+	s.mu.RLock()
+	if schedule, ok := s.schedules[task.Name]; ok && schedule.CronID != 0 {
+		// Get next run time from cron entry
+		entry := s.cron.Entry(schedule.CronID)
+		nextRun := entry.Next
+		task.NextRun = &nextRun
+	}
+	s.mu.RUnlock()
+
+	// Update task in database
+	if err := s.taskRepo.Update(ctx, task); err != nil {
+		logrus.Errorf("Failed to update task %s statistics: %v", taskUID, err)
 	}
 }
 

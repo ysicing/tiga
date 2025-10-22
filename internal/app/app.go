@@ -88,7 +88,7 @@ func NewApplication(cfg *config.Config, configPath string, installMode bool, sta
 			config:      cfg,
 			configPath:  configPath,
 			installMode: installMode,
-			scheduler:   scheduler.NewScheduler(nil), // nil ExecutionRepository in install mode
+			scheduler:   scheduler.NewScheduler(nil, nil), // nil TaskRepository and ExecutionRepository in install mode
 			staticFS:    staticFS,
 		}
 		return app, nil
@@ -628,6 +628,36 @@ func (a *Application) registerScheduledTasks(ctx context.Context) error {
 	}
 	logrus.Info("database_audit_cleanup task registered successfully")
 
-	logrus.Infof("Successfully registered %d scheduled tasks", 2)
+	// Task 3: Host Expiry Check (runs daily at midnight)
+	// Check host expiry dates and generate alerts
+	hostRepo := repository.NewHostRepository(a.db.DB)
+	monitorAlertRepo := repository.NewMonitorAlertRepository(a.db.DB)
+	expiryScheduler := host.NewExpiryScheduler(hostRepo, monitorAlertRepo, a.db.DB)
+
+	hostExpiryTask := scheduler.NewHostExpiryCheckTask(expiryScheduler)
+	if err := a.scheduler.AddCron(
+		hostExpiryTask.Name(),
+		"0 0 * * *", // Daily at midnight
+		hostExpiryTask,
+	); err != nil {
+		return fmt.Errorf("failed to register host_expiry_check task: %w", err)
+	}
+	logrus.Info("host_expiry_check task registered successfully")
+
+	// Task 4: Cluster Health Check (runs every 5 minutes)
+	// Check Kubernetes cluster health status
+	if a.clusterHealthService != nil {
+		clusterHealthTask := scheduler.NewClusterHealthCheckTask(a.clusterHealthService)
+		if err := a.scheduler.AddCron(
+			clusterHealthTask.Name(),
+			"*/5 * * * *", // Every 5 minutes
+			clusterHealthTask,
+		); err != nil {
+			return fmt.Errorf("failed to register cluster_health_check task: %w", err)
+		}
+		logrus.Info("cluster_health_check task registered successfully")
+	}
+
+	logrus.Infof("Successfully registered %d scheduled tasks", 4)
 	return nil
 }
