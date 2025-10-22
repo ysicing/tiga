@@ -75,17 +75,42 @@ func (h *LogHandler) GetContainerLogs(c *gin.Context) {
 	}
 	defer logs.Close()
 
-	// Read logs
-	body, err := io.ReadAll(logs)
-	if err != nil {
-		handlers.RespondInternalError(c, err)
-		return
+	// Stream logs with batch processing for better performance
+	// Buffer size: 8KB - optimal balance between throughput and memory
+	const bufferSize = 8 * 1024
+	buffer := make([]byte, bufferSize)
+
+	// Set response headers for streaming
+	c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+	c.Writer.WriteHeader(200)
+
+	// Write JSON preamble
+	c.Writer.Write([]byte(`{"data":{"logs":"`))
+
+	// Stream logs in batches
+	for {
+		n, err := logs.Read(buffer)
+		if n > 0 {
+			// Escape special JSON characters and write chunk
+			chunk := escapeJSON(buffer[:n])
+			c.Writer.Write(chunk)
+			c.Writer.Flush() // Ensure immediate delivery to client
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			logrus.WithError(err).WithField("container_id", containerID).Error("Error reading log stream")
+			break
+		}
 	}
 
-	handlers.RespondSuccess(c, gin.H{
-		"logs":      string(body),
-		"container": containerID,
-	})
+	// Write JSON postamble
+	c.Writer.Write([]byte(`","container":"`))
+	c.Writer.Write([]byte(containerID))
+	c.Writer.Write([]byte(`"}}`))
+	c.Writer.Flush()
 }
 
 // ExecContainer handles POST /api/v1/docker/instances/{id}/containers/{container}/exec
@@ -191,4 +216,39 @@ func getUserID(c *gin.Context) string {
 		}
 	}
 	return "anonymous"
+}
+
+// escapeJSON escapes special JSON characters in byte slice
+// for safe inclusion in JSON string values.
+// This is a performance-optimized version that pre-allocates capacity.
+func escapeJSON(data []byte) []byte {
+	// Estimate capacity: most logs don't have special chars
+	result := make([]byte, 0, len(data)+len(data)/10)
+
+	for _, b := range data {
+		switch b {
+		case '"':
+			result = append(result, '\\', '"')
+		case '\\':
+			result = append(result, '\\', '\\')
+		case '\n':
+			result = append(result, '\\', 'n')
+		case '\r':
+			result = append(result, '\\', 'r')
+		case '\t':
+			result = append(result, '\\', 't')
+		case '\b':
+			result = append(result, '\\', 'b')
+		case '\f':
+			result = append(result, '\\', 'f')
+		default:
+			// Control characters (0x00-0x1F) need unicode escaping
+			if b < 0x20 {
+				result = append(result, []byte(fmt.Sprintf("\\u%04x", b))...)
+			} else {
+				result = append(result, b)
+			}
+		}
+	}
+	return result
 }
