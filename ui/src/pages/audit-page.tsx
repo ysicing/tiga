@@ -123,7 +123,7 @@ export function AuditPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {eventsData?.total || 0}
+              {eventsData?.pagination.total || 0}
             </div>
           </CardContent>
         </Card>
@@ -154,7 +154,7 @@ export function AuditPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {eventsData?.events?.length || 0}
+              {eventsData?.data?.length || 0}
             </div>
           </CardContent>
         </Card>
@@ -324,7 +324,7 @@ export function AuditPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {eventsData?.events?.map((event) => (
+              {eventsData?.data?.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell className="text-xs">
                     {formatTimestamp(event.timestamp)}
@@ -379,11 +379,11 @@ export function AuditPage() {
           </Table>
 
           {/* Pagination */}
-          {eventsData && eventsData.total_pages > 1 && (
+          {eventsData && eventsData.pagination.total_pages > 1 && (
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-muted-foreground">
-                {t('audit.page', 'Page')} {eventsData.page} of{' '}
-                {eventsData.total_pages}
+                {t('audit.page', 'Page')} {eventsData.pagination.page} of{' '}
+                {eventsData.pagination.total_pages}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -397,7 +397,7 @@ export function AuditPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={page >= eventsData.total_pages}
+                  disabled={page >= eventsData.pagination.total_pages}
                   onClick={() => setPage(page + 1)}
                 >
                   {t('audit.next', 'Next')}
