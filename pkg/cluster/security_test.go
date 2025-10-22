@@ -53,10 +53,10 @@ func TestSecureClear(t *testing.T) {
 
 func TestHashConfig(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     string
-		wantSame  string // Another input that should produce the same hash
-		wantDiff  string // Another input that should produce a different hash
+		name     string
+		input    string
+		wantSame string // Another input that should produce the same hash
+		wantDiff string // Another input that should produce a different hash
 	}{
 		{
 			name:     "Same content produces same hash",

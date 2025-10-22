@@ -78,11 +78,11 @@ export function SchedulerPage() {
     const diffMins = Math.floor(diffMs / 60000)
 
     if (diffMins < 0) return t('scheduler.overdue', 'Overdue')
-    if (diffMins < 60) return t('scheduler.in_minutes', `In ${diffMins}m`)
+    if (diffMins < 60) return t('scheduler.in_minutes', { minutes: diffMins })
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return t('scheduler.in_hours', `In ${diffHours}h`)
+    if (diffHours < 24) return t('scheduler.in_hours', { hours: diffHours })
     const diffDays = Math.floor(diffHours / 24)
-    return t('scheduler.in_days', `In ${diffDays}d`)
+    return t('scheduler.in_days', { days: diffDays })
   }
 
   const getSuccessRate = (task: SchedulerTask) => {
@@ -336,7 +336,7 @@ function ExecutionHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-6xl">
         <DialogHeader>
           <DialogTitle>
             {t('scheduler.execution_history', 'Execution History')} -{' '}
@@ -350,7 +350,7 @@ function ExecutionHistoryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="h-[500px] overflow-y-auto">
+        <div className="h-[500px] overflow-y-auto overflow-x-auto">
           {isLoading ? (
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
@@ -361,12 +361,12 @@ function ExecutionHistoryDialog({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('scheduler.execution_id', 'ID')}</TableHead>
-                  <TableHead>{t('scheduler.state', 'State')}</TableHead>
-                  <TableHead>{t('scheduler.started_at', 'Started')}</TableHead>
-                  <TableHead>{t('scheduler.duration', 'Duration')}</TableHead>
-                  <TableHead>{t('scheduler.trigger', 'Trigger')}</TableHead>
-                  <TableHead>{t('scheduler.result', 'Result')}</TableHead>
+                  <TableHead className="w-24">{t('scheduler.execution_id', 'ID')}</TableHead>
+                  <TableHead className="w-32">{t('scheduler.state', 'State')}</TableHead>
+                  <TableHead className="w-48">{t('scheduler.started_at', 'Started')}</TableHead>
+                  <TableHead className="w-24">{t('scheduler.duration', 'Duration')}</TableHead>
+                  <TableHead className="w-28">{t('scheduler.trigger', 'Trigger')}</TableHead>
+                  <TableHead className="min-w-[300px]">{t('scheduler.result', 'Result')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -383,10 +383,10 @@ function ExecutionHistoryDialog({
                         </span>
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs whitespace-nowrap">
                       {new Date(exec.started_at).toLocaleString()}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       {exec.duration_ms
                         ? `${(exec.duration_ms / 1000).toFixed(2)}s`
                         : '-'}
@@ -394,13 +394,13 @@ function ExecutionHistoryDialog({
                     <TableCell>
                       <Badge variant="outline">{exec.triggered_by}</Badge>
                     </TableCell>
-                    <TableCell className="max-w-xs">
+                    <TableCell>
                       {exec.error ? (
-                        <span className="text-xs text-destructive truncate block">
+                        <span className="text-xs text-destructive block break-words">
                           {exec.error}
                         </span>
                       ) : exec.result ? (
-                        <span className="text-xs text-muted-foreground truncate block">
+                        <span className="text-xs text-muted-foreground block break-words">
                           {exec.result}
                         </span>
                       ) : (
