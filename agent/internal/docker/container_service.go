@@ -273,3 +273,118 @@ func (s *DockerService) DeleteContainer(ctx context.Context, req *pb.DeleteConta
 		Message: "Container deleted successfully",
 	}, nil
 }
+
+// GetContainerStats implements the GetContainerStats streaming RPC method
+// It continuously streams container resource usage statistics
+func (s *DockerService) GetContainerStats(req *pb.GetContainerStatsRequest, stream pb.DockerService_GetContainerStatsServer) error {
+	ctx := stream.Context()
+
+	// Get container stats stream from Docker
+	statsReader, err := s.dockerClient.Client().ContainerStats(ctx, req.ContainerId, req.Stream)
+	if err != nil {
+		return err
+	}
+	defer statsReader.Body.Close()
+
+	// Read and stream stats
+	decoder := json.NewDecoder(statsReader.Body)
+
+	for {
+		var statsJSON types.StatsJSON
+		if err := decoder.Decode(&statsJSON); err != nil {
+			// EOF is expected when stream ends
+			if err.Error() == "EOF" {
+				return nil
+			}
+			return err
+		}
+
+		// Convert Docker stats to protobuf format
+		pbStats := convertStatsToProto(&statsJSON, req.ContainerId)
+
+		// Send stats through gRPC stream
+		if err := stream.Send(pbStats); err != nil {
+			return err
+		}
+
+		// If not streaming, send once and return
+		if !req.Stream {
+			return nil
+		}
+	}
+}
+
+// convertStatsToProto converts Docker StatsJSON to protobuf ContainerStats
+func convertStatsToProto(stats *types.StatsJSON, containerID string) *pb.ContainerStats {
+	pbStats := &pb.ContainerStats{
+		ContainerId: containerID,
+		Name:        stats.Name,
+		Timestamp:   stats.Read.Unix(),
+		CpuStats: &pb.CPUStats{
+			CpuUsageTotal:         stats.CPUStats.CPUUsage.TotalUsage,
+			CpuUsagePercpu:        stats.CPUStats.CPUUsage.PercpuUsage,
+			CpuUsageInKernelmode:  stats.CPUStats.CPUUsage.UsageInKernelmode,
+			CpuUsageInUsermode:    stats.CPUStats.CPUUsage.UsageInUsermode,
+			SystemCpuUsage:        stats.CPUStats.SystemUsage,
+			OnlineCpus:            uint64(stats.CPUStats.OnlineCPUs),
+			ThrottlingPeriods:     stats.CPUStats.ThrottlingData.Periods,
+			ThrottledPeriods:      stats.CPUStats.ThrottlingData.ThrottledPeriods,
+			ThrottledTime:         stats.CPUStats.ThrottlingData.ThrottledTime,
+		},
+		PrecpuStats: &pb.CPUStats{
+			CpuUsageTotal:         stats.PreCPUStats.CPUUsage.TotalUsage,
+			CpuUsagePercpu:        stats.PreCPUStats.CPUUsage.PercpuUsage,
+			CpuUsageInKernelmode:  stats.PreCPUStats.CPUUsage.UsageInKernelmode,
+			CpuUsageInUsermode:    stats.PreCPUStats.CPUUsage.UsageInUsermode,
+			SystemCpuUsage:        stats.PreCPUStats.SystemUsage,
+			OnlineCpus:            uint64(stats.PreCPUStats.OnlineCPUs),
+			ThrottlingPeriods:     stats.PreCPUStats.ThrottlingData.Periods,
+			ThrottledPeriods:      stats.PreCPUStats.ThrottlingData.ThrottledPeriods,
+			ThrottledTime:         stats.PreCPUStats.ThrottlingData.ThrottledTime,
+		},
+		MemoryStats: &pb.MemoryStats{
+			Usage:            stats.MemoryStats.Usage,
+			MaxUsage:         stats.MemoryStats.MaxUsage,
+			Limit:            stats.MemoryStats.Limit,
+			Commit:           stats.MemoryStats.Commit,
+			CommitPeak:       stats.MemoryStats.CommitPeak,
+			Privateworkingset: stats.MemoryStats.PrivateWorkingSet,
+		},
+		PidsStats: &pb.PidsStats{
+			Current: stats.PidsStats.Current,
+			Limit:   stats.PidsStats.Limit,
+		},
+		Networks: make(map[string]*pb.NetworkStats),
+	}
+
+	// Convert network stats
+	for name, netStats := range stats.Networks {
+		pbStats.Networks[name] = &pb.NetworkStats{
+			RxBytes:   netStats.RxBytes,
+			RxPackets: netStats.RxPackets,
+			RxErrors:  netStats.RxErrors,
+			RxDropped: netStats.RxDropped,
+			TxBytes:   netStats.TxBytes,
+			TxPackets: netStats.TxPackets,
+			TxErrors:  netStats.TxErrors,
+			TxDropped: netStats.TxDropped,
+		}
+	}
+
+	// Convert block I/O stats
+	if stats.BlkioStats.IoServiceBytesRecursive != nil {
+		pbStats.BlkioStats = &pb.BlkioStats{
+			IoServiceBytesRecursive: make([]*pb.BlkioStatEntry, len(stats.BlkioStats.IoServiceBytesRecursive)),
+		}
+		for i, entry := range stats.BlkioStats.IoServiceBytesRecursive {
+			pbStats.BlkioStats.IoServiceBytesRecursive[i] = &pb.BlkioStatEntry{
+				Major: entry.Major,
+				Minor: entry.Minor,
+				Op:    entry.Op,
+				Value: entry.Value,
+			}
+		}
+	}
+
+	return pbStats
+}
