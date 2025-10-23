@@ -1,0 +1,517 @@
+syntax = "proto3";
+
+package docker;
+
+option go_package = "github.com/ysicing/tiga/pkg/grpc/proto/docker";
+
+// DockerService provides remote Docker management operations through Agent
+service DockerService {
+  // Docker daemon information
+  rpc GetDockerInfo(GetDockerInfoRequest) returns (GetDockerInfoResponse);
+
+  // Container operations
+  rpc ListContainers(ListContainersRequest) returns (ListContainersResponse);
+  rpc GetContainer(GetContainerRequest) returns (GetContainerResponse);
+  rpc StartContainer(StartContainerRequest) returns (StartContainerResponse);
+  rpc StopContainer(StopContainerRequest) returns (StopContainerResponse);
+  rpc RestartContainer(RestartContainerRequest) returns (RestartContainerResponse);
+  rpc PauseContainer(PauseContainerRequest) returns (PauseContainerResponse);
+  rpc UnpauseContainer(UnpauseContainerRequest) returns (UnpauseContainerResponse);
+  rpc DeleteContainer(DeleteContainerRequest) returns (DeleteContainerResponse);
+
+  // Streaming operations
+  rpc GetContainerStats(GetContainerStatsRequest) returns (stream ContainerStats);
+  rpc GetContainerLogs(GetContainerLogsRequest) returns (stream LogEntry);
+  rpc ExecContainer(stream ExecRequest) returns (stream ExecResponse);
+
+  // Image operations
+  rpc ListImages(ListImagesRequest) returns (ListImagesResponse);
+  rpc GetImage(GetImageRequest) returns (GetImageResponse);
+  rpc DeleteImage(DeleteImageRequest) returns (DeleteImageResponse);
+  rpc PullImage(PullImageRequest) returns (stream PullImageProgress);
+  rpc TagImage(TagImageRequest) returns (TagImageResponse);
+}
+
+// Docker daemon information
+message GetDockerInfoRequest {}
+
+message GetDockerInfoResponse {
+  string version = 1;
+  string api_version = 2;
+  string min_api_version = 3;
+  string git_commit = 4;
+  string go_version = 5;
+  string os = 6;
+  string arch = 7;
+  string kernel_version = 8;
+  string storage_driver = 9;
+  int32 containers = 10;
+  int32 containers_running = 11;
+  int32 containers_paused = 12;
+  int32 containers_stopped = 13;
+  int32 images = 14;
+  int64 mem_total = 15;
+  int32 n_cpu = 16;
+  string operating_system = 17;
+}
+
+// Container listing
+message ListContainersRequest {
+  bool all = 1;               // Include stopped containers
+  int32 limit = 2;            // Limit number of results (0 = no limit)
+  string filters = 3;         // Docker filters in JSON format
+  int32 page = 4;             // Page number (starting from 1)
+  int32 page_size = 5;        // Items per page (default: 50)
+}
+
+message ListContainersResponse {
+  repeated Container containers = 1;
+  int32 total = 2;            // Total number of containers matching filter
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message Container {
+  string id = 1;              // Container ID (short 12 chars)
+  repeated string names = 2;   // Container names
+  string image = 3;           // Image name
+  string image_id = 4;        // Image ID
+  string command = 5;         // Command
+  int64 created = 6;          // Creation timestamp
+  string state = 7;           // Container state (created, running, paused, etc.)
+  string status = 8;          // Status description
+  repeated Port ports = 9;    // Port mappings
+  map<string, string> labels = 10;
+  int64 size_rw = 11;         // Writable layer size
+  int64 size_root_fs = 12;    // Total size
+  repeated Mount mounts = 13;
+  map<string, NetworkConfig> networks = 14;
+}
+
+message Port {
+  string ip = 1;
+  int32 private_port = 2;
+  int32 public_port = 3;
+  string type = 4;            // tcp/udp
+}
+
+message Mount {
+  string type = 1;            // bind, volume, tmpfs
+  string source = 2;
+  string destination = 3;
+  string mode = 4;
+  bool rw = 5;
+  string propagation = 6;
+}
+
+message NetworkConfig {
+  string network_id = 1;
+  string endpoint_id = 2;
+  string gateway = 3;
+  string ip_address = 4;
+  int32 ip_prefix_len = 5;
+  string mac_address = 6;
+}
+
+// Get container details
+message GetContainerRequest {
+  string container_id = 1;
+}
+
+message GetContainerResponse {
+  ContainerDetail container = 1;
+}
+
+message ContainerDetail {
+  string id = 1;
+  int64 created = 2;
+  string path = 3;
+  repeated string args = 4;
+  ContainerState state = 5;
+  string image = 6;
+  string name = 7;
+  int32 restart_count = 8;
+  ContainerConfig config = 9;
+  HostConfig host_config = 10;
+  map<string, NetworkSettings> network_settings = 11;
+  repeated Mount mounts = 12;
+}
+
+message ContainerState {
+  string status = 1;
+  bool running = 2;
+  bool paused = 3;
+  bool restarting = 4;
+  bool oom_killed = 5;
+  bool dead = 6;
+  int32 pid = 7;
+  int32 exit_code = 8;
+  string error = 9;
+  string started_at = 10;
+  string finished_at = 11;
+}
+
+message ContainerConfig {
+  string hostname = 1;
+  string domainname = 2;
+  string user = 3;
+  bool attach_stdin = 4;
+  bool attach_stdout = 5;
+  bool attach_stderr = 6;
+  map<string, bool> exposed_ports = 7;
+  bool tty = 8;
+  bool open_stdin = 9;
+  bool stdin_once = 10;
+  repeated string env = 11;
+  repeated string cmd = 12;
+  string image = 13;
+  map<string, bool> volumes = 14;
+  string working_dir = 15;
+  repeated string entrypoint = 16;
+  map<string, string> labels = 17;
+}
+
+message HostConfig {
+  int64 cpu_shares = 1;
+  int64 memory = 2;
+  string cgroup_parent = 3;
+  int32 blkio_weight = 4;
+  repeated PortBinding port_bindings = 5;
+  string restart_policy = 6;
+  string network_mode = 7;
+  bool privileged = 8;
+  repeated string binds = 9;
+  repeated string dns = 10;
+}
+
+message PortBinding {
+  string host_ip = 1;
+  string host_port = 2;
+}
+
+message NetworkSettings {
+  string bridge = 1;
+  string sandbox_id = 2;
+  bool hairpin_mode = 3;
+  string link_local_ipv6_address = 4;
+  int32 link_local_ipv6_prefix_len = 5;
+  string sandbox_key = 6;
+  string endpoint_id = 7;
+  string gateway = 8;
+  string global_ipv6_address = 9;
+  int32 global_ipv6_prefix_len = 10;
+  string ip_address = 11;
+  int32 ip_prefix_len = 12;
+  string ipv6_gateway = 13;
+  string mac_address = 14;
+}
+
+// Container lifecycle operations
+message StartContainerRequest {
+  string container_id = 1;
+}
+
+message StartContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message StopContainerRequest {
+  string container_id = 1;
+  int32 timeout = 2;          // Stop timeout in seconds (default: 10)
+}
+
+message StopContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RestartContainerRequest {
+  string container_id = 1;
+  int32 timeout = 2;
+}
+
+message RestartContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message PauseContainerRequest {
+  string container_id = 1;
+}
+
+message PauseContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UnpauseContainerRequest {
+  string container_id = 1;
+}
+
+message UnpauseContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteContainerRequest {
+  string container_id = 1;
+  bool force = 2;             // Force remove running container
+  bool remove_volumes = 3;    // Remove associated volumes
+}
+
+message DeleteContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Container stats (streaming)
+message GetContainerStatsRequest {
+  string container_id = 1;
+  bool stream = 2;            // Continuous stream or one-shot
+}
+
+message ContainerStats {
+  string container_id = 1;
+  string name = 2;
+  int64 timestamp = 3;
+
+  // CPU stats
+  CPUStats cpu_stats = 4;
+  CPUStats precpu_stats = 5;
+
+  // Memory stats
+  MemoryStats memory_stats = 6;
+
+  // Block I/O stats
+  BlkioStats blkio_stats = 7;
+
+  // Network stats
+  map<string, NetworkStats> networks = 8;
+
+  // PIDs
+  PidsStats pids_stats = 9;
+}
+
+message CPUStats {
+  uint64 cpu_usage_total = 1;
+  repeated uint64 cpu_usage_percpu = 2;
+  uint64 cpu_usage_in_kernelmode = 3;
+  uint64 cpu_usage_in_usermode = 4;
+  uint64 system_cpu_usage = 5;
+  uint64 online_cpus = 6;
+  uint64 throttling_periods = 7;
+  uint64 throttled_periods = 8;
+  uint64 throttled_time = 9;
+}
+
+message MemoryStats {
+  uint64 usage = 1;
+  uint64 max_usage = 2;
+  uint64 limit = 3;
+  uint64 commit = 4;
+  uint64 commit_peak = 5;
+  uint64 privateworkingset = 6;
+}
+
+message BlkioStats {
+  repeated BlkioStatEntry io_service_bytes_recursive = 1;
+  repeated BlkioStatEntry io_serviced_recursive = 2;
+}
+
+message BlkioStatEntry {
+  uint64 major = 1;
+  uint64 minor = 2;
+  string op = 3;
+  uint64 value = 4;
+}
+
+message NetworkStats {
+  uint64 rx_bytes = 1;
+  uint64 rx_packets = 2;
+  uint64 rx_errors = 3;
+  uint64 rx_dropped = 4;
+  uint64 tx_bytes = 5;
+  uint64 tx_packets = 6;
+  uint64 tx_errors = 7;
+  uint64 tx_dropped = 8;
+}
+
+message PidsStats {
+  uint64 current = 1;
+  uint64 limit = 2;
+}
+
+// Container logs (streaming)
+message GetContainerLogsRequest {
+  string container_id = 1;
+  bool follow = 2;            // Stream logs
+  bool stdout = 3;            // Include stdout (default: true)
+  bool stderr = 4;            // Include stderr (default: true)
+  int64 since = 5;            // Unix timestamp
+  int64 until = 6;            // Unix timestamp
+  bool timestamps = 7;        // Include timestamps
+  string tail = 8;            // Number of lines from end ("all" or "100")
+}
+
+message LogEntry {
+  int64 timestamp = 1;
+  string stream = 2;          // stdout/stderr
+  string log = 3;             // Log line
+}
+
+// Container exec (bidirectional streaming)
+message ExecRequest {
+  oneof request {
+    ExecStart start = 1;
+    ExecInput input = 2;
+    ExecResize resize = 3;
+  }
+}
+
+message ExecStart {
+  string container_id = 1;
+  repeated string cmd = 2;    // Command to execute (e.g., ["/bin/sh"])
+  bool tty = 3;              // Allocate TTY
+  bool attach_stdin = 4;
+  bool attach_stdout = 5;
+  bool attach_stderr = 6;
+  map<string, string> env = 7; // Environment variables
+}
+
+message ExecInput {
+  bytes data = 1;             // stdin input
+}
+
+message ExecResize {
+  uint32 width = 1;           // Terminal width
+  uint32 height = 2;          // Terminal height
+}
+
+message ExecResponse {
+  oneof response {
+    ExecOutput output = 1;
+    ExecError error = 2;
+    ExecExit exit = 3;
+  }
+}
+
+message ExecOutput {
+  bytes data = 1;             // stdout/stderr output
+  string stream = 2;          // stdout/stderr
+}
+
+message ExecError {
+  string message = 1;
+}
+
+message ExecExit {
+  int32 exit_code = 1;
+}
+
+// Image operations
+message ListImagesRequest {
+  bool all = 1;               // Include intermediate images
+  string filters = 2;         // Docker filters in JSON format
+}
+
+message ListImagesResponse {
+  repeated Image images = 1;
+}
+
+message Image {
+  string id = 1;              // Image ID (short 12 chars)
+  repeated string repo_tags = 2;
+  repeated string repo_digests = 3;
+  string parent_id = 4;
+  int64 created = 5;
+  int64 size = 6;
+  int64 virtual_size = 7;
+  int64 shared_size = 8;
+  map<string, string> labels = 9;
+  int32 containers = 10;      // Number of containers using this image
+}
+
+message GetImageRequest {
+  string image_id = 1;        // Image ID or name:tag
+}
+
+message GetImageResponse {
+  ImageDetail image = 1;
+}
+
+message ImageDetail {
+  string id = 1;
+  repeated string repo_tags = 2;
+  repeated string repo_digests = 3;
+  string parent = 4;
+  string comment = 5;
+  int64 created = 6;
+  string container = 7;
+  ImageConfig config = 8;
+  string docker_version = 9;
+  string author = 10;
+  string architecture = 11;
+  string os = 12;
+  int64 size = 13;
+  int64 virtual_size = 14;
+  RootFS root_fs = 15;
+}
+
+message ImageConfig {
+  string hostname = 1;
+  string domainname = 2;
+  string user = 3;
+  repeated string env = 4;
+  repeated string cmd = 5;
+  string image = 6;
+  map<string, bool> volumes = 7;
+  string working_dir = 8;
+  repeated string entrypoint = 9;
+  map<string, bool> exposed_ports = 10;
+  map<string, string> labels = 11;
+}
+
+message RootFS {
+  string type = 1;
+  repeated string layers = 2;
+  string base_layer = 3;
+}
+
+message DeleteImageRequest {
+  string image_id = 1;
+  bool force = 2;             // Force remove
+  bool no_prune = 3;          // Don't delete untagged parents
+}
+
+message DeleteImageResponse {
+  repeated ImageDeleteResponse deleted = 1;
+}
+
+message ImageDeleteResponse {
+  string untagged = 1;
+  string deleted = 2;
+}
+
+message PullImageRequest {
+  string image = 1;           // Image name (e.g., "nginx:latest")
+  string registry_auth = 2;   // Base64 encoded auth config
+}
+
+message PullImageProgress {
+  string status = 1;          // Status message
+  string progress = 2;        // Progress bar
+  int64 current = 3;          // Current bytes
+  int64 total = 4;            // Total bytes
+  string id = 5;              // Layer ID
+}
+
+message TagImageRequest {
+  string source = 1;          // Source image
+  string target = 2;          // Target tag (repo:tag)
+}
+
+message TagImageResponse {
+  bool success = 1;
+  string message = 2;
+}
