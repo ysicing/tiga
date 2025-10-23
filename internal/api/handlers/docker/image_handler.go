@@ -247,8 +247,8 @@ func (h *ImageHandler) TagImage(c *gin.Context) {
 
 // PullImageRequest represents the request body for pulling an image
 type PullImageRequest struct {
-	Image        string `json:"image" binding:"required"`  // Image name (e.g., nginx:1.21)
-	RegistryAuth string `json:"registry_auth,omitempty"`   // Base64 encoded registry auth (optional)
+	Image        string `json:"image" binding:"required"` // Image name (e.g., nginx:1.21)
+	RegistryAuth string `json:"registry_auth,omitempty"`  // Base64 encoded registry auth (optional)
 }
 
 // PullImage godoc

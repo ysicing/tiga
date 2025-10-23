@@ -14,10 +14,10 @@ import (
 
 // ImageService handles Docker image operations
 type ImageService struct {
-	db                    *gorm.DB
-	instanceService       *DockerInstanceService
-	agentForwarder        *AgentForwarder
-	enableAuditLog        bool
+	db              *gorm.DB
+	instanceService *DockerInstanceService
+	agentForwarder  *AgentForwarder
+	enableAuditLog  bool
 }
 
 // NewImageService creates a new ImageService

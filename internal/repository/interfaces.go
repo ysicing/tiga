@@ -201,22 +201,60 @@ type DockerInstanceFilter struct {
 
 // DockerInstanceStatistics contains Docker instance statistics
 type DockerInstanceStatistics struct {
-	Total     int64 `json:"total"`
-	Online    int64 `json:"online"`
-	Offline   int64 `json:"offline"`
-	Archived  int64 `json:"archived"`
-	Unknown   int64 `json:"unknown"`
+	Total    int64 `json:"total"`
+	Online   int64 `json:"online"`
+	Offline  int64 `json:"offline"`
+	Archived int64 `json:"archived"`
+	Unknown  int64 `json:"unknown"`
+}
+
+// TerminalRecordingRepositoryInterface defines the interface for terminal recording operations
+type TerminalRecordingRepositoryInterface interface {
+	Create(ctx context.Context, recording *models.TerminalRecording) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.TerminalRecording, error)
+	GetBySessionID(ctx context.Context, sessionID uuid.UUID) (*models.TerminalRecording, error)
+	Update(ctx context.Context, recording *models.TerminalRecording) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	List(ctx context.Context, filter *TerminalRecordingFilter) ([]*models.TerminalRecording, int64, error)
+	ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.TerminalRecording, int64, error)
+	ListByInstance(ctx context.Context, instanceID uuid.UUID, limit, offset int) ([]*models.TerminalRecording, int64, error)
+	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
+	GetStatistics(ctx context.Context) (*TerminalRecordingStatistics, error)
+}
+
+// TerminalRecordingFilter defines filters for querying terminal recordings
+type TerminalRecordingFilter struct {
+	UserID      *uuid.UUID
+	InstanceID  *uuid.UUID
+	ContainerID *string
+	StartDate   *time.Time
+	EndDate     *time.Time
+	Limit       int
+	Offset      int
+	SortBy      string
+	SortOrder   string
+}
+
+// TerminalRecordingStatistics contains terminal recording statistics
+type TerminalRecordingStatistics struct {
+	TotalRecordings int64   `json:"total_recordings"`
+	TotalDuration   int64   `json:"total_duration"`   // Total duration in seconds
+	TotalSize       int64   `json:"total_size"`       // Total size in bytes
+	AvgDuration     float64 `json:"avg_duration"`     // Average duration in seconds
+	AvgSize         float64 `json:"avg_size"`         // Average size in bytes
+	RecordingsToday int64   `json:"recordings_today"` // Recordings created today
 }
 
 // Compile-time interface assertions
 var (
-	_ UserRepositoryInterface              = (*UserRepository)(nil)
-	_ InstanceRepositoryInterface          = (*InstanceRepository)(nil)
-	_ AlertRepositoryInterface             = (*AlertRepository)(nil)
-	_ MetricsRepositoryInterface           = (*MetricsRepository)(nil)
-	_ AuditLogRepositoryInterface          = (*AuditLogRepository)(nil)
-	_ ClusterRepositoryInterface           = (*ClusterRepository)(nil)
-	_ ResourceHistoryRepositoryInterface   = (*ResourceHistoryRepository)(nil)
-	_ OAuthProviderRepositoryInterface     = (*OAuthProviderRepository)(nil)
-	_ DockerInstanceRepositoryInterface    = (*DockerInstanceRepository)(nil)
+	_ UserRepositoryInterface                = (*UserRepository)(nil)
+	_ InstanceRepositoryInterface            = (*InstanceRepository)(nil)
+	_ AlertRepositoryInterface               = (*AlertRepository)(nil)
+	_ MetricsRepositoryInterface             = (*MetricsRepository)(nil)
+	_ AuditLogRepositoryInterface            = (*AuditLogRepository)(nil)
+	_ ClusterRepositoryInterface             = (*ClusterRepository)(nil)
+	_ ResourceHistoryRepositoryInterface     = (*ResourceHistoryRepository)(nil)
+	_ OAuthProviderRepositoryInterface       = (*OAuthProviderRepository)(nil)
+	_ DockerInstanceRepositoryInterface      = (*DockerInstanceRepository)(nil)
+	_ TerminalRecordingRepositoryInterface   = (*TerminalRecordingRepository)(nil)
 )

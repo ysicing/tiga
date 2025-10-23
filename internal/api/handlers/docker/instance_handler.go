@@ -332,20 +332,20 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 
 	// Build info map
 	infoMap := map[string]interface{}{
-		"version":           dockerInfo.Version,
-		"api_version":       dockerInfo.ApiVersion,
-		"min_api_version":   dockerInfo.MinApiVersion,
-		"storage_driver":    dockerInfo.StorageDriver,
-		"operating_system":  dockerInfo.OperatingSystem,
-		"architecture":      dockerInfo.Arch,
-		"kernel_version":    dockerInfo.KernelVersion,
-		"mem_total":         dockerInfo.MemTotal,
-		"n_cpu":             dockerInfo.NCpu,
-		"containers":        dockerInfo.Containers,
+		"version":            dockerInfo.Version,
+		"api_version":        dockerInfo.ApiVersion,
+		"min_api_version":    dockerInfo.MinApiVersion,
+		"storage_driver":     dockerInfo.StorageDriver,
+		"operating_system":   dockerInfo.OperatingSystem,
+		"architecture":       dockerInfo.Arch,
+		"kernel_version":     dockerInfo.KernelVersion,
+		"mem_total":          dockerInfo.MemTotal,
+		"n_cpu":              dockerInfo.NCpu,
+		"containers":         dockerInfo.Containers,
 		"containers_running": dockerInfo.ContainersRunning,
-		"containers_paused": dockerInfo.ContainersPaused,
+		"containers_paused":  dockerInfo.ContainersPaused,
 		"containers_stopped": dockerInfo.ContainersStopped,
-		"images":            dockerInfo.Images,
+		"images":             dockerInfo.Images,
 	}
 
 	response := TestConnectionResponse{

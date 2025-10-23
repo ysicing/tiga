@@ -92,11 +92,11 @@ type DockerOperationDetails struct {
 	InstanceID   uuid.UUID              `json:"instance_id"`
 	InstanceName string                 `json:"instance_name"`
 	AgentID      uuid.UUID              `json:"agent_id,omitempty"`
-	StateBefore  string                 `json:"state_before,omitempty"`  // Container/Image state before operation
-	StateAfter   string                 `json:"state_after,omitempty"`   // Container/Image state after operation
+	StateBefore  string                 `json:"state_before,omitempty"` // Container/Image state before operation
+	StateAfter   string                 `json:"state_after,omitempty"`  // Container/Image state after operation
 	Success      bool                   `json:"success"`
-	Duration     int64                  `json:"duration,omitempty"`      // Operation duration in milliseconds
-	ExtraData    map[string]interface{} `json:"extra_data,omitempty"`    // Additional operation-specific data
+	Duration     int64                  `json:"duration,omitempty"`   // Operation duration in milliseconds
+	ExtraData    map[string]interface{} `json:"extra_data,omitempty"` // Additional operation-specific data
 }
 
 // NewDockerAuditLog creates a new audit log entry for Docker operations

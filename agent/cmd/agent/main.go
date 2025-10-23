@@ -52,8 +52,8 @@ func main() {
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer(
-		grpc.MaxRecvMsgSize(10 * 1024 * 1024), // 10MB max receive
-		grpc.MaxSendMsgSize(10 * 1024 * 1024), // 10MB max send
+		grpc.MaxRecvMsgSize(10*1024*1024), // 10MB max receive
+		grpc.MaxSendMsgSize(10*1024*1024), // 10MB max send
 	)
 
 	// Register Docker service

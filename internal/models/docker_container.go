@@ -26,9 +26,9 @@ type Container struct {
 	Mounts []ContainerMount `json:"mounts"`
 
 	// Resource limits
-	CPUShares  int64  `json:"cpu_shares,omitempty"`
-	Memory     int64  `json:"memory,omitempty"` // Memory limit in bytes
-	MemorySwap int64  `json:"memory_swap,omitempty"`
+	CPUShares  int64 `json:"cpu_shares,omitempty"`
+	Memory     int64 `json:"memory,omitempty"` // Memory limit in bytes
+	MemorySwap int64 `json:"memory_swap,omitempty"`
 
 	// Restart policy
 	RestartPolicy string `json:"restart_policy"` // no, always, unless-stopped, on-failure
@@ -69,8 +69,8 @@ type Network struct {
 
 // ContainerStats represents real-time container resource usage
 type ContainerStats struct {
-	ContainerID  string    `json:"container_id"`
-	Timestamp    int64     `json:"timestamp"`    // Unix timestamp
+	ContainerID string `json:"container_id"`
+	Timestamp   int64  `json:"timestamp"` // Unix timestamp
 	// CPU
 	CPUUsagePercent float64 `json:"cpu_usage_percent"` // 0-100% per core
 	CPUUsageNano    uint64  `json:"cpu_usage_nano"`

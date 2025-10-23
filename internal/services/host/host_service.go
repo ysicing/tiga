@@ -114,6 +114,12 @@ func (s *HostService) DeleteHost(ctx context.Context, id uuid.UUID) error {
 		s.agentMgr.DisconnectAgent(host.ID.String())
 	}
 
+	// T032: Archive Docker instances before deleting the host
+	if err := s.agentMgr.ArchiveDockerInstancesByHostID(ctx, host.ID); err != nil {
+		logrus.WithError(err).Warn("Failed to archive Docker instances for deleted host")
+		// Don't fail the entire operation if archiving fails
+	}
+
 	// Delete the host
 	return s.hostRepo.Delete(ctx, id)
 }

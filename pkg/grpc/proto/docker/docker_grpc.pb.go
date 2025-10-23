@@ -8,6 +8,7 @@ package docker
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -36,6 +37,22 @@ const (
 	DockerService_DeleteImage_FullMethodName       = "/docker.DockerService/DeleteImage"
 	DockerService_PullImage_FullMethodName         = "/docker.DockerService/PullImage"
 	DockerService_TagImage_FullMethodName          = "/docker.DockerService/TagImage"
+	DockerService_ListVolumes_FullMethodName       = "/docker.DockerService/ListVolumes"
+	DockerService_GetVolume_FullMethodName         = "/docker.DockerService/GetVolume"
+	DockerService_CreateVolume_FullMethodName      = "/docker.DockerService/CreateVolume"
+	DockerService_DeleteVolume_FullMethodName      = "/docker.DockerService/DeleteVolume"
+	DockerService_PruneVolumes_FullMethodName      = "/docker.DockerService/PruneVolumes"
+	DockerService_ListNetworks_FullMethodName      = "/docker.DockerService/ListNetworks"
+	DockerService_GetNetwork_FullMethodName        = "/docker.DockerService/GetNetwork"
+	DockerService_CreateNetwork_FullMethodName     = "/docker.DockerService/CreateNetwork"
+	DockerService_DeleteNetwork_FullMethodName     = "/docker.DockerService/DeleteNetwork"
+	DockerService_ConnectNetwork_FullMethodName    = "/docker.DockerService/ConnectNetwork"
+	DockerService_DisconnectNetwork_FullMethodName = "/docker.DockerService/DisconnectNetwork"
+	DockerService_GetSystemInfo_FullMethodName     = "/docker.DockerService/GetSystemInfo"
+	DockerService_GetVersion_FullMethodName        = "/docker.DockerService/GetVersion"
+	DockerService_GetDiskUsage_FullMethodName      = "/docker.DockerService/GetDiskUsage"
+	DockerService_Ping_FullMethodName              = "/docker.DockerService/Ping"
+	DockerService_GetEvents_FullMethodName         = "/docker.DockerService/GetEvents"
 )
 
 // DockerServiceClient is the client API for DockerService service.
@@ -65,6 +82,25 @@ type DockerServiceClient interface {
 	DeleteImage(ctx context.Context, in *DeleteImageRequest, opts ...grpc.CallOption) (*DeleteImageResponse, error)
 	PullImage(ctx context.Context, in *PullImageRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PullImageProgress], error)
 	TagImage(ctx context.Context, in *TagImageRequest, opts ...grpc.CallOption) (*TagImageResponse, error)
+	// Volume operations
+	ListVolumes(ctx context.Context, in *ListVolumesRequest, opts ...grpc.CallOption) (*ListVolumesResponse, error)
+	GetVolume(ctx context.Context, in *GetVolumeRequest, opts ...grpc.CallOption) (*GetVolumeResponse, error)
+	CreateVolume(ctx context.Context, in *CreateVolumeRequest, opts ...grpc.CallOption) (*CreateVolumeResponse, error)
+	DeleteVolume(ctx context.Context, in *DeleteVolumeRequest, opts ...grpc.CallOption) (*DeleteVolumeResponse, error)
+	PruneVolumes(ctx context.Context, in *PruneVolumesRequest, opts ...grpc.CallOption) (*PruneVolumesResponse, error)
+	// Network operations
+	ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error)
+	GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error)
+	CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error)
+	DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*DeleteNetworkResponse, error)
+	ConnectNetwork(ctx context.Context, in *ConnectNetworkRequest, opts ...grpc.CallOption) (*ConnectNetworkResponse, error)
+	DisconnectNetwork(ctx context.Context, in *DisconnectNetworkRequest, opts ...grpc.CallOption) (*DisconnectNetworkResponse, error)
+	// System operations
+	GetSystemInfo(ctx context.Context, in *GetSystemInfoRequest, opts ...grpc.CallOption) (*GetSystemInfoResponse, error)
+	GetVersion(ctx context.Context, in *GetVersionRequest, opts ...grpc.CallOption) (*GetVersionResponse, error)
+	GetDiskUsage(ctx context.Context, in *GetDiskUsageRequest, opts ...grpc.CallOption) (*GetDiskUsageResponse, error)
+	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	GetEvents(ctx context.Context, in *GetEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DockerEvent], error)
 }
 
 type dockerServiceClient struct {
@@ -275,6 +311,175 @@ func (c *dockerServiceClient) TagImage(ctx context.Context, in *TagImageRequest,
 	return out, nil
 }
 
+func (c *dockerServiceClient) ListVolumes(ctx context.Context, in *ListVolumesRequest, opts ...grpc.CallOption) (*ListVolumesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListVolumesResponse)
+	err := c.cc.Invoke(ctx, DockerService_ListVolumes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) GetVolume(ctx context.Context, in *GetVolumeRequest, opts ...grpc.CallOption) (*GetVolumeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVolumeResponse)
+	err := c.cc.Invoke(ctx, DockerService_GetVolume_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) CreateVolume(ctx context.Context, in *CreateVolumeRequest, opts ...grpc.CallOption) (*CreateVolumeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateVolumeResponse)
+	err := c.cc.Invoke(ctx, DockerService_CreateVolume_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) DeleteVolume(ctx context.Context, in *DeleteVolumeRequest, opts ...grpc.CallOption) (*DeleteVolumeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteVolumeResponse)
+	err := c.cc.Invoke(ctx, DockerService_DeleteVolume_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) PruneVolumes(ctx context.Context, in *PruneVolumesRequest, opts ...grpc.CallOption) (*PruneVolumesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PruneVolumesResponse)
+	err := c.cc.Invoke(ctx, DockerService_PruneVolumes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNetworksResponse)
+	err := c.cc.Invoke(ctx, DockerService_ListNetworks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNetworkResponse)
+	err := c.cc.Invoke(ctx, DockerService_GetNetwork_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateNetworkResponse)
+	err := c.cc.Invoke(ctx, DockerService_CreateNetwork_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) DeleteNetwork(ctx context.Context, in *DeleteNetworkRequest, opts ...grpc.CallOption) (*DeleteNetworkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteNetworkResponse)
+	err := c.cc.Invoke(ctx, DockerService_DeleteNetwork_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) ConnectNetwork(ctx context.Context, in *ConnectNetworkRequest, opts ...grpc.CallOption) (*ConnectNetworkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConnectNetworkResponse)
+	err := c.cc.Invoke(ctx, DockerService_ConnectNetwork_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) DisconnectNetwork(ctx context.Context, in *DisconnectNetworkRequest, opts ...grpc.CallOption) (*DisconnectNetworkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisconnectNetworkResponse)
+	err := c.cc.Invoke(ctx, DockerService_DisconnectNetwork_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) GetSystemInfo(ctx context.Context, in *GetSystemInfoRequest, opts ...grpc.CallOption) (*GetSystemInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSystemInfoResponse)
+	err := c.cc.Invoke(ctx, DockerService_GetSystemInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) GetVersion(ctx context.Context, in *GetVersionRequest, opts ...grpc.CallOption) (*GetVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVersionResponse)
+	err := c.cc.Invoke(ctx, DockerService_GetVersion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) GetDiskUsage(ctx context.Context, in *GetDiskUsageRequest, opts ...grpc.CallOption) (*GetDiskUsageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDiskUsageResponse)
+	err := c.cc.Invoke(ctx, DockerService_GetDiskUsage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PingResponse)
+	err := c.cc.Invoke(ctx, DockerService_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dockerServiceClient) GetEvents(ctx context.Context, in *GetEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DockerEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &DockerService_ServiceDesc.Streams[4], DockerService_GetEvents_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetEventsRequest, DockerEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type DockerService_GetEventsClient = grpc.ServerStreamingClient[DockerEvent]
+
 // DockerServiceServer is the server API for DockerService service.
 // All implementations must embed UnimplementedDockerServiceServer
 // for forward compatibility.
@@ -302,6 +507,25 @@ type DockerServiceServer interface {
 	DeleteImage(context.Context, *DeleteImageRequest) (*DeleteImageResponse, error)
 	PullImage(*PullImageRequest, grpc.ServerStreamingServer[PullImageProgress]) error
 	TagImage(context.Context, *TagImageRequest) (*TagImageResponse, error)
+	// Volume operations
+	ListVolumes(context.Context, *ListVolumesRequest) (*ListVolumesResponse, error)
+	GetVolume(context.Context, *GetVolumeRequest) (*GetVolumeResponse, error)
+	CreateVolume(context.Context, *CreateVolumeRequest) (*CreateVolumeResponse, error)
+	DeleteVolume(context.Context, *DeleteVolumeRequest) (*DeleteVolumeResponse, error)
+	PruneVolumes(context.Context, *PruneVolumesRequest) (*PruneVolumesResponse, error)
+	// Network operations
+	ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error)
+	GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error)
+	CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error)
+	DeleteNetwork(context.Context, *DeleteNetworkRequest) (*DeleteNetworkResponse, error)
+	ConnectNetwork(context.Context, *ConnectNetworkRequest) (*ConnectNetworkResponse, error)
+	DisconnectNetwork(context.Context, *DisconnectNetworkRequest) (*DisconnectNetworkResponse, error)
+	// System operations
+	GetSystemInfo(context.Context, *GetSystemInfoRequest) (*GetSystemInfoResponse, error)
+	GetVersion(context.Context, *GetVersionRequest) (*GetVersionResponse, error)
+	GetDiskUsage(context.Context, *GetDiskUsageRequest) (*GetDiskUsageResponse, error)
+	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	GetEvents(*GetEventsRequest, grpc.ServerStreamingServer[DockerEvent]) error
 	mustEmbedUnimplementedDockerServiceServer()
 }
 
@@ -362,6 +586,54 @@ func (UnimplementedDockerServiceServer) PullImage(*PullImageRequest, grpc.Server
 }
 func (UnimplementedDockerServiceServer) TagImage(context.Context, *TagImageRequest) (*TagImageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TagImage not implemented")
+}
+func (UnimplementedDockerServiceServer) ListVolumes(context.Context, *ListVolumesRequest) (*ListVolumesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListVolumes not implemented")
+}
+func (UnimplementedDockerServiceServer) GetVolume(context.Context, *GetVolumeRequest) (*GetVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVolume not implemented")
+}
+func (UnimplementedDockerServiceServer) CreateVolume(context.Context, *CreateVolumeRequest) (*CreateVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateVolume not implemented")
+}
+func (UnimplementedDockerServiceServer) DeleteVolume(context.Context, *DeleteVolumeRequest) (*DeleteVolumeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteVolume not implemented")
+}
+func (UnimplementedDockerServiceServer) PruneVolumes(context.Context, *PruneVolumesRequest) (*PruneVolumesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PruneVolumes not implemented")
+}
+func (UnimplementedDockerServiceServer) ListNetworks(context.Context, *ListNetworksRequest) (*ListNetworksResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListNetworks not implemented")
+}
+func (UnimplementedDockerServiceServer) GetNetwork(context.Context, *GetNetworkRequest) (*GetNetworkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNetwork not implemented")
+}
+func (UnimplementedDockerServiceServer) CreateNetwork(context.Context, *CreateNetworkRequest) (*CreateNetworkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNetwork not implemented")
+}
+func (UnimplementedDockerServiceServer) DeleteNetwork(context.Context, *DeleteNetworkRequest) (*DeleteNetworkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteNetwork not implemented")
+}
+func (UnimplementedDockerServiceServer) ConnectNetwork(context.Context, *ConnectNetworkRequest) (*ConnectNetworkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConnectNetwork not implemented")
+}
+func (UnimplementedDockerServiceServer) DisconnectNetwork(context.Context, *DisconnectNetworkRequest) (*DisconnectNetworkResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisconnectNetwork not implemented")
+}
+func (UnimplementedDockerServiceServer) GetSystemInfo(context.Context, *GetSystemInfoRequest) (*GetSystemInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSystemInfo not implemented")
+}
+func (UnimplementedDockerServiceServer) GetVersion(context.Context, *GetVersionRequest) (*GetVersionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVersion not implemented")
+}
+func (UnimplementedDockerServiceServer) GetDiskUsage(context.Context, *GetDiskUsageRequest) (*GetDiskUsageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDiskUsage not implemented")
+}
+func (UnimplementedDockerServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedDockerServiceServer) GetEvents(*GetEventsRequest, grpc.ServerStreamingServer[DockerEvent]) error {
+	return status.Errorf(codes.Unimplemented, "method GetEvents not implemented")
 }
 func (UnimplementedDockerServiceServer) mustEmbedUnimplementedDockerServiceServer() {}
 func (UnimplementedDockerServiceServer) testEmbeddedByValue()                       {}
@@ -658,6 +930,287 @@ func _DockerService_TagImage_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DockerService_ListVolumes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListVolumesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).ListVolumes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_ListVolumes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).ListVolumes(ctx, req.(*ListVolumesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_GetVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).GetVolume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_GetVolume_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).GetVolume(ctx, req.(*GetVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_CreateVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).CreateVolume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_CreateVolume_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).CreateVolume(ctx, req.(*CreateVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_DeleteVolume_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteVolumeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).DeleteVolume(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_DeleteVolume_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).DeleteVolume(ctx, req.(*DeleteVolumeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_PruneVolumes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PruneVolumesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).PruneVolumes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_PruneVolumes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).PruneVolumes(ctx, req.(*PruneVolumesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_ListNetworks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNetworksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).ListNetworks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_ListNetworks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).ListNetworks(ctx, req.(*ListNetworksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_GetNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).GetNetwork(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_GetNetwork_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).GetNetwork(ctx, req.(*GetNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_CreateNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).CreateNetwork(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_CreateNetwork_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).CreateNetwork(ctx, req.(*CreateNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_DeleteNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).DeleteNetwork(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_DeleteNetwork_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).DeleteNetwork(ctx, req.(*DeleteNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_ConnectNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConnectNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).ConnectNetwork(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_ConnectNetwork_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).ConnectNetwork(ctx, req.(*ConnectNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_DisconnectNetwork_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisconnectNetworkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).DisconnectNetwork(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_DisconnectNetwork_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).DisconnectNetwork(ctx, req.(*DisconnectNetworkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_GetSystemInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSystemInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).GetSystemInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_GetSystemInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).GetSystemInfo(ctx, req.(*GetSystemInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_GetVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).GetVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_GetVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).GetVersion(ctx, req.(*GetVersionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_GetDiskUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDiskUsageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).GetDiskUsage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_GetDiskUsage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).GetDiskUsage(ctx, req.(*GetDiskUsageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DockerServiceServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DockerService_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DockerServiceServer).Ping(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DockerService_GetEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DockerServiceServer).GetEvents(m, &grpc.GenericServerStream[GetEventsRequest, DockerEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type DockerService_GetEventsServer = grpc.ServerStreamingServer[DockerEvent]
+
 // DockerService_ServiceDesc is the grpc.ServiceDesc for DockerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -717,6 +1270,66 @@ var DockerService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "TagImage",
 			Handler:    _DockerService_TagImage_Handler,
 		},
+		{
+			MethodName: "ListVolumes",
+			Handler:    _DockerService_ListVolumes_Handler,
+		},
+		{
+			MethodName: "GetVolume",
+			Handler:    _DockerService_GetVolume_Handler,
+		},
+		{
+			MethodName: "CreateVolume",
+			Handler:    _DockerService_CreateVolume_Handler,
+		},
+		{
+			MethodName: "DeleteVolume",
+			Handler:    _DockerService_DeleteVolume_Handler,
+		},
+		{
+			MethodName: "PruneVolumes",
+			Handler:    _DockerService_PruneVolumes_Handler,
+		},
+		{
+			MethodName: "ListNetworks",
+			Handler:    _DockerService_ListNetworks_Handler,
+		},
+		{
+			MethodName: "GetNetwork",
+			Handler:    _DockerService_GetNetwork_Handler,
+		},
+		{
+			MethodName: "CreateNetwork",
+			Handler:    _DockerService_CreateNetwork_Handler,
+		},
+		{
+			MethodName: "DeleteNetwork",
+			Handler:    _DockerService_DeleteNetwork_Handler,
+		},
+		{
+			MethodName: "ConnectNetwork",
+			Handler:    _DockerService_ConnectNetwork_Handler,
+		},
+		{
+			MethodName: "DisconnectNetwork",
+			Handler:    _DockerService_DisconnectNetwork_Handler,
+		},
+		{
+			MethodName: "GetSystemInfo",
+			Handler:    _DockerService_GetSystemInfo_Handler,
+		},
+		{
+			MethodName: "GetVersion",
+			Handler:    _DockerService_GetVersion_Handler,
+		},
+		{
+			MethodName: "GetDiskUsage",
+			Handler:    _DockerService_GetDiskUsage_Handler,
+		},
+		{
+			MethodName: "Ping",
+			Handler:    _DockerService_Ping_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -738,6 +1351,11 @@ var DockerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "PullImage",
 			Handler:       _DockerService_PullImage_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetEvents",
+			Handler:       _DockerService_GetEvents_Handler,
 			ServerStreams: true,
 		},
 	},

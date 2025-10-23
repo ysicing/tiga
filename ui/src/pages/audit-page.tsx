@@ -87,6 +87,9 @@ export function AuditPage() {
       minio: 'bg-orange-100 text-orange-800',
       scheduler: 'bg-pink-100 text-pink-800',
       auth: 'bg-red-100 text-red-800',
+      docker_container: 'bg-cyan-100 text-cyan-800',
+      docker_image: 'bg-indigo-100 text-indigo-800',
+      docker_instance: 'bg-teal-100 text-teal-800',
     }
     return colors[subsystem] || 'bg-gray-100 text-gray-800'
   }

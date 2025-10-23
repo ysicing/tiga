@@ -14,10 +14,10 @@ import (
 
 // ContainerService handles Docker container operations
 type ContainerService struct {
-	db                    *gorm.DB
-	instanceService       *DockerInstanceService
-	agentForwarder        *AgentForwarder
-	enableAuditLog        bool
+	db              *gorm.DB
+	instanceService *DockerInstanceService
+	agentForwarder  *AgentForwarder
+	enableAuditLog  bool
 }
 
 // NewContainerService creates a new ContainerService
@@ -221,9 +221,9 @@ func (s *ContainerService) PauseContainer(ctx context.Context, instanceID uuid.U
 	})
 
 	logrus.WithFields(logrus.Fields{
-		"container_id":  containerID,
-		"instance_id":   instanceID,
-		"user":          username,
+		"container_id": containerID,
+		"instance_id":  instanceID,
+		"user":         username,
 	}).Info("Container paused successfully")
 
 	return nil
@@ -261,9 +261,9 @@ func (s *ContainerService) UnpauseContainer(ctx context.Context, instanceID uuid
 	})
 
 	logrus.WithFields(logrus.Fields{
-		"container_id":  containerID,
-		"instance_id":   instanceID,
-		"user":          username,
+		"container_id": containerID,
+		"instance_id":  instanceID,
+		"user":         username,
 	}).Info("Container unpaused successfully")
 
 	return nil
@@ -300,19 +300,19 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, instanceID uuid.
 	}
 
 	s.updateAuditLogSuccess(ctx, auditBefore, map[string]interface{}{
-		"container_id":    containerID,
-		"instance_id":     instanceID,
-		"instance_name":   instance.Name,
-		"force":           force,
-		"remove_volumes":  removeVolumes,
+		"container_id":   containerID,
+		"instance_id":    instanceID,
+		"instance_name":  instance.Name,
+		"force":          force,
+		"remove_volumes": removeVolumes,
 	})
 
 	logrus.WithFields(logrus.Fields{
-		"container_id":    containerID,
-		"instance_id":     instanceID,
-		"force":           force,
-		"remove_volumes":  removeVolumes,
-		"user":            username,
+		"container_id":   containerID,
+		"instance_id":    instanceID,
+		"force":          force,
+		"remove_volumes": removeVolumes,
+		"user":           username,
 	}).Info("Container deleted successfully")
 
 	return nil

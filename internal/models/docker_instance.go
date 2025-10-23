@@ -16,20 +16,20 @@ type DockerInstance struct {
 	HostID      uuid.UUID `gorm:"type:uuid;index" json:"host_id,omitempty"` // Optional: associated host node
 
 	// Health and connection status
-	HealthStatus     string    `gorm:"not null;index;default:'unknown'" json:"health_status"` // unknown, online, offline, archived
-	LastConnectedAt  time.Time `json:"last_connected_at"`
-	LastHealthCheck  time.Time `json:"last_health_check"`
+	HealthStatus    string    `gorm:"not null;index;default:'unknown'" json:"health_status"` // unknown, online, offline, archived
+	LastConnectedAt time.Time `json:"last_connected_at"`
+	LastHealthCheck time.Time `json:"last_health_check"`
 
 	// Docker daemon information (fetched from Agent)
-	DockerVersion  string `json:"docker_version"`
-	APIVersion     string `json:"api_version"`
-	MinAPIVersion  string `json:"min_api_version"`
-	StorageDriver  string `json:"storage_driver"`
+	DockerVersion   string `json:"docker_version"`
+	APIVersion      string `json:"api_version"`
+	MinAPIVersion   string `json:"min_api_version"`
+	StorageDriver   string `json:"storage_driver"`
 	OperatingSystem string `json:"operating_system"`
-	Architecture   string `json:"architecture"`
-	KernelVersion  string `json:"kernel_version"`
-	MemTotal       int64  `json:"mem_total"`
-	NCPU           int    `json:"n_cpu"`
+	Architecture    string `json:"architecture"`
+	KernelVersion   string `json:"kernel_version"`
+	MemTotal        int64  `json:"mem_total"`
+	NCPU            int    `json:"n_cpu"`
 
 	// Resource statistics (updated by health checks)
 	ContainerCount int `gorm:"default:0" json:"container_count"`

@@ -21,6 +21,7 @@ import (
 	audithandlers "github.com/ysicing/tiga/internal/api/handlers/audit"
 	clusterhandlers "github.com/ysicing/tiga/internal/api/handlers/cluster"
 	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
+	dockerhandlers "github.com/ysicing/tiga/internal/api/handlers/docker"
 	schedulerhandlers "github.com/ysicing/tiga/internal/api/handlers/scheduler"
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
 	dbrepo "github.com/ysicing/tiga/internal/repository/database"
@@ -28,6 +29,7 @@ import (
 	alertservices "github.com/ysicing/tiga/internal/services/alert"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
 	dbservices "github.com/ysicing/tiga/internal/services/database"
+	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	hostservices "github.com/ysicing/tiga/internal/services/host"
 	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
 	schedulerservices "github.com/ysicing/tiga/internal/services/scheduler"
@@ -107,6 +109,10 @@ func SetupRoutes(
 	dbPermissionRepo := dbrepo.NewPermissionRepository(db)
 	dbQuerySessionRepo := dbrepo.NewQuerySessionRepository(db)
 
+	// Docker management repositories
+	dockerInstanceRepo := repository.NewDockerInstanceRepository(db)
+	terminalRecordingRepo := repository.NewTerminalRecordingRepository(db)
+
 	// Scheduler repositories (T013, T019)
 	schedulerTaskRepo := schedulerrepo.NewTaskRepository(db)
 	schedulerExecutionRepo := schedulerrepo.NewExecutionRepository(db)
@@ -140,6 +146,16 @@ func SetupRoutes(
 			MaxResultBytes: dbManagementCfg.ResultSizeLimit(),
 		},
 	)
+
+	// Docker management services
+	dockerAgentForwarder := dockerservices.NewAgentForwarder(db)
+	dockerInstanceService := dockerservices.NewDockerInstanceService(db, dockerAgentForwarder)
+	dockerContainerService := dockerservices.NewContainerService(db, dockerInstanceService, dockerAgentForwarder)
+	dockerImageService := dockerservices.NewImageService(db, dockerInstanceService, dockerAgentForwarder)
+	dockerAuditService := dockerservices.NewAuditLogService(auditRepo)
+	// Unused services for future phases
+	_ = dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder)
+	_ = dockerservices.NewDockerCacheService()
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
 	// stateCollector, hostService, terminalManager, and probeScheduler are passed as parameters
@@ -189,6 +205,19 @@ func SetupRoutes(
 		logrus.Info("database_audit_cleanup task registered successfully")
 	}
 
+	// 3. Terminal recording cleanup task (daily at 3 AM)
+	// Deletes terminal recordings older than 90 days (both DB records and files)
+	terminalRecordingCleanupTask := schedulerservices.NewTerminalRecordingCleanupTask(terminalRecordingRepo, 90)
+	if err := schedulerService.AddCron(
+		"terminal_recording_cleanup",
+		"0 3 * * *", // Daily at 3:00 AM
+		terminalRecordingCleanupTask,
+	); err != nil {
+		logrus.Errorf("Failed to register terminal_recording_cleanup task: %v", err)
+	} else {
+		logrus.Info("terminal_recording_cleanup task registered successfully")
+	}
+
 	// Initialize handlers
 	instanceHandler := handlers.NewInstanceHandler(instanceRepo)
 	healthHandler := instances.NewHealthHandler(instanceService)
@@ -216,6 +245,21 @@ func SetupRoutes(
 	dbPermissionHandler := databasehandlers.NewPermissionHandler(dbPermissionService, dbAuditLogger)
 	dbQueryHandler := databasehandlers.NewQueryHandler(dbQueryExecutor, dbAuditLogger)
 	// T036-T037: 审计 API 已统一到 /api/v1/audit，移除旧的 dbAuditHandler
+
+	// Docker management handlers
+	dockerInstanceHandler := dockerhandlers.NewInstanceHandler(dockerInstanceService, dockerAgentForwarder)
+	dockerContainerHandler := dockerhandlers.NewContainerHandler(dockerContainerService, dockerAgentForwarder)
+	dockerStatsHandler := dockerhandlers.NewContainerStatsHandler(dockerAgentForwarder)
+	dockerLogsHandler := dockerhandlers.NewContainerLogsHandler(dockerAgentForwarder)
+	dockerImageHandler := dockerhandlers.NewImageHandler(dockerImageService, dockerAgentForwarder)
+	dockerAuditHandler := dockerhandlers.NewAuditLogHandler(dockerAuditService)
+	dockerVolumeHandler := dockerhandlers.NewVolumeHandler(dockerAgentForwarder)
+	dockerNetworkHandler := dockerhandlers.NewNetworkHandler(dockerAgentForwarder)
+	dockerSystemHandler := dockerhandlers.NewSystemHandler(dockerAgentForwarder)
+
+	// Terminal handlers (using terminalRecordingRepo created earlier)
+	dockerTerminalHandler := dockerhandlers.NewTerminalHandler(db, dockerAgentForwarder, dockerInstanceService, jwtManager, terminalRecordingRepo)
+	dockerRecordingHandler := dockerhandlers.NewRecordingHandler(db, terminalRecordingRepo)
 
 	// Host monitoring handlers
 	hostHandler := handlers.NewHostHandler(hostService)
@@ -499,6 +543,103 @@ func SetupRoutes(
 
 				// T036-T037: 审计查询已迁移到 /api/v1/audit?subsystem=database
 			}
+
+			// ==================== Docker Management Subsystem ====================
+			dockerGroup := protected.Group("/docker")
+			dockerGroup.Use(middleware.RequireAdmin())
+			{
+				// Instance management
+				instancesGroup := dockerGroup.Group("/instances")
+				{
+					instancesGroup.GET("", dockerInstanceHandler.GetInstances)
+					instancesGroup.POST("", dockerInstanceHandler.CreateInstance)
+					instancesGroup.GET("/:id", dockerInstanceHandler.GetInstance)
+					instancesGroup.PUT("/:id", dockerInstanceHandler.UpdateInstance)
+					instancesGroup.DELETE("/:id", dockerInstanceHandler.DeleteInstance)
+					instancesGroup.POST("/:id/test-connection", dockerInstanceHandler.TestConnection)
+				}
+
+				// Container operations
+				containersGroup := dockerGroup.Group("/instances/:instance_id/containers")
+				{
+					containersGroup.GET("", dockerContainerHandler.GetContainers)
+					containersGroup.GET("/:container_id", dockerContainerHandler.GetContainer)
+					containersGroup.POST("/start", dockerContainerHandler.StartContainer)
+					containersGroup.POST("/stop", dockerContainerHandler.StopContainer)
+					containersGroup.POST("/restart", dockerContainerHandler.RestartContainer)
+					containersGroup.POST("/pause", dockerContainerHandler.PauseContainer)
+					containersGroup.POST("/unpause", dockerContainerHandler.UnpauseContainer)
+					containersGroup.POST("/delete", dockerContainerHandler.DeleteContainer)
+
+					// Container stats
+					containersGroup.GET("/:container_id/stats", dockerStatsHandler.GetContainerStats)
+					containersGroup.GET("/:container_id/stats/stream", dockerStatsHandler.GetContainerStatsStream)
+
+					// Container logs
+					containersGroup.GET("/:container_id/logs", dockerLogsHandler.GetContainerLogs)
+					containersGroup.GET("/:container_id/logs/stream", dockerLogsHandler.GetContainerLogsStream)
+
+					// Container terminal (T040)
+					containersGroup.POST("/:container_id/terminal", dockerTerminalHandler.CreateTerminalSession)
+				}
+
+				// Image operations
+				imagesGroup := dockerGroup.Group("/instances/:instance_id/images")
+				{
+					imagesGroup.GET("", dockerImageHandler.GetImages)
+					imagesGroup.GET("/:image_id", dockerImageHandler.GetImage)
+					imagesGroup.POST("/delete", dockerImageHandler.DeleteImage)
+					imagesGroup.POST("/tag", dockerImageHandler.TagImage)
+					imagesGroup.POST("/pull", dockerImageHandler.PullImage)
+				}
+
+				// Audit logs
+				dockerGroup.GET("/audit-logs", dockerAuditHandler.GetDockerAuditLogs)
+
+				// Volume operations
+				volumesGroup := dockerGroup.Group("/instances/:instance_id/volumes")
+				{
+					volumesGroup.GET("", dockerVolumeHandler.GetVolumes)
+					volumesGroup.GET("/:volume_name", dockerVolumeHandler.GetVolume)
+					volumesGroup.POST("", dockerVolumeHandler.CreateVolume)
+					volumesGroup.POST("/delete", dockerVolumeHandler.DeleteVolume)
+					volumesGroup.POST("/prune", dockerVolumeHandler.PruneVolumes)
+				}
+
+				// Network operations
+				networksGroup := dockerGroup.Group("/instances/:instance_id/networks")
+				{
+					networksGroup.GET("", dockerNetworkHandler.GetNetworks)
+					networksGroup.GET("/:network_id", dockerNetworkHandler.GetNetwork)
+					networksGroup.POST("", dockerNetworkHandler.CreateNetwork)
+					networksGroup.POST("/delete", dockerNetworkHandler.DeleteNetwork)
+					networksGroup.POST("/connect", dockerNetworkHandler.ConnectNetwork)
+					networksGroup.POST("/disconnect", dockerNetworkHandler.DisconnectNetwork)
+				}
+
+				// System operations
+				systemGroup := dockerGroup.Group("/instances/:instance_id/system")
+				{
+					systemGroup.GET("/info", dockerSystemHandler.GetSystemInfo)
+					systemGroup.GET("/version", dockerSystemHandler.GetVersion)
+					systemGroup.GET("/disk-usage", dockerSystemHandler.GetDiskUsage)
+					systemGroup.GET("/ping", dockerSystemHandler.Ping)
+					systemGroup.GET("/events/stream", dockerSystemHandler.GetEventsStream)
+				}
+
+				// Terminal recordings
+				recordingsGroup := dockerGroup.Group("/recordings")
+				{
+					recordingsGroup.GET("", dockerRecordingHandler.GetRecordings)
+					recordingsGroup.GET("/:id", dockerRecordingHandler.GetRecording)
+					recordingsGroup.GET("/:id/playback", dockerRecordingHandler.GetRecordingPlayback)
+					recordingsGroup.DELETE("/:id", dockerRecordingHandler.DeleteRecording)
+					recordingsGroup.GET("/statistics", dockerRecordingHandler.GetRecordingStatistics)
+				}
+			}
+
+			// Docker terminal WebSocket (T041 - outside protected group for token query param)
+			router.GET("/api/v1/docker/terminal/:session_id", dockerTerminalHandler.HandleWebSocketTerminal)
 
 			// ==================== MinIO Subsystem ====================
 			minioGroup := protected.Group("/minio/instances/:id")
