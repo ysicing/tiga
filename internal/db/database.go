@@ -184,6 +184,9 @@ func (d *Database) AutoMigrate() error {
 		&models.PermissionPolicy{},
 		&models.QuerySession{},
 
+		// Docker instance management (007-docker-docker-agent)
+		&models.DockerInstance{},
+
 		// Scheduler and unified audit (T001-T037)
 		&models.ScheduledTask{},
 		&models.TaskExecution{},
