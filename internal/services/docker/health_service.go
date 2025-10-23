@@ -71,7 +71,7 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 	// Health check succeeded, update status and statistics
 	containerCount := int(info.Containers)
 	imageCount := int(info.Images)
-	volumeCount := 0 // TODO: Add volume count when available
+	volumeCount := 0  // TODO: Add volume count when available
 	networkCount := 0 // TODO: Add network count when available
 
 	if err := s.repo.UpdateHealthStatus(
@@ -106,11 +106,11 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"instance_id":     instanceID,
-		"instance_name":   instance.Name,
-		"containers":      containerCount,
-		"images":          imageCount,
-		"docker_version":  info.Version,
+		"instance_id":    instanceID,
+		"instance_name":  instance.Name,
+		"containers":     containerCount,
+		"images":         imageCount,
+		"docker_version": info.Version,
 	}).Debug("Docker instance health check succeeded")
 
 	return nil
@@ -195,11 +195,11 @@ func (s *DockerHealthService) CheckAllInstances(ctx context.Context) error {
 	duration := time.Since(start)
 
 	logrus.WithFields(logrus.Fields{
-		"total":     len(activeInstances),
-		"success":   successCount,
-		"failure":   failureCount,
-		"duration":  duration.String(),
-		"workers":   healthCheckConcurrency,
+		"total":    len(activeInstances),
+		"success":  successCount,
+		"failure":  failureCount,
+		"duration": duration.String(),
+		"workers":  healthCheckConcurrency,
 	}).Info("Completed health check for all Docker instances")
 
 	return nil

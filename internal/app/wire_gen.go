@@ -20,6 +20,7 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
+	"github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
@@ -55,7 +56,9 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 	}
 	hostRepository := repository.NewHostRepository(gormDB)
 	auditEventRepository := repository.NewAuditEventRepository(gormDB)
-	hostMonitoringComponents := provideHostMonitoringComponents(hostRepository, gormDB, auditEventRepository)
+	agentForwarder := docker.NewAgentForwarder(gormDB)
+	dockerInstanceService := docker.NewDockerInstanceService(gormDB, agentForwarder)
+	hostMonitoringComponents := provideHostMonitoringComponents(hostRepository, gormDB, auditEventRepository, dockerInstanceService, agentForwarder)
 	stateCollector := provideStateCollector(hostMonitoringComponents)
 	agentManager := provideAgentManager(hostMonitoringComponents)
 	terminalManager := host.NewTerminalManager()
@@ -108,6 +111,10 @@ var HostServiceSet = wire.NewSet(
 	provideAgentManager,
 )
 
+// DockerServiceSet provides Docker management services
+// T032: Docker services needed for AgentManager integration
+var DockerServiceSet = wire.NewSet(docker.NewAgentForwarder, docker.NewDockerInstanceService)
+
 // MonitoringServiceSet provides monitoring services
 var MonitoringServiceSet = wire.NewSet(
 	provideServiceProbeScheduler,
@@ -154,16 +161,19 @@ func provideAlertEngine(
 
 // Handle StateCollector and AgentManager circular dependency
 // T038: Added AuditEventRepository for host audit logging
+// T032: Added Docker services for instance lifecycle management
 func provideHostMonitoringComponents(
 	hostRepo repository.HostRepository, db2 *gorm.DB,
 	auditEventRepo repository.AuditEventRepository,
+	dockerInstanceService *docker.DockerInstanceService,
+	agentForwarder *docker.AgentForwarder,
 ) *HostMonitoringComponents {
 
 	stateCollector := host.NewStateCollector(hostRepo)
 
 	auditLogger := host.NewAuditLogger(auditEventRepo, nil)
 
-	agentManager := host.NewAgentManager(hostRepo, stateCollector, db2, auditLogger)
+	agentManager := host.NewAgentManager(hostRepo, stateCollector, db2, auditLogger, dockerInstanceService, agentForwarder)
 
 	stateCollector.SetAgentManager(agentManager)
 

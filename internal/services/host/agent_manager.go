@@ -35,12 +35,12 @@ type AgentConnection struct {
 
 // AgentManager manages agent connections and gRPC streams
 type AgentManager struct {
-	hostRepo             repository.HostRepository
-	stateCollector       *StateCollector
-	db                   *gorm.DB
-	auditLogger          *AuditLogger // T038: 统一审计
+	hostRepo              repository.HostRepository
+	stateCollector        *StateCollector
+	db                    *gorm.DB
+	auditLogger           *AuditLogger                  // T038: 统一审计
 	dockerInstanceService *docker.DockerInstanceService // T032: Docker实例集成
-	agentForwarder       *docker.AgentForwarder         // T032: Agent转发器
+	agentForwarder        *docker.AgentForwarder        // T032: Agent转发器
 
 	// Active connections map: UUID -> Connection
 	connections sync.Map
@@ -62,14 +62,14 @@ func NewAgentManager(
 	agentForwarder *docker.AgentForwarder,
 ) *AgentManager {
 	return &AgentManager{
-		hostRepo:             hostRepo,
-		stateCollector:       stateCollector,
-		db:                   db,
-		auditLogger:          auditLogger,
+		hostRepo:              hostRepo,
+		stateCollector:        stateCollector,
+		db:                    db,
+		auditLogger:           auditLogger,
 		dockerInstanceService: dockerInstanceService,
-		agentForwarder:       agentForwarder,
-		heartbeatInterval:    30 * time.Second,
-		heartbeatTimeout:     90 * time.Second,
+		agentForwarder:        agentForwarder,
+		heartbeatInterval:     30 * time.Second,
+		heartbeatTimeout:      90 * time.Second,
 	}
 }
 
@@ -638,17 +638,17 @@ func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUI
 
 	// Docker detected, create info map
 	infoMap := map[string]interface{}{
-		"version":           dockerInfo.Version,
-		"api_version":       dockerInfo.ApiVersion,
-		"min_api_version":   dockerInfo.MinApiVersion,
-		"storage_driver":    dockerInfo.StorageDriver,
-		"operating_system":  dockerInfo.OperatingSystem,
-		"architecture":      dockerInfo.Arch,
-		"kernel_version":    dockerInfo.KernelVersion,
-		"mem_total":         dockerInfo.MemTotal,
-		"n_cpu":             dockerInfo.NCpu,
-		"containers":        dockerInfo.Containers,
-		"images":            dockerInfo.Images,
+		"version":          dockerInfo.Version,
+		"api_version":      dockerInfo.ApiVersion,
+		"min_api_version":  dockerInfo.MinApiVersion,
+		"storage_driver":   dockerInfo.StorageDriver,
+		"operating_system": dockerInfo.OperatingSystem,
+		"architecture":     dockerInfo.Arch,
+		"kernel_version":   dockerInfo.KernelVersion,
+		"mem_total":        dockerInfo.MemTotal,
+		"n_cpu":            dockerInfo.NCpu,
+		"containers":       dockerInfo.Containers,
+		"images":           dockerInfo.Images,
 	}
 
 	// Auto-discover or update Docker instance
@@ -664,4 +664,39 @@ func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUI
 		"agent_id":       agentID,
 		"docker_version": dockerInfo.Version,
 	}).Info("Docker instance auto-discovered/updated")
+}
+
+// ArchiveDockerInstancesByHostID marks Docker instances as archived when a host is deleted
+// T032: Agent删除时标记Docker实例archived
+func (m *AgentManager) ArchiveDockerInstancesByHostID(ctx context.Context, hostID uuid.UUID) error {
+	if m.dockerInstanceService == nil {
+		return nil // Docker service not initialized, skip archiving
+	}
+
+	// Get AgentConnection record to find agent ID
+	var agentConn models.AgentConnection
+	if err := m.db.WithContext(ctx).Where("host_node_id = ?", hostID).First(&agentConn).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// No agent connection found, nothing to archive
+			logrus.WithField("host_id", hostID).Debug("No agent connection found for host deletion")
+			return nil
+		}
+		return fmt.Errorf("failed to get agent connection: %w", err)
+	}
+
+	// Mark all Docker instances associated with this agent as archived
+	if err := m.dockerInstanceService.MarkArchivedByAgentID(ctx, agentConn.ID); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"host_id":  hostID,
+			"agent_id": agentConn.ID,
+		}).Error("Failed to archive Docker instances")
+		return fmt.Errorf("failed to archive Docker instances: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"host_id":  hostID,
+		"agent_id": agentConn.ID,
+	}).Info("Docker instances archived for deleted host")
+
+	return nil
 }

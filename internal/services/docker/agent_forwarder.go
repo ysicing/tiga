@@ -329,7 +329,7 @@ func (f *AgentForwarder) GetContainerStats(agentID uuid.UUID, req *pb.GetContain
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) // Longer timeout for streaming
-	_ = cancel // Will be called by the stream client when done
+	_ = cancel                                                              // Will be called by the stream client when done
 
 	return client.GetContainerStats(ctx, req)
 }
@@ -343,7 +343,7 @@ func (f *AgentForwarder) GetContainerLogs(agentID uuid.UUID, req *pb.GetContaine
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) // Longer timeout for streaming
-	_ = cancel // Will be called by the stream client when done
+	_ = cancel                                                              // Will be called by the stream client when done
 
 	return client.GetContainerLogs(ctx, req)
 }
@@ -357,7 +357,7 @@ func (f *AgentForwarder) PullImage(agentID uuid.UUID, req *pb.PullImageRequest) 
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute) // Very long timeout for image pulls
-	_ = cancel // Will be called by the stream client when done
+	_ = cancel                                                               // Will be called by the stream client when done
 
 	return client.PullImage(ctx, req)
 }
@@ -373,4 +373,218 @@ func (f *AgentForwarder) ExecContainer(agentID uuid.UUID) (pb.DockerService_Exec
 	ctx := context.Background() // No timeout for interactive sessions
 
 	return client.ExecContainer(ctx)
+}
+
+// ==================== Volume Operations ====================
+
+// ListVolumes forwards ListVolumes request to the agent
+func (f *AgentForwarder) ListVolumes(agentID uuid.UUID, req *pb.ListVolumesRequest) (*pb.ListVolumesResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.ListVolumes(ctx, req)
+}
+
+// GetVolume forwards GetVolume request to the agent
+func (f *AgentForwarder) GetVolume(agentID uuid.UUID, req *pb.GetVolumeRequest) (*pb.GetVolumeResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.GetVolume(ctx, req)
+}
+
+// CreateVolume forwards CreateVolume request to the agent
+func (f *AgentForwarder) CreateVolume(agentID uuid.UUID, req *pb.CreateVolumeRequest) (*pb.CreateVolumeResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.CreateVolume(ctx, req)
+}
+
+// DeleteVolume forwards DeleteVolume request to the agent
+func (f *AgentForwarder) DeleteVolume(agentID uuid.UUID, req *pb.DeleteVolumeRequest) (*pb.DeleteVolumeResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.DeleteVolume(ctx, req)
+}
+
+// PruneVolumes forwards PruneVolumes request to the agent
+func (f *AgentForwarder) PruneVolumes(agentID uuid.UUID, req *pb.PruneVolumesRequest) (*pb.PruneVolumesResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.PruneVolumes(ctx, req)
+}
+
+// ==================== Network Operations ====================
+
+// ListNetworks forwards ListNetworks request to the agent
+func (f *AgentForwarder) ListNetworks(agentID uuid.UUID, req *pb.ListNetworksRequest) (*pb.ListNetworksResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.ListNetworks(ctx, req)
+}
+
+// GetNetwork forwards GetNetwork request to the agent
+func (f *AgentForwarder) GetNetwork(agentID uuid.UUID, req *pb.GetNetworkRequest) (*pb.GetNetworkResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.GetNetwork(ctx, req)
+}
+
+// CreateNetwork forwards CreateNetwork request to the agent
+func (f *AgentForwarder) CreateNetwork(agentID uuid.UUID, req *pb.CreateNetworkRequest) (*pb.CreateNetworkResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.CreateNetwork(ctx, req)
+}
+
+// DeleteNetwork forwards DeleteNetwork request to the agent
+func (f *AgentForwarder) DeleteNetwork(agentID uuid.UUID, req *pb.DeleteNetworkRequest) (*pb.DeleteNetworkResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.DeleteNetwork(ctx, req)
+}
+
+// ConnectNetwork forwards ConnectNetwork request to the agent
+func (f *AgentForwarder) ConnectNetwork(agentID uuid.UUID, req *pb.ConnectNetworkRequest) (*pb.ConnectNetworkResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.ConnectNetwork(ctx, req)
+}
+
+// DisconnectNetwork forwards DisconnectNetwork request to the agent
+func (f *AgentForwarder) DisconnectNetwork(agentID uuid.UUID, req *pb.DisconnectNetworkRequest) (*pb.DisconnectNetworkResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.DisconnectNetwork(ctx, req)
+}
+
+// ==================== System Operations ====================
+
+// GetSystemInfo forwards GetSystemInfo request to the agent
+func (f *AgentForwarder) GetSystemInfo(agentID uuid.UUID, req *pb.GetSystemInfoRequest) (*pb.GetSystemInfoResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.GetSystemInfo(ctx, req)
+}
+
+// GetVersion forwards GetVersion request to the agent
+func (f *AgentForwarder) GetVersion(agentID uuid.UUID, req *pb.GetVersionRequest) (*pb.GetVersionResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.GetVersion(ctx, req)
+}
+
+// GetDiskUsage forwards GetDiskUsage request to the agent
+func (f *AgentForwarder) GetDiskUsage(agentID uuid.UUID, req *pb.GetDiskUsageRequest) (*pb.GetDiskUsageResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.GetDiskUsage(ctx, req)
+}
+
+// Ping forwards Ping request to the agent
+func (f *AgentForwarder) Ping(agentID uuid.UUID, req *pb.PingRequest) (*pb.PingResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.Ping(ctx, req)
+}
+
+// GetEvents forwards GetEvents streaming request to the agent
+// Returns the stream client for the caller to receive messages
+func (f *AgentForwarder) GetEvents(agentID uuid.UUID, req *pb.GetEventsRequest) (pb.DockerService_GetEventsClient, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background() // No timeout for event streams
+
+	return client.GetEvents(ctx, req)
 }

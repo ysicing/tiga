@@ -79,6 +79,9 @@ export const SUBSYSTEMS = [
   'role',
   'instance',
   'scheduledTask',
+  'docker_container',
+  'docker_image',
+  'docker_instance',
 ]
 
 export const ACTIONS = [
@@ -94,6 +97,20 @@ export const ACTIONS = [
   'logout',
   'granted',
   'revoked',
+  // Docker-specific actions
+  'container_start',
+  'container_stop',
+  'container_restart',
+  'container_pause',
+  'container_unpause',
+  'container_delete',
+  'container_exec',
+  'image_delete',
+  'image_pull',
+  'image_tag',
+  'instance_create',
+  'instance_update',
+  'instance_delete',
 ]
 
 class AuditService {

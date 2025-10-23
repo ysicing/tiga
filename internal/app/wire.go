@@ -18,6 +18,7 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
+	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
@@ -98,6 +99,13 @@ var HostServiceSet = wire.NewSet(
 	provideAgentManager,   // Extract AgentManager from components
 )
 
+// DockerServiceSet provides Docker management services
+// T032: Docker services needed for AgentManager integration
+var DockerServiceSet = wire.NewSet(
+	dockerservices.NewAgentForwarder,
+	dockerservices.NewDockerInstanceService,
+)
+
 // MonitoringServiceSet provides monitoring services
 var MonitoringServiceSet = wire.NewSet(
 	provideServiceProbeScheduler,
@@ -154,10 +162,13 @@ func provideAlertEngine(
 
 // Handle StateCollector and AgentManager circular dependency
 // T038: Added AuditEventRepository for host audit logging
+// T032: Added Docker services for instance lifecycle management
 func provideHostMonitoringComponents(
 	hostRepo repository.HostRepository,
 	db *gorm.DB,
 	auditEventRepo repository.AuditEventRepository,
+	dockerInstanceService *dockerservices.DockerInstanceService,
+	agentForwarder *dockerservices.AgentForwarder,
 ) *HostMonitoringComponents {
 	// Create StateCollector first
 	stateCollector := host.NewStateCollector(hostRepo)
@@ -165,8 +176,8 @@ func provideHostMonitoringComponents(
 	// T038: Create AuditLogger for host subsystem
 	auditLogger := host.NewAuditLogger(auditEventRepo, nil)
 
-	// Create AgentManager with StateCollector and AuditLogger
-	agentManager := host.NewAgentManager(hostRepo, stateCollector, db, auditLogger)
+	// T032: Create AgentManager with Docker integration
+	agentManager := host.NewAgentManager(hostRepo, stateCollector, db, auditLogger, dockerInstanceService, agentForwarder)
 
 	// Wire up the circular reference
 	stateCollector.SetAgentManager(agentManager)
@@ -253,6 +264,7 @@ func InitializeApplication(
 		RepositorySet,
 		ServiceSet,
 		HostServiceSet,
+		DockerServiceSet, // T032: Docker services for AgentManager
 		MonitoringServiceSet,
 		K8sServiceSet,
 		AuthSet,

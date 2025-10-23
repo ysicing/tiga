@@ -186,6 +186,7 @@ func (d *Database) AutoMigrate() error {
 
 		// Docker instance management (007-docker-docker-agent)
 		&models.DockerInstance{},
+		&models.TerminalRecording{},
 
 		// Scheduler and unified audit (T001-T037)
 		&models.ScheduledTask{},

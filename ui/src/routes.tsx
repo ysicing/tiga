@@ -27,6 +27,11 @@ import { DatabaseInstanceList } from './pages/database/instance-list'
 import { DbsOverview } from './pages/dbs-overview'
 // Docker Pages
 import { DockerOverview } from './pages/docker-overview'
+import { DockerInstanceList } from './pages/docker/instance-list'
+import { DockerInstanceDetail } from './pages/docker/instance-detail'
+import { DockerInstanceForm } from './pages/docker/instance-form'
+import TerminalRecordingsPage from './pages/docker/terminal-recordings-page'
+import TerminalRecordingPlayerPage from './pages/docker/terminal-recording-player-page'
 import { AlertEventsPage } from './pages/hosts/alert-events-page'
 import AlertRulesPage from './pages/hosts/alert-rules-page'
 import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-page'
@@ -606,6 +611,22 @@ export const router = createBrowserRouter([
         element: <DockerOverview />,
       },
       {
+        path: 'instances',
+        element: <DockerInstanceList />,
+      },
+      {
+        path: 'instances/new',
+        element: <DockerInstanceForm />,
+      },
+      {
+        path: 'instances/:id',
+        element: <DockerInstanceDetail />,
+      },
+      {
+        path: 'instances/:id/edit',
+        element: <DockerInstanceForm />,
+      },
+      {
         path: 'containers',
         element: <div>Docker Containers 管理页面(待实现)</div>,
       },
@@ -616,6 +637,14 @@ export const router = createBrowserRouter([
       {
         path: 'networks',
         element: <div>Docker Networks 管理页面(待实现)</div>,
+      },
+      {
+        path: 'recordings',
+        element: <TerminalRecordingsPage />,
+      },
+      {
+        path: 'recordings/:id/play',
+        element: <TerminalRecordingPlayerPage />,
       },
     ],
   },

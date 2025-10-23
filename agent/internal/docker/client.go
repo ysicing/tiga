@@ -13,8 +13,8 @@ import (
 
 // DockerClient wraps the Docker SDK client with additional metadata
 type DockerClient struct {
-	client     *client.Client
-	apiVersion string
+	client        *client.Client
+	apiVersion    string
 	dockerVersion string
 }
 
@@ -22,8 +22,8 @@ type DockerClient struct {
 func NewDockerClient() (*DockerClient, error) {
 	// Create client with automatic API version negotiation
 	cli, err := client.NewClientWithOpts(
-		client.FromEnv,                      // Read from DOCKER_HOST, DOCKER_TLS_VERIFY, DOCKER_CERT_PATH
-		client.WithAPIVersionNegotiation(),  // Automatically negotiate API version
+		client.FromEnv,                     // Read from DOCKER_HOST, DOCKER_TLS_VERIFY, DOCKER_CERT_PATH
+		client.WithAPIVersionNegotiation(), // Automatically negotiate API version
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)

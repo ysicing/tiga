@@ -5,6 +5,7 @@ import {
   IconLayoutDashboard,
   IconNetwork,
   IconStack,
+  IconVideo,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
@@ -42,6 +43,11 @@ const menuItems = [
     title: 'docker.networks',
     icon: IconNetwork,
     path: '/docker/networks',
+  },
+  {
+    title: 'docker.recordings',
+    icon: IconVideo,
+    path: '/docker/recordings',
   },
 ]
 

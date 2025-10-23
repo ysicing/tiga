@@ -84,8 +84,13 @@ func (tc *TimeoutController) ExecuteWithTimeout(
 			// Task failed
 			return recorder.CompleteFailure(ctx, execution, err, "")
 		}
-		// Task succeeded
-		return recorder.CompleteSuccess(ctx, execution, "")
+
+		// Task succeeded - check if it provides a result
+		result := ""
+		if resultProvider, ok := task.(ResultProvider); ok {
+			result = resultProvider.GetResult()
+		}
+		return recorder.CompleteSuccess(ctx, execution, result)
 
 	case <-timeoutCtx.Done():
 		// Timeout occurred
@@ -107,7 +112,13 @@ func (tc *TimeoutController) ExecuteWithTimeout(
 			if err != nil {
 				return recorder.CompleteFailure(ctx, execution, err, "")
 			}
-			return recorder.CompleteSuccess(ctx, execution, "")
+
+			// Check if task provides a result
+			result := ""
+			if resultProvider, ok := task.(ResultProvider); ok {
+				result = resultProvider.GetResult()
+			}
+			return recorder.CompleteSuccess(ctx, execution, result)
 
 		case <-graceTimer.C:
 			// Grace period expired, task still running

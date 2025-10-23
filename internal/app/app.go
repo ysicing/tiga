@@ -28,6 +28,7 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
+	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
@@ -658,6 +659,40 @@ func (a *Application) registerScheduledTasks(ctx context.Context) error {
 		logrus.Info("cluster_health_check task registered successfully")
 	}
 
-	logrus.Infof("Successfully registered %d scheduled tasks", 4)
+	// Task 5: Docker Health Check (T030 - runs every 60 seconds)
+	// Check Docker instance health status via Agent gRPC
+	dockerInstanceRepo := repository.NewDockerInstanceRepository(a.db.DB)
+	dockerForwarder := dockerservices.NewAgentForwarder(a.db.DB)
+	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerForwarder)
+
+	dockerHealthTask := scheduler.NewDockerHealthCheckTask(dockerHealthService)
+	if err := a.scheduler.AddCron(
+		dockerHealthTask.Name(),
+		"*/1 * * * *", // Every 1 minute (60 seconds)
+		dockerHealthTask,
+	); err != nil {
+		return fmt.Errorf("failed to register docker_health_check task: %w", err)
+	}
+	logrus.Info("docker_health_check task registered successfully")
+
+	// Task 6: Docker Audit Cleanup (T031 - runs daily at 2 AM)
+	// Clean up old Docker operation audit logs
+	auditLogRepo := repository.NewAuditLogRepository(a.db.DB)
+	dockerAuditRetention := 90 // Default 90 days retention
+	if a.config.Audit.RetentionDays > 0 {
+		dockerAuditRetention = a.config.Audit.RetentionDays
+	}
+
+	dockerAuditCleanupTask := scheduler.NewDockerAuditCleanupTask(auditLogRepo, dockerAuditRetention)
+	if err := a.scheduler.AddCron(
+		dockerAuditCleanupTask.Name(),
+		"0 2 * * *", // Daily at 2 AM
+		dockerAuditCleanupTask,
+	); err != nil {
+		return fmt.Errorf("failed to register docker_audit_cleanup task: %w", err)
+	}
+	logrus.Info("docker_audit_cleanup task registered successfully")
+
+	logrus.Infof("Successfully registered %d scheduled tasks", 6)
 	return nil
 }
