@@ -1,8 +1,11 @@
 package docker
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -387,4 +390,84 @@ func convertStatsToProto(stats *types.StatsJSON, containerID string) *pb.Contain
 	}
 
 	return pbStats
+}
+
+// GetContainerLogs implements the GetContainerLogs streaming RPC method
+// It streams container logs (stdout/stderr) to the client
+func (s *DockerService) GetContainerLogs(req *pb.GetContainerLogsRequest, stream pb.DockerService_GetContainerLogsServer) error {
+	ctx := stream.Context()
+
+	// Build Docker log options
+	options := container.LogsOptions{
+		ShowStdout: req.Stdout,
+		ShowStderr: req.Stderr,
+		Follow:     req.Follow,
+		Timestamps: req.Timestamps,
+	}
+
+	// Set tail option (number of lines from end)
+	if req.Tail != "" {
+		options.Tail = req.Tail
+	}
+
+	// Set since timestamp
+	if req.Since > 0 {
+		options.Since = fmt.Sprintf("%d", req.Since)
+	}
+
+	// Set until timestamp
+	if req.Until > 0 {
+		options.Until = fmt.Sprintf("%d", req.Until)
+	}
+
+	// Get logs from Docker
+	logsReader, err := s.dockerClient.Client().ContainerLogs(ctx, req.ContainerId, options)
+	if err != nil {
+		return err
+	}
+	defer logsReader.Close()
+
+	// Read logs line by line and stream
+	scanner := bufio.NewScanner(logsReader)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Parse Docker log format (8-byte header + content)
+		// Header: [stream_type(1) 0 0 0 size(4)]
+		// We skip the header and just send the content
+		if len(line) >= 8 {
+			streamType := "stdout"
+			if line[0] == 2 {
+				streamType = "stderr"
+			}
+			content := line[8:]
+
+			logEntry := &pb.LogEntry{
+				Timestamp: time.Now().Unix(),
+				Stream:    streamType,
+				Log:       content,
+			}
+
+			if err := stream.Send(logEntry); err != nil {
+				return err
+			}
+		} else {
+			// If line is too short, send as-is
+			logEntry := &pb.LogEntry{
+				Timestamp: time.Now().Unix(),
+				Stream:    "stdout",
+				Log:       line,
+			}
+
+			if err := stream.Send(logEntry); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
