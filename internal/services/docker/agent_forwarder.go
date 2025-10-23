@@ -177,6 +177,19 @@ func (f *AgentForwarder) ListContainers(agentID uuid.UUID, req *pb.ListContainer
 	return client.ListContainers(ctx, req)
 }
 
+// GetContainer forwards GetContainer request to the agent
+func (f *AgentForwarder) GetContainer(agentID uuid.UUID, req *pb.GetContainerRequest) (*pb.GetContainerResponse, error) {
+	client, err := f.getClient(agentID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	return client.GetContainer(ctx, req)
+}
+
 // StartContainer forwards StartContainer request to the agent
 func (f *AgentForwarder) StartContainer(agentID uuid.UUID, req *pb.StartContainerRequest) (*pb.StartContainerResponse, error) {
 	client, err := f.getClient(agentID)
