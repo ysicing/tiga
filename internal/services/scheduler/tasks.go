@@ -8,6 +8,7 @@ import (
 
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/alert"
+	"github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 )
@@ -117,4 +118,84 @@ func (t *ClusterHealthCheckTask) Run(ctx context.Context) error {
 // Name returns the task name
 func (t *ClusterHealthCheckTask) Name() string {
 	return "cluster_health_check"
+}
+
+// DockerHealthCheckTask checks Docker instance health status (T030)
+type DockerHealthCheckTask struct {
+	healthService *docker.DockerHealthService
+}
+
+// NewDockerHealthCheckTask creates a new Docker health check task
+func NewDockerHealthCheckTask(healthService *docker.DockerHealthService) *DockerHealthCheckTask {
+	return &DockerHealthCheckTask{
+		healthService: healthService,
+	}
+}
+
+// Run executes the Docker health check
+func (t *DockerHealthCheckTask) Run(ctx context.Context) error {
+	logrus.Debug("Running Docker instance health check task")
+	start := time.Now()
+
+	err := t.healthService.CheckAllInstances(ctx)
+
+	duration := time.Since(start)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"duration": duration.String(),
+			"error":    err.Error(),
+		}).Error("Docker health check task failed")
+		return err
+	}
+
+	logrus.WithField("duration", duration.String()).Debug("Docker health check task completed")
+	return nil
+}
+
+// Name returns the task name
+func (t *DockerHealthCheckTask) Name() string {
+	return "docker_health_check"
+}
+
+// DockerAuditCleanupTask cleans up old Docker audit logs (T031)
+type DockerAuditCleanupTask struct {
+	auditRepo     repository.AuditLogRepositoryInterface
+	retentionDays int
+}
+
+// NewDockerAuditCleanupTask creates a new Docker audit cleanup task
+func NewDockerAuditCleanupTask(auditRepo repository.AuditLogRepositoryInterface, retentionDays int) *DockerAuditCleanupTask {
+	if retentionDays <= 0 {
+		retentionDays = 90 // Default 90 days retention
+	}
+	return &DockerAuditCleanupTask{
+		auditRepo:     auditRepo,
+		retentionDays: retentionDays,
+	}
+}
+
+// Run executes the Docker audit log cleanup
+func (t *DockerAuditCleanupTask) Run(ctx context.Context) error {
+	cutoffDate := time.Now().AddDate(0, 0, -t.retentionDays)
+
+	logrus.WithFields(logrus.Fields{
+		"retention_days": t.retentionDays,
+		"cutoff_date":    cutoffDate.Format("2006-01-02"),
+	}).Info("Starting Docker audit log cleanup")
+
+	// Delete all audit logs older than retention period
+	// This will include Docker operations (container, image) and other operations
+	deleted, err := t.auditRepo.DeleteOldLogs(ctx, cutoffDate)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to cleanup Docker audit logs")
+		return err
+	}
+
+	logrus.WithField("deleted_count", deleted).Info("Docker audit log cleanup completed")
+	return nil
+}
+
+// Name returns the task name
+func (t *DockerAuditCleanupTask) Name() string {
+	return "docker_audit_cleanup"
 }
