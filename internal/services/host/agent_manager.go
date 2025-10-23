@@ -15,6 +15,7 @@ import (
 
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
+	"github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/proto"
 )
 
@@ -34,10 +35,12 @@ type AgentConnection struct {
 
 // AgentManager manages agent connections and gRPC streams
 type AgentManager struct {
-	hostRepo       repository.HostRepository
-	stateCollector *StateCollector
-	db             *gorm.DB
-	auditLogger    *AuditLogger // T038: 统一审计
+	hostRepo             repository.HostRepository
+	stateCollector       *StateCollector
+	db                   *gorm.DB
+	auditLogger          *AuditLogger // T038: 统一审计
+	dockerInstanceService *docker.DockerInstanceService // T032: Docker实例集成
+	agentForwarder       *docker.AgentForwarder         // T032: Agent转发器
 
 	// Active connections map: UUID -> Connection
 	connections sync.Map
@@ -49,14 +52,24 @@ type AgentManager struct {
 }
 
 // NewAgentManager creates a new AgentManager
-func NewAgentManager(hostRepo repository.HostRepository, stateCollector *StateCollector, db *gorm.DB, auditLogger *AuditLogger) *AgentManager {
+// T032: 添加Docker服务集成
+func NewAgentManager(
+	hostRepo repository.HostRepository,
+	stateCollector *StateCollector,
+	db *gorm.DB,
+	auditLogger *AuditLogger,
+	dockerInstanceService *docker.DockerInstanceService,
+	agentForwarder *docker.AgentForwarder,
+) *AgentManager {
 	return &AgentManager{
-		hostRepo:          hostRepo,
-		stateCollector:    stateCollector,
-		db:                db,
-		auditLogger:       auditLogger,
-		heartbeatInterval: 30 * time.Second,
-		heartbeatTimeout:  90 * time.Second,
+		hostRepo:             hostRepo,
+		stateCollector:       stateCollector,
+		db:                   db,
+		auditLogger:          auditLogger,
+		dockerInstanceService: dockerInstanceService,
+		agentForwarder:       agentForwarder,
+		heartbeatInterval:    30 * time.Second,
+		heartbeatTimeout:     90 * time.Second,
 	}
 }
 
@@ -138,6 +151,10 @@ func (m *AgentManager) RegisterAgent(ctx context.Context, req *proto.RegisterAge
 		FirstOrCreate(&agentConn).Error; err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to save agent connection: %v", err)
 	}
+
+	// T032: Docker实例自动发现
+	// 尝试检测Agent是否有Docker，如果有则创建/更新Docker实例
+	go m.discoverDockerInstance(agentConn.ID, host.ID)
 
 	return &proto.RegisterAgentResponse{
 		Success:    true,
@@ -389,6 +406,17 @@ func (m *AgentManager) DisconnectAgent(uuid string) {
 			logrus.Warnf("Failed to record agent disconnection activity: %v", err)
 		}
 
+		// T032: 标记关联的Docker实例为离线
+		if m.dockerInstanceService != nil {
+			// 获取AgentConnection记录以获取agent ID
+			var dbConn models.AgentConnection
+			if err := m.db.Where("host_node_id = ?", agentConn.HostNodeID).First(&dbConn).Error; err == nil {
+				if err := m.dockerInstanceService.MarkOfflineByAgentID(context.Background(), dbConn.ID); err != nil {
+					logrus.WithError(err).Warn("Failed to mark Docker instances offline")
+				}
+			}
+		}
+
 		logrus.Infof("[AgentManager] Agent disconnected: uuid=%s, hostID=%s, duration=%s",
 			uuid, agentConn.HostNodeID.String(), time.Since(agentConn.Connected))
 	}
@@ -581,4 +609,59 @@ func (m *AgentManager) GetAllAgentUUIDs() []string {
 		return true
 	})
 	return uuids
+}
+
+// discoverDockerInstance attempts to discover Docker on the agent and create/update Docker instance
+// T032: Docker实例自动发现
+func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUID) {
+	if m.dockerInstanceService == nil || m.agentForwarder == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	logrus.WithFields(logrus.Fields{
+		"agent_id": agentID,
+		"host_id":  hostID,
+	}).Debug("Starting Docker instance discovery")
+
+	// Try to get Docker info from agent
+	dockerInfo, err := m.agentForwarder.GetDockerInfo(agentID)
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"agent_id": agentID,
+			"error":    err.Error(),
+		}).Debug("No Docker found on agent (this is normal if Docker is not installed)")
+		return
+	}
+
+	// Docker detected, create info map
+	infoMap := map[string]interface{}{
+		"version":           dockerInfo.Version,
+		"api_version":       dockerInfo.ApiVersion,
+		"min_api_version":   dockerInfo.MinApiVersion,
+		"storage_driver":    dockerInfo.StorageDriver,
+		"operating_system":  dockerInfo.OperatingSystem,
+		"architecture":      dockerInfo.Arch,
+		"kernel_version":    dockerInfo.KernelVersion,
+		"mem_total":         dockerInfo.MemTotal,
+		"n_cpu":             dockerInfo.NCpu,
+		"containers":        dockerInfo.Containers,
+		"images":            dockerInfo.Images,
+	}
+
+	// Auto-discover or update Docker instance
+	instance, err := m.dockerInstanceService.AutoDiscoverOrUpdate(ctx, agentID, infoMap)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to auto-discover Docker instance")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"instance_id":    instance.ID,
+		"instance_name":  instance.Name,
+		"agent_id":       agentID,
+		"docker_version": dockerInfo.Version,
+	}).Info("Docker instance auto-discovered/updated")
 }
