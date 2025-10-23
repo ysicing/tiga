@@ -372,3 +372,51 @@ func (s *DockerInstanceService) populateDockerInfo(instance *models.DockerInstan
 		instance.ImageCount = int(images)
 	}
 }
+
+// CreateManualInstance creates a Docker instance manually (not via auto-discovery)
+func (s *DockerInstanceService) CreateManualInstance(
+	ctx context.Context,
+	name string,
+	description string,
+	agentID uuid.UUID,
+	tags []string,
+) (*models.DockerInstance, error) {
+	instance := &models.DockerInstance{
+		Name:         name,
+		Description:  description,
+		AgentID:      agentID,
+		HealthStatus: "unknown",
+		Tags:         tags,
+	}
+
+	if err := s.Create(ctx, instance); err != nil {
+		return nil, err
+	}
+
+	return instance, nil
+}
+
+// Archive archives a Docker instance (soft delete)
+func (s *DockerInstanceService) Archive(ctx context.Context, id uuid.UUID) error {
+	return s.MarkArchived(ctx, id)
+}
+
+// UpdateFromModel updates a Docker instance using the instance model
+func (s *DockerInstanceService) UpdateFromModel(ctx context.Context, instance *models.DockerInstance) error {
+	updates := map[string]interface{}{
+		"name":        instance.Name,
+		"description": instance.Description,
+		"tags":        instance.Tags,
+	}
+	// Call the existing Update(ctx, id, updates) method
+	if err := s.repo.UpdateFields(ctx, instance.ID, updates); err != nil {
+		return fmt.Errorf("failed to update instance: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"instance_id":   instance.ID,
+		"instance_name": instance.Name,
+	}).Info("Docker instance updated from model")
+
+	return nil
+}
