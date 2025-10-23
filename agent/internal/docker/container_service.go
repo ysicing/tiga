@@ -148,3 +148,128 @@ func convertMountsToProto(mounts []types.MountPoint) []*pb.Mount {
 	}
 	return pbMounts
 }
+
+// StartContainer implements the StartContainer RPC method
+func (s *DockerService) StartContainer(ctx context.Context, req *pb.StartContainerRequest) (*pb.StartContainerResponse, error) {
+	err := s.dockerClient.Client().ContainerStart(ctx, req.ContainerId, container.StartOptions{})
+	if err != nil {
+		return &pb.StartContainerResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &pb.StartContainerResponse{
+		Success: true,
+		Message: "Container started successfully",
+	}, nil
+}
+
+// StopContainer implements the StopContainer RPC method
+func (s *DockerService) StopContainer(ctx context.Context, req *pb.StopContainerRequest) (*pb.StopContainerResponse, error) {
+	// Set default timeout if not specified
+	timeout := req.Timeout
+	if timeout == 0 {
+		timeout = 10 // Default 10 seconds
+	}
+
+	// Convert int32 to int for Docker SDK
+	timeoutInt := int(timeout)
+	stopOptions := container.StopOptions{
+		Timeout: &timeoutInt,
+	}
+
+	err := s.dockerClient.Client().ContainerStop(ctx, req.ContainerId, stopOptions)
+	if err != nil {
+		return &pb.StopContainerResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &pb.StopContainerResponse{
+		Success: true,
+		Message: "Container stopped successfully",
+	}, nil
+}
+
+// RestartContainer implements the RestartContainer RPC method
+func (s *DockerService) RestartContainer(ctx context.Context, req *pb.RestartContainerRequest) (*pb.RestartContainerResponse, error) {
+	// Set default timeout if not specified
+	timeout := req.Timeout
+	if timeout == 0 {
+		timeout = 10 // Default 10 seconds
+	}
+
+	// Convert int32 to int for Docker SDK
+	timeoutInt := int(timeout)
+	stopOptions := container.StopOptions{
+		Timeout: &timeoutInt,
+	}
+
+	err := s.dockerClient.Client().ContainerRestart(ctx, req.ContainerId, stopOptions)
+	if err != nil {
+		return &pb.RestartContainerResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &pb.RestartContainerResponse{
+		Success: true,
+		Message: "Container restarted successfully",
+	}, nil
+}
+
+// PauseContainer implements the PauseContainer RPC method
+func (s *DockerService) PauseContainer(ctx context.Context, req *pb.PauseContainerRequest) (*pb.PauseContainerResponse, error) {
+	err := s.dockerClient.Client().ContainerPause(ctx, req.ContainerId)
+	if err != nil {
+		return &pb.PauseContainerResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &pb.PauseContainerResponse{
+		Success: true,
+		Message: "Container paused successfully",
+	}, nil
+}
+
+// UnpauseContainer implements the UnpauseContainer RPC method
+func (s *DockerService) UnpauseContainer(ctx context.Context, req *pb.UnpauseContainerRequest) (*pb.UnpauseContainerResponse, error) {
+	err := s.dockerClient.Client().ContainerUnpause(ctx, req.ContainerId)
+	if err != nil {
+		return &pb.UnpauseContainerResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &pb.UnpauseContainerResponse{
+		Success: true,
+		Message: "Container unpaused successfully",
+	}, nil
+}
+
+// DeleteContainer implements the DeleteContainer RPC method
+func (s *DockerService) DeleteContainer(ctx context.Context, req *pb.DeleteContainerRequest) (*pb.DeleteContainerResponse, error) {
+	removeOptions := container.RemoveOptions{
+		Force:         req.Force,
+		RemoveVolumes: req.RemoveVolumes,
+	}
+
+	err := s.dockerClient.Client().ContainerRemove(ctx, req.ContainerId, removeOptions)
+	if err != nil {
+		return &pb.DeleteContainerResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &pb.DeleteContainerResponse{
+		Success: true,
+		Message: "Container deleted successfully",
+	}, nil
+}
