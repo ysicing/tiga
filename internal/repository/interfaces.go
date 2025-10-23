@@ -152,14 +152,71 @@ type OAuthProviderRepositoryInterface interface {
 	ListEnabled(ctx context.Context) ([]*models.OAuthProvider, error)
 }
 
+// DockerInstanceRepositoryInterface defines the interface for Docker instance operations
+type DockerInstanceRepositoryInterface interface {
+	// Basic CRUD operations
+	Create(ctx context.Context, instance *models.DockerInstance) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.DockerInstance, error)
+	GetByName(ctx context.Context, name string) (*models.DockerInstance, error)
+	GetByAgentID(ctx context.Context, agentID uuid.UUID) (*models.DockerInstance, error)
+	Update(ctx context.Context, instance *models.DockerInstance) error
+	UpdateFields(ctx context.Context, id uuid.UUID, fields map[string]interface{}) error
+	Delete(ctx context.Context, id uuid.UUID) error
+
+	// List and filter operations
+	ListInstances(ctx context.Context, filter *DockerInstanceFilter) ([]*models.DockerInstance, int64, error)
+	ListByHealthStatus(ctx context.Context, status string) ([]*models.DockerInstance, error)
+	ListOnlineInstances(ctx context.Context) ([]*models.DockerInstance, error)
+	SearchByName(ctx context.Context, name string) ([]*models.DockerInstance, error)
+	SearchByTags(ctx context.Context, tags []string) ([]*models.DockerInstance, error)
+
+	// Health status operations
+	UpdateHealthStatus(ctx context.Context, id uuid.UUID, status string, containerCount, imageCount, volumeCount, networkCount int) error
+	MarkOnline(ctx context.Context, id uuid.UUID) error
+	MarkOffline(ctx context.Context, id uuid.UUID) error
+	MarkArchived(ctx context.Context, id uuid.UUID) error
+	MarkAllInstancesOfflineByAgentID(ctx context.Context, agentID uuid.UUID) error
+
+	// Docker info operations
+	UpdateDockerInfo(ctx context.Context, id uuid.UUID, info map[string]interface{}) error
+
+	// Statistics
+	Count(ctx context.Context) (int64, error)
+	CountByHealthStatus(ctx context.Context, status string) (int64, error)
+	GetStatistics(ctx context.Context) (*DockerInstanceStatistics, error)
+}
+
+// DockerInstanceFilter defines filters for listing Docker instances
+type DockerInstanceFilter struct {
+	Name         string
+	HealthStatus string
+	AgentID      *uuid.UUID
+	HostID       *uuid.UUID
+	Tags         []string
+	Page         int
+	PageSize     int
+	SortBy       string // name, created_at, last_connected_at
+	SortOrder    string // asc, desc
+}
+
+// DockerInstanceStatistics contains Docker instance statistics
+type DockerInstanceStatistics struct {
+	Total     int64 `json:"total"`
+	Online    int64 `json:"online"`
+	Offline   int64 `json:"offline"`
+	Archived  int64 `json:"archived"`
+	Unknown   int64 `json:"unknown"`
+}
+
 // Compile-time interface assertions
 var (
-	_ UserRepositoryInterface            = (*UserRepository)(nil)
-	_ InstanceRepositoryInterface        = (*InstanceRepository)(nil)
-	_ AlertRepositoryInterface           = (*AlertRepository)(nil)
-	_ MetricsRepositoryInterface         = (*MetricsRepository)(nil)
-	_ AuditLogRepositoryInterface        = (*AuditLogRepository)(nil)
-	_ ClusterRepositoryInterface         = (*ClusterRepository)(nil)
-	_ ResourceHistoryRepositoryInterface = (*ResourceHistoryRepository)(nil)
-	_ OAuthProviderRepositoryInterface   = (*OAuthProviderRepository)(nil)
+	_ UserRepositoryInterface              = (*UserRepository)(nil)
+	_ InstanceRepositoryInterface          = (*InstanceRepository)(nil)
+	_ AlertRepositoryInterface             = (*AlertRepository)(nil)
+	_ MetricsRepositoryInterface           = (*MetricsRepository)(nil)
+	_ AuditLogRepositoryInterface          = (*AuditLogRepository)(nil)
+	_ ClusterRepositoryInterface           = (*ClusterRepository)(nil)
+	_ ResourceHistoryRepositoryInterface   = (*ResourceHistoryRepository)(nil)
+	_ OAuthProviderRepositoryInterface     = (*OAuthProviderRepository)(nil)
+	_ DockerInstanceRepositoryInterface    = (*DockerInstanceRepository)(nil)
 )
