@@ -31,16 +31,16 @@ func NewContainerStatsHandler(agentForwarder *docker.AgentForwarder) *ContainerS
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
 // @Success 200 {object} handlers.SuccessResponse
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/{container_id}/stats [get]
+// @Router /api/v1/docker/instances/{id}/containers/{container_id}/stats [get]
 // @Security BearerAuth
 func (h *ContainerStatsHandler) GetContainerStats(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -93,16 +93,16 @@ func (h *ContainerStatsHandler) GetContainerStats(c *gin.Context) {
 // @Tags docker-containers
 // @Accept json
 // @Produce text/event-stream
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
 // @Success 200 {string} string "SSE stream of container stats"
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/{container_id}/stats/stream [get]
+// @Router /api/v1/docker/instances/{id}/containers/{container_id}/stats/stream [get]
 // @Security BearerAuth
 func (h *ContainerStatsHandler) GetContainerStatsStream(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return

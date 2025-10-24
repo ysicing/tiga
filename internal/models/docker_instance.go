@@ -16,7 +16,7 @@ type DockerInstance struct {
 	HostID      uuid.UUID `gorm:"type:uuid;index" json:"host_id,omitempty"` // Optional: associated host node
 
 	// Health and connection status
-	HealthStatus    string    `gorm:"not null;index;default:'unknown'" json:"health_status"` // unknown, online, offline, archived
+	HealthStatus    string    `gorm:"not null;index;default:'unknown'" json:"status"` // unknown, online, offline, archived
 	LastConnectedAt time.Time `json:"last_connected_at"`
 	LastHealthCheck time.Time `json:"last_health_check"`
 
@@ -48,6 +48,11 @@ func (DockerInstance) TableName() string {
 
 // BeforeCreate hook to set default values
 func (d *DockerInstance) BeforeCreate(tx *gorm.DB) error {
+	// Call BaseModel's BeforeCreate to generate UUID
+	if err := d.BaseModel.BeforeCreate(tx); err != nil {
+		return err
+	}
+
 	if d.HealthStatus == "" {
 		d.HealthStatus = "unknown"
 	}

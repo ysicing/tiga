@@ -35,7 +35,7 @@ func NewContainerHandler(
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param page query int false "Page number (default: 1)"
 // @Param page_size query int false "Page size (default: 20, max: 100)"
 // @Param all query boolean false "Show all containers (default: false, only running)"
@@ -44,10 +44,10 @@ func NewContainerHandler(
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers [get]
+// @Router /api/v1/docker/instances/{id}/containers [get]
 // @Security BearerAuth
 func (h *ContainerHandler) GetContainers(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -105,16 +105,16 @@ func (h *ContainerHandler) GetContainers(c *gin.Context) {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
 // @Success 200 {object} handlers.SuccessResponse
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/{container_id} [get]
+// @Router /api/v1/docker/instances/{id}/containers/{container_id} [get]
 // @Security BearerAuth
 func (h *ContainerHandler) GetContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -154,16 +154,16 @@ type StartContainerRequest struct {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body StartContainerRequest true "Start container request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/start [post]
+// @Router /api/v1/docker/instances/{id}/containers/start [post]
 // @Security BearerAuth
 func (h *ContainerHandler) StartContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -215,16 +215,16 @@ type StopContainerRequest struct {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body StopContainerRequest true "Stop container request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/stop [post]
+// @Router /api/v1/docker/instances/{id}/containers/stop [post]
 // @Security BearerAuth
 func (h *ContainerHandler) StopContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -280,16 +280,16 @@ type RestartContainerRequest struct {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body RestartContainerRequest true "Restart container request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/restart [post]
+// @Router /api/v1/docker/instances/{id}/containers/restart [post]
 // @Security BearerAuth
 func (h *ContainerHandler) RestartContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -344,16 +344,16 @@ type PauseContainerRequest struct {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body PauseContainerRequest true "Pause container request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/pause [post]
+// @Router /api/v1/docker/instances/{id}/containers/pause [post]
 // @Security BearerAuth
 func (h *ContainerHandler) PauseContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -404,16 +404,16 @@ type UnpauseContainerRequest struct {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body UnpauseContainerRequest true "Unpause container request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/unpause [post]
+// @Router /api/v1/docker/instances/{id}/containers/unpause [post]
 // @Security BearerAuth
 func (h *ContainerHandler) UnpauseContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -466,16 +466,16 @@ type DeleteContainerRequest struct {
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body DeleteContainerRequest true "Delete container request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/delete [post]
+// @Router /api/v1/docker/instances/{id}/containers/delete [post]
 // @Security BearerAuth
 func (h *ContainerHandler) DeleteContainer(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return

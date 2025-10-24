@@ -30,8 +30,12 @@ import { DockerOverview } from './pages/docker-overview'
 import { DockerInstanceList } from './pages/docker/instance-list'
 import { DockerInstanceDetail } from './pages/docker/instance-detail'
 import { DockerInstanceForm } from './pages/docker/instance-form'
+import { ContainersPage } from './pages/docker/containers-page'
+import { ImagesPage } from './pages/docker/images-page'
+import { NetworksPage } from './pages/docker/networks-page'
 import TerminalRecordingsPage from './pages/docker/terminal-recordings-page'
 import TerminalRecordingPlayerPage from './pages/docker/terminal-recording-player-page'
+import { VolumesPage } from './pages/docker/volumes-page'
 import { AlertEventsPage } from './pages/hosts/alert-events-page'
 import AlertRulesPage from './pages/hosts/alert-rules-page'
 import { HostDetailPage as NewHostDetailPage } from './pages/hosts/host-detail-page'
@@ -611,40 +615,45 @@ export const router = createBrowserRouter([
         element: <DockerOverview />,
       },
       {
-        path: 'instances',
-        element: <DockerInstanceList />,
-      },
-      {
         path: 'instances/new',
         element: <DockerInstanceForm />,
       },
       {
         path: 'instances/:id',
-        element: <DockerInstanceDetail />,
-      },
-      {
-        path: 'instances/:id/edit',
-        element: <DockerInstanceForm />,
-      },
-      {
-        path: 'containers',
-        element: <div>Docker Containers 管理页面(待实现)</div>,
-      },
-      {
-        path: 'images',
-        element: <div>Docker Images 管理页面(待实现)</div>,
-      },
-      {
-        path: 'networks',
-        element: <div>Docker Networks 管理页面(待实现)</div>,
-      },
-      {
-        path: 'recordings',
-        element: <TerminalRecordingsPage />,
-      },
-      {
-        path: 'recordings/:id/play',
-        element: <TerminalRecordingPlayerPage />,
+        children: [
+          {
+            index: true,
+            element: <DockerInstanceDetail />,
+          },
+          {
+            path: 'edit',
+            element: <DockerInstanceForm />,
+          },
+          {
+            path: 'containers',
+            element: <ContainersPage />,
+          },
+          {
+            path: 'images',
+            element: <ImagesPage />,
+          },
+          {
+            path: 'networks',
+            element: <NetworksPage />,
+          },
+          {
+            path: 'volumes',
+            element: <VolumesPage />,
+          },
+          {
+            path: 'recordings',
+            element: <TerminalRecordingsPage />,
+          },
+          {
+            path: 'recordings/:recordingId/play',
+            element: <TerminalRecordingPlayerPage />,
+          },
+        ],
       },
     ],
   },

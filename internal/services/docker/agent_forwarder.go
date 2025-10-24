@@ -93,17 +93,30 @@ func (f *AgentForwarder) getClient(agentID uuid.UUID) (pb.DockerServiceClient, e
 }
 
 // getAgentAddress retrieves the gRPC address for an agent from the database
-func (f *AgentForwarder) getAgentAddress(agentID uuid.UUID) (string, error) {
-	// Query AgentConnection to get IP address
-	// For now, we'll construct the address using IP + default port
-	// TODO: Support custom agent ports
+// instanceID should be the Docker instance ID (from docker_instances table)
+func (f *AgentForwarder) getAgentAddress(instanceID uuid.UUID) (string, error) {
+	// Step 1: Query docker_instances to get agent_id
+	var dockerInstance struct {
+		AgentID uuid.UUID
+	}
+
+	err := f.db.Table("docker_instances").
+		Select("agent_id").
+		Where("id = ?", instanceID).
+		First(&dockerInstance).Error
+
+	if err != nil {
+		return "", fmt.Errorf("docker instance not found: %w", err)
+	}
+
+	// Step 2: Query agent_connections to get IP address
 	var agentConn struct {
 		IPAddress string
 	}
 
-	err := f.db.Table("agent_connections").
+	err = f.db.Table("agent_connections").
 		Select("ip_address").
-		Where("id = ? AND status = ?", agentID, "online").
+		Where("id = ? AND status = ?", dockerInstance.AgentID, "online").
 		First(&agentConn).Error
 
 	if err != nil {

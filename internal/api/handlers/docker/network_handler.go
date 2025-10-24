@@ -29,15 +29,15 @@ func NewNetworkHandler(agentForwarder *docker.AgentForwarder) *NetworkHandler {
 // @Tags Docker Networks
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param filters query string false "Docker filters in JSON format"
 // @Success 200 {object} map[string]interface{} "Network list response"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/networks [get]
+// @Router /api/v1/docker/instances/{id}/networks [get]
 func (h *NetworkHandler) GetNetworks(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -66,7 +66,7 @@ func (h *NetworkHandler) GetNetworks(c *gin.Context) {
 // @Tags Docker Networks
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param network_id path string true "Network ID or name"
 // @Param verbose query bool false "Verbose mode"
 // @Param scope query string false "Network scope"
@@ -74,10 +74,10 @@ func (h *NetworkHandler) GetNetworks(c *gin.Context) {
 // @Failure 400 {object} map[string]interface{} "Invalid parameters"
 // @Failure 404 {object} map[string]interface{} "Network not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/networks/{network_id} [get]
+// @Router /api/v1/docker/instances/{id}/networks/{network_id} [get]
 func (h *NetworkHandler) GetNetwork(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -145,15 +145,15 @@ type IPAMPool struct {
 // @Tags Docker Networks
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body CreateNetworkRequest true "Network creation parameters"
 // @Success 200 {object} map[string]interface{} "Created network details"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/networks [post]
+// @Router /api/v1/docker/instances/{id}/networks [post]
 func (h *NetworkHandler) CreateNetwork(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -219,15 +219,15 @@ type DeleteNetworkRequest struct {
 // @Tags Docker Networks
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body DeleteNetworkRequest true "Network deletion parameters"
 // @Success 200 {object} map[string]interface{} "Deletion result"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/networks/delete [post]
+// @Router /api/v1/docker/instances/{id}/networks/delete [post]
 func (h *NetworkHandler) DeleteNetwork(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -274,15 +274,15 @@ type EndpointConfigInput struct {
 // @Tags Docker Networks
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body ConnectNetworkRequest true "Network connection parameters"
 // @Success 200 {object} map[string]interface{} "Connection result"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/networks/connect [post]
+// @Router /api/v1/docker/instances/{id}/networks/connect [post]
 func (h *NetworkHandler) ConnectNetwork(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -334,15 +334,15 @@ type DisconnectNetworkRequest struct {
 // @Tags Docker Networks
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body DisconnectNetworkRequest true "Network disconnection parameters"
 // @Success 200 {object} map[string]interface{} "Disconnection result"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/networks/disconnect [post]
+// @Router /api/v1/docker/instances/{id}/networks/disconnect [post]
 func (h *NetworkHandler) DisconnectNetwork(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))

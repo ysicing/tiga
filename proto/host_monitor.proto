@@ -40,6 +40,25 @@ message HostInfo {
   bool ssh_enabled = 12;            // SSH是否启用
   int32 ssh_port = 13;              // SSH端口
   string ssh_user = 14;             // SSH默认用户
+  DockerInfo docker_info = 15;      // Docker信息(如果安装)
+}
+
+// Docker信息
+message DockerInfo {
+  bool installed = 1;               // 是否安装Docker
+  string version = 2;               // Docker版本
+  string api_version = 3;           // API版本
+  string os = 4;                    // 操作系统
+  string arch = 5;                  // 架构
+  string kernel_version = 6;        // 内核版本
+  string storage_driver = 7;        // 存储驱动
+  int32 containers = 8;             // 容器总数
+  int32 containers_running = 9;     // 运行中容器数
+  int32 containers_paused = 10;     // 暂停容器数
+  int32 containers_stopped = 11;    // 停止容器数
+  int32 images = 12;                // 镜像数
+  uint64 mem_total = 13;            // Docker主机总内存
+  int32 ncpu = 14;                  // CPU数量
 }
 
 // 主机实时监控状态

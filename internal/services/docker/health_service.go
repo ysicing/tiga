@@ -7,7 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 )
 
@@ -20,16 +22,19 @@ const (
 type DockerHealthService struct {
 	repo           repository.DockerInstanceRepositoryInterface
 	agentForwarder *AgentForwarder
+	db             *gorm.DB // For checking agent connection status
 }
 
 // NewDockerHealthService creates a new DockerHealthService
 func NewDockerHealthService(
 	repo repository.DockerInstanceRepositoryInterface,
 	agentForwarder *AgentForwarder,
+	db *gorm.DB,
 ) *DockerHealthService {
 	return &DockerHealthService{
 		repo:           repo,
 		agentForwarder: agentForwarder,
+		db:             db,
 	}
 }
 
@@ -52,6 +57,36 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 		"agent_id":      instance.AgentID,
 	}).Debug("Checking Docker instance health")
 
+	// T032: For integrated architecture (Docker instances from agent auto-discovery),
+	// check agent connection status instead of calling AgentForwarder
+	var agentConn models.AgentConnection
+	err = s.db.Where("id = ?", instance.AgentID).First(&agentConn).Error
+	if err == nil {
+		// Agent connection record found, check if agent is online
+		if agentConn.Status == models.AgentStatusOnline {
+			// Agent is online, mark Docker instance as online
+			if err := s.repo.MarkOnline(ctx, instanceID); err != nil {
+				logrus.WithError(err).Error("Failed to mark instance as online")
+			}
+			logrus.WithFields(logrus.Fields{
+				"instance_id":   instanceID,
+				"instance_name": instance.Name,
+			}).Debug("Docker instance health check succeeded (agent online)")
+			return nil
+		} else {
+			// Agent is offline, mark Docker instance as offline
+			if err := s.repo.MarkOffline(ctx, instanceID); err != nil {
+				logrus.WithError(err).Error("Failed to mark instance as offline")
+			}
+			logrus.WithFields(logrus.Fields{
+				"instance_id":   instanceID,
+				"instance_name": instance.Name,
+			}).Debug("Docker instance marked offline (agent offline)")
+			return nil
+		}
+	}
+
+	// Fall back to old logic for standalone Docker Agent architecture
 	// Call GetDockerInfo via agent forwarder
 	info, err := s.agentForwarder.GetDockerInfo(instance.AgentID)
 	if err != nil {

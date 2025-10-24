@@ -31,14 +31,14 @@ func NewSystemHandler(agentForwarder *docker.AgentForwarder) *SystemHandler {
 // @Tags Docker System
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Success 200 {object} map[string]interface{} "System information"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/system/info [get]
+// @Router /api/v1/docker/instances/{id}/system/info [get]
 func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -62,14 +62,14 @@ func (h *SystemHandler) GetSystemInfo(c *gin.Context) {
 // @Tags Docker System
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Success 200 {object} map[string]interface{} "Version information"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/system/version [get]
+// @Router /api/v1/docker/instances/{id}/system/version [get]
 func (h *SystemHandler) GetVersion(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -93,14 +93,14 @@ func (h *SystemHandler) GetVersion(c *gin.Context) {
 // @Tags Docker System
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Success 200 {object} map[string]interface{} "Disk usage information"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/system/disk-usage [get]
+// @Router /api/v1/docker/instances/{id}/system/disk-usage [get]
 func (h *SystemHandler) GetDiskUsage(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -124,14 +124,14 @@ func (h *SystemHandler) GetDiskUsage(c *gin.Context) {
 // @Tags Docker System
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Success 200 {object} map[string]interface{} "Ping response"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/system/ping [get]
+// @Router /api/v1/docker/instances/{id}/system/ping [get]
 func (h *SystemHandler) Ping(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -155,17 +155,17 @@ func (h *SystemHandler) Ping(c *gin.Context) {
 // @Tags Docker System
 // @Accept json
 // @Produce text/event-stream
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param since query string false "Show events since timestamp or relative (e.g., '10m')"
 // @Param until query string false "Show events until timestamp or relative"
 // @Param filters query string false "Event filters in JSON format"
 // @Success 200 {object} map[string]interface{} "SSE stream of Docker events"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/system/events/stream [get]
+// @Router /api/v1/docker/instances/{id}/system/events/stream [get]
 func (h *SystemHandler) GetEventsStream(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
