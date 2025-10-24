@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 
@@ -135,11 +137,20 @@ func (m *AgentManager) RegisterAgent(ctx context.Context, req *proto.RegisterAge
 		}
 	}
 
+	// Get client IP address from gRPC context
+	var clientIP string
+	if p, ok := peer.FromContext(ctx); ok {
+		if tcpAddr, ok := p.Addr.(*net.TCPAddr); ok {
+			clientIP = tcpAddr.IP.String()
+		}
+	}
+
 	// Update or create AgentConnection record
 	agentConn := &models.AgentConnection{
 		HostNodeID:   host.ID,
 		Status:       models.AgentStatusOnline,
 		AgentVersion: req.HostInfo.AgentVersion,
+		IPAddress:    clientIP, // Save client IP for AgentForwarder
 	}
 	now := time.Now()
 	agentConn.ConnectedAt = &now
@@ -153,8 +164,10 @@ func (m *AgentManager) RegisterAgent(ctx context.Context, req *proto.RegisterAge
 	}
 
 	// T032: Docker实例自动发现
-	// 尝试检测Agent是否有Docker，如果有则创建/更新Docker实例
-	go m.discoverDockerInstance(agentConn.ID, host.ID)
+	// 从Agent上报的HostInfo中检测Docker信息
+	if req.HostInfo.DockerInfo != nil && req.HostInfo.DockerInfo.Installed {
+		go m.discoverDockerInstanceFromProto(agentConn.ID, host.ID, req.HostInfo.DockerInfo)
+	}
 
 	return &proto.RegisterAgentResponse{
 		Success:    true,
@@ -611,8 +624,64 @@ func (m *AgentManager) GetAllAgentUUIDs() []string {
 	return uuids
 }
 
+// discoverDockerInstanceFromProto creates/updates Docker instance from agent's reported Docker info
+// T032: Docker实例自动发现（集成Agent架构）
+func (m *AgentManager) discoverDockerInstanceFromProto(agentID uuid.UUID, hostID uuid.UUID, dockerInfo *proto.DockerInfo) {
+	if m.dockerInstanceService == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Get host node to retrieve hostname
+	host, err := m.hostRepo.GetByID(ctx, hostID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get host node for Docker instance naming")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"agent_id":       agentID,
+		"host_id":        hostID,
+		"host_name":      host.Name,
+		"docker_version": dockerInfo.Version,
+	}).Info("Starting Docker instance auto-discovery from agent report")
+
+	// Create info map from proto DockerInfo
+	infoMap := map[string]interface{}{
+		"version":          dockerInfo.Version,
+		"api_version":      dockerInfo.ApiVersion,
+		"storage_driver":   dockerInfo.StorageDriver,
+		"operating_system": dockerInfo.Os,
+		"architecture":     dockerInfo.Arch,
+		"kernel_version":   dockerInfo.KernelVersion,
+		"mem_total":        dockerInfo.MemTotal,
+		"n_cpu":            dockerInfo.Ncpu,
+		"containers":       dockerInfo.Containers,
+		"images":           dockerInfo.Images,
+	}
+
+	// Auto-discover or update Docker instance (use hostname as instance name)
+	instance, err := m.dockerInstanceService.AutoDiscoverOrUpdate(ctx, agentID, host.Name, infoMap)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to auto-discover Docker instance")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"instance_id":    instance.ID,
+		"instance_name":  instance.Name,
+		"agent_id":       agentID,
+		"docker_version": dockerInfo.Version,
+		"containers":     dockerInfo.Containers,
+		"images":         dockerInfo.Images,
+	}).Info("Docker instance auto-discovered/updated successfully")
+}
+
 // discoverDockerInstance attempts to discover Docker on the agent and create/update Docker instance
-// T032: Docker实例自动发现
+// T032: Docker实例自动发现（已废弃，保留以支持旧的独立Docker Agent架构）
+// DEPRECATED: 使用 discoverDockerInstanceFromProto 代替
 func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUID) {
 	if m.dockerInstanceService == nil || m.agentForwarder == nil {
 		return
@@ -620,6 +689,13 @@ func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUI
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Get host node to retrieve hostname
+	host, err := m.hostRepo.GetByID(ctx, hostID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get host node for Docker instance naming")
+		return
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"agent_id": agentID,
@@ -651,8 +727,8 @@ func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUI
 		"images":           dockerInfo.Images,
 	}
 
-	// Auto-discover or update Docker instance
-	instance, err := m.dockerInstanceService.AutoDiscoverOrUpdate(ctx, agentID, infoMap)
+	// Auto-discover or update Docker instance (use hostname)
+	instance, err := m.dockerInstanceService.AutoDiscoverOrUpdate(ctx, agentID, host.Name, infoMap)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to auto-discover Docker instance")
 		return

@@ -29,14 +29,14 @@ func NewVolumeHandler(agentForwarder *docker.AgentForwarder) *VolumeHandler {
 // @Tags Docker Volumes
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Success 200 {object} map[string]interface{} "Volume list response"
 // @Failure 400 {object} map[string]interface{} "Invalid instance ID"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/volumes [get]
+// @Router /api/v1/docker/instances/{id}/volumes [get]
 func (h *VolumeHandler) GetVolumes(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -60,16 +60,16 @@ func (h *VolumeHandler) GetVolumes(c *gin.Context) {
 // @Tags Docker Volumes
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param volume_name path string true "Volume name"
 // @Success 200 {object} map[string]interface{} "Volume details"
 // @Failure 400 {object} map[string]interface{} "Invalid parameters"
 // @Failure 404 {object} map[string]interface{} "Volume not found"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/volumes/{volume_name} [get]
+// @Router /api/v1/docker/instances/{id}/volumes/{volume_name} [get]
 func (h *VolumeHandler) GetVolume(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -110,15 +110,15 @@ type CreateVolumeRequest struct {
 // @Tags Docker Volumes
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body CreateVolumeRequest true "Volume creation parameters"
 // @Success 200 {object} map[string]interface{} "Created volume details"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/volumes [post]
+// @Router /api/v1/docker/instances/{id}/volumes [post]
 func (h *VolumeHandler) CreateVolume(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -160,15 +160,15 @@ type DeleteVolumeRequest struct {
 // @Tags Docker Volumes
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body DeleteVolumeRequest true "Volume deletion parameters"
 // @Success 200 {object} map[string]interface{} "Deletion result"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/volumes/delete [post]
+// @Router /api/v1/docker/instances/{id}/volumes/delete [post]
 func (h *VolumeHandler) DeleteVolume(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))
@@ -207,15 +207,15 @@ type PruneVolumesRequest struct {
 // @Tags Docker Volumes
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body PruneVolumesRequest false "Prune filters (optional)"
 // @Success 200 {object} map[string]interface{} "Prune result with space reclaimed"
 // @Failure 400 {object} map[string]interface{} "Invalid request"
 // @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/docker/instances/{instance_id}/volumes/prune [post]
+// @Router /api/v1/docker/instances/{id}/volumes/prune [post]
 func (h *VolumeHandler) PruneVolumes(c *gin.Context) {
 	// Parse instance ID
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	instanceID, err := uuid.Parse(instanceIDStr)
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusBadRequest, fmt.Errorf("invalid instance ID format"))

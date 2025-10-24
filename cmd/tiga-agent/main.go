@@ -266,6 +266,40 @@ func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *
 		return fmt.Errorf("failed to collect host info: %w", err)
 	}
 
+	// Collect Docker info
+	dockerInfo := col.CollectDockerInfo()
+
+	// Convert Docker info to proto
+	var protoDockerInfo *proto.DockerInfo
+	if dockerInfo.Installed {
+		protoDockerInfo = &proto.DockerInfo{
+			Installed:         true,
+			Version:           dockerInfo.Version,
+			ApiVersion:        dockerInfo.APIVersion,
+			Os:                dockerInfo.OS,
+			Arch:              dockerInfo.Arch,
+			KernelVersion:     dockerInfo.KernelVersion,
+			StorageDriver:     dockerInfo.StorageDriver,
+			Containers:        dockerInfo.Containers,
+			ContainersRunning: dockerInfo.ContainersRunning,
+			ContainersPaused:  dockerInfo.ContainersPaused,
+			ContainersStopped: dockerInfo.ContainersStopped,
+			Images:            dockerInfo.Images,
+			MemTotal:          dockerInfo.MemTotal,
+			Ncpu:              dockerInfo.NCPU,
+		}
+		logrus.WithFields(logrus.Fields{
+			"version":    dockerInfo.Version,
+			"containers": dockerInfo.Containers,
+			"images":     dockerInfo.Images,
+		}).Info("Docker detected and will be reported to server")
+	} else {
+		protoDockerInfo = &proto.DockerInfo{
+			Installed: false,
+		}
+		logrus.Debug("Docker not detected on this host")
+	}
+
 	// Convert to proto
 	protoHostInfo := &proto.HostInfo{
 		Platform:        hostInfo.Platform,
@@ -280,6 +314,7 @@ func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *
 		AgentVersion:    hostInfo.AgentVersion,
 		BootTime:        int64(hostInfo.BootTime),
 		SshEnabled:      !config.DisableWebSSH, // WebSSH is enabled unless explicitly disabled
+		DockerInfo:      protoDockerInfo,
 	}
 
 	// Register with server

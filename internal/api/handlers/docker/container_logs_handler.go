@@ -32,7 +32,7 @@ func NewContainerLogsHandler(agentForwarder *docker.AgentForwarder) *ContainerLo
 // @Tags docker-containers
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
 // @Param tail query int false "Number of lines to show from the end (default: 100)"
 // @Param since query string false "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)"
@@ -43,10 +43,10 @@ func NewContainerLogsHandler(agentForwarder *docker.AgentForwarder) *ContainerLo
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/{container_id}/logs [get]
+// @Router /api/v1/docker/instances/{id}/containers/{container_id}/logs [get]
 // @Security BearerAuth
 func (h *ContainerLogsHandler) GetContainerLogs(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -126,7 +126,7 @@ func (h *ContainerLogsHandler) GetContainerLogs(c *gin.Context) {
 // @Tags docker-containers
 // @Accept json
 // @Produce text/event-stream
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
 // @Param tail query int false "Number of lines to show from the end (default: 100)"
 // @Param since query string false "Show logs since timestamp or relative"
@@ -137,10 +137,10 @@ func (h *ContainerLogsHandler) GetContainerLogs(c *gin.Context) {
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/containers/{container_id}/logs/stream [get]
+// @Router /api/v1/docker/instances/{id}/containers/{container_id}/logs/stream [get]
 // @Security BearerAuth
 func (h *ContainerLogsHandler) GetContainerLogsStream(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return

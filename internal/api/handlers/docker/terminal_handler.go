@@ -119,16 +119,16 @@ type CreateTerminalSessionRequest struct {
 // @Tags docker-terminal
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID"
+// @Param id path string true "Docker Instance ID"
 // @Param container_id path string true "Container ID"
 // @Param body body CreateTerminalSessionRequest true "Terminal options"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
 // @Failure 503 {object} map[string]interface{}
-// @Router /api/v1/docker/instances/{instance_id}/containers/{container_id}/terminal [post]
+// @Router /api/v1/docker/instances/{id}/containers/{container_id}/terminal [post]
 func (h *TerminalHandler) CreateTerminalSession(c *gin.Context) {
-	instanceIDStr := c.Param("instance_id")
+	instanceIDStr := c.Param("id")
 	containerID := c.Param("container_id")
 
 	instanceID, err := uuid.Parse(instanceIDStr)

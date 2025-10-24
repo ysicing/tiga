@@ -37,17 +37,17 @@ func NewImageHandler(
 // @Tags docker-images
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param all query boolean false "Show all images (default: false, only show non-dangling images)"
 // @Param filter query string false "Filter images (e.g., 'reference=nginx:*')"
 // @Success 200 {object} handlers.SuccessResponse
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/images [get]
+// @Router /api/v1/docker/instances/{id}/images [get]
 // @Security BearerAuth
 func (h *ImageHandler) GetImages(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -80,16 +80,16 @@ func (h *ImageHandler) GetImages(c *gin.Context) {
 // @Tags docker-images
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param image_id path string true "Image ID or name:tag"
 // @Success 200 {object} handlers.SuccessResponse
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/images/{image_id} [get]
+// @Router /api/v1/docker/instances/{id}/images/{image_id} [get]
 // @Security BearerAuth
 func (h *ImageHandler) GetImage(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -133,16 +133,16 @@ type DeleteImageRequest struct {
 // @Tags docker-images
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body DeleteImageRequest true "Delete image request"
 // @Success 200 {object} handlers.SuccessResponse{data=object}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/images/delete [post]
+// @Router /api/v1/docker/instances/{id}/images/delete [post]
 // @Security BearerAuth
 func (h *ImageHandler) DeleteImage(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -194,16 +194,16 @@ type TagImageRequest struct {
 // @Tags docker-images
 // @Accept json
 // @Produce json
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body TagImageRequest true "Tag image request"
 // @Success 200 {object} handlers.SuccessResponse{data=map[string]interface{}}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/images/tag [post]
+// @Router /api/v1/docker/instances/{id}/images/tag [post]
 // @Security BearerAuth
 func (h *ImageHandler) TagImage(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return
@@ -257,16 +257,16 @@ type PullImageRequest struct {
 // @Tags docker-images
 // @Accept json
 // @Produce text/event-stream
-// @Param instance_id path string true "Docker Instance ID (UUID)"
+// @Param id path string true "Docker Instance ID (UUID)"
 // @Param request body PullImageRequest true "Pull image request"
 // @Success 200 {string} string "SSE stream of pull progress"
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
-// @Router /api/v1/docker/instances/{instance_id}/images/pull [post]
+// @Router /api/v1/docker/instances/{id}/images/pull [post]
 // @Security BearerAuth
 func (h *ImageHandler) PullImage(c *gin.Context) {
-	instanceID, err := basehandlers.ParseUUID(c.Param("instance_id"))
+	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
 		return

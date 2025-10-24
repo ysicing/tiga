@@ -227,7 +227,7 @@ func (s *DockerInstanceService) TestConnection(ctx context.Context, id uuid.UUID
 
 // AutoDiscoverOrUpdate automatically discovers and creates/updates Docker instance when Agent reports
 // This is called when Agent connects and sends Docker info
-func (s *DockerInstanceService) AutoDiscoverOrUpdate(ctx context.Context, agentID uuid.UUID, dockerInfo map[string]interface{}) (*models.DockerInstance, error) {
+func (s *DockerInstanceService) AutoDiscoverOrUpdate(ctx context.Context, agentID uuid.UUID, hostname string, dockerInfo map[string]interface{}) (*models.DockerInstance, error) {
 	// Try to find existing instance by agent ID
 	instance, err := s.repo.GetByAgentID(ctx, agentID)
 
@@ -236,9 +236,9 @@ func (s *DockerInstanceService) AutoDiscoverOrUpdate(ctx context.Context, agentI
 	}
 
 	if err == gorm.ErrRecordNotFound {
-		// Instance doesn't exist, create new one
+		// Instance doesn't exist, create new one using hostname
 		instance = &models.DockerInstance{
-			Name:         fmt.Sprintf("docker-%s", agentID.String()[:8]), // Default name
+			Name:         hostname, // Use hostname as instance name
 			AgentID:      agentID,
 			HealthStatus: "online",
 		}

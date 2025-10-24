@@ -154,7 +154,7 @@ func SetupRoutes(
 	dockerImageService := dockerservices.NewImageService(db, dockerInstanceService, dockerAgentForwarder)
 	dockerAuditService := dockerservices.NewAuditLogService(auditRepo)
 	// Unused services for future phases
-	_ = dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder)
+	_ = dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder, db)
 	_ = dockerservices.NewDockerCacheService()
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
@@ -560,7 +560,7 @@ func SetupRoutes(
 				}
 
 				// Container operations
-				containersGroup := dockerGroup.Group("/instances/:instance_id/containers")
+				containersGroup := dockerGroup.Group("/instances/:id/containers")
 				{
 					containersGroup.GET("", dockerContainerHandler.GetContainers)
 					containersGroup.GET("/:container_id", dockerContainerHandler.GetContainer)
@@ -584,7 +584,7 @@ func SetupRoutes(
 				}
 
 				// Image operations
-				imagesGroup := dockerGroup.Group("/instances/:instance_id/images")
+				imagesGroup := dockerGroup.Group("/instances/:id/images")
 				{
 					imagesGroup.GET("", dockerImageHandler.GetImages)
 					imagesGroup.GET("/:image_id", dockerImageHandler.GetImage)
@@ -597,7 +597,7 @@ func SetupRoutes(
 				dockerGroup.GET("/audit-logs", dockerAuditHandler.GetDockerAuditLogs)
 
 				// Volume operations
-				volumesGroup := dockerGroup.Group("/instances/:instance_id/volumes")
+				volumesGroup := dockerGroup.Group("/instances/:id/volumes")
 				{
 					volumesGroup.GET("", dockerVolumeHandler.GetVolumes)
 					volumesGroup.GET("/:volume_name", dockerVolumeHandler.GetVolume)
@@ -607,7 +607,7 @@ func SetupRoutes(
 				}
 
 				// Network operations
-				networksGroup := dockerGroup.Group("/instances/:instance_id/networks")
+				networksGroup := dockerGroup.Group("/instances/:id/networks")
 				{
 					networksGroup.GET("", dockerNetworkHandler.GetNetworks)
 					networksGroup.GET("/:network_id", dockerNetworkHandler.GetNetwork)
@@ -618,7 +618,7 @@ func SetupRoutes(
 				}
 
 				// System operations
-				systemGroup := dockerGroup.Group("/instances/:instance_id/system")
+				systemGroup := dockerGroup.Group("/instances/:id/system")
 				{
 					systemGroup.GET("/info", dockerSystemHandler.GetSystemInfo)
 					systemGroup.GET("/version", dockerSystemHandler.GetVersion)

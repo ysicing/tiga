@@ -663,7 +663,7 @@ func (a *Application) registerScheduledTasks(ctx context.Context) error {
 	// Check Docker instance health status via Agent gRPC
 	dockerInstanceRepo := repository.NewDockerInstanceRepository(a.db.DB)
 	dockerForwarder := dockerservices.NewAgentForwarder(a.db.DB)
-	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerForwarder)
+	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerForwarder, a.db.DB)
 
 	dockerHealthTask := scheduler.NewDockerHealthCheckTask(dockerHealthService)
 	if err := a.scheduler.AddCron(
