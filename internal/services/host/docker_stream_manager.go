@@ -10,7 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/proto"
 )
 
@@ -28,9 +30,9 @@ type DockerStreamSession struct {
 	AgentStream proto.HostMonitor_DockerStreamClient
 
 	// Channels for data flow
-	DataChan  chan *proto.DockerStreamData  // Agent → User
-	ErrorChan chan *proto.DockerStreamError // Agent → User
-	CloseChan chan *proto.DockerStreamClose // Agent → User
+	DataChan  chan *proto.DockerStreamData    // Agent → User
+	ErrorChan chan *proto.DockerStreamError   // Agent → User
+	CloseChan chan *proto.DockerStreamClose   // Agent → User
 	InputChan chan *proto.DockerStreamMessage // Server → Agent (for stdin, resize, etc.)
 
 	// Session control
@@ -43,12 +45,17 @@ type DockerStreamSession struct {
 
 // DockerStreamManager manages active Docker stream sessions
 type DockerStreamManager struct {
-	sessions sync.Map // SessionID -> *DockerStreamSession
+	sessions     sync.Map // SessionID -> *DockerStreamSession
+	agentManager *AgentManager
+	db           *gorm.DB
 }
 
 // NewDockerStreamManager creates a new Docker stream manager
-func NewDockerStreamManager() *DockerStreamManager {
-	return &DockerStreamManager{}
+func NewDockerStreamManager(agentManager *AgentManager, db *gorm.DB) *DockerStreamManager {
+	return &DockerStreamManager{
+		agentManager: agentManager,
+		db:           db,
+	}
 }
 
 // HandleDockerStream handles the DockerStream RPC from Agent
@@ -113,6 +120,31 @@ func (m *DockerStreamManager) HandleDockerStream(stream proto.HostMonitor_Docker
 	session.mu.Unlock()
 
 	logrus.Infof("[DockerStreamMgr] Agent ready for session: %s, operation: %s", sessionID, session.Operation)
+
+	// Send operation initialization message to Agent
+	operationInit := &proto.DockerStreamInit{
+		SessionId:   sessionID,
+		Operation:   session.Operation,
+		InstanceId:  session.InstanceID.String(),
+		ContainerId: session.ContainerID,
+		ImageName:   session.ImageName,
+		Params:      session.Params,
+	}
+
+	if err := stream.Send(&proto.DockerStreamMessage{
+		Message: &proto.DockerStreamMessage_Init{
+			Init: operationInit,
+		},
+	}); err != nil {
+		logrus.Errorf("[DockerStreamMgr] Failed to send operation init: %v", err)
+		return err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"session_id": sessionID,
+		"operation":  session.Operation,
+		"image_name": session.ImageName,
+	}).Info("[DockerStreamMgr] Sent operation initialization to Agent")
 
 	// Goroutine: Forward messages from Server (InputChan) to Agent stream
 	go func() {
@@ -207,7 +239,7 @@ func (m *DockerStreamManager) HandleDockerStream(stream proto.HostMonitor_Docker
 }
 
 // CreateSession creates a new Docker stream session and triggers Agent to connect
-func (m *DockerStreamManager) CreateSession(instanceID uuid.UUID, operation string, containerID, imageName string, params map[string]string) (*DockerStreamSession, error) {
+func (m *DockerStreamManager) CreateSession(instanceID uuid.UUID, agentID string, operation string, containerID, imageName string, params map[string]string) (interface{}, error) {
 	sessionID := uuid.New().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) // 5 min timeout
 
@@ -230,8 +262,53 @@ func (m *DockerStreamManager) CreateSession(instanceID uuid.UUID, operation stri
 	m.sessions.Store(sessionID, session)
 	logrus.Infof("[DockerStreamMgr] Created session: %s, instance: %s, operation: %s", sessionID, instanceID, operation)
 
-	// TODO: Send task to Agent to initiate DockerStream connection
-	// This will be handled by queueing a task through AgentManager
+	// Convert agentID to host UUID
+	// Query chain: agentID → AgentConnection.HostNodeID → HostNode.ID
+	agentUUID, err := uuid.Parse(agentID)
+	if err != nil {
+		m.CloseSession(sessionID)
+		return nil, fmt.Errorf("invalid agent ID format: %w", err)
+	}
+
+	var agentConn models.AgentConnection
+	if err := m.db.Where("id = ?", agentUUID).First(&agentConn).Error; err != nil {
+		m.CloseSession(sessionID)
+		return nil, fmt.Errorf("failed to find agent connection: %w", err)
+	}
+
+	var hostNode models.HostNode
+	if err := m.db.Where("id = ?", agentConn.HostNodeID).First(&hostNode).Error; err != nil {
+		m.CloseSession(sessionID)
+		return nil, fmt.Errorf("failed to find host node: %w", err)
+	}
+
+	hostUUID := hostNode.ID.String()
+
+	// Queue task to Agent to initiate DockerStream connection
+	task := &proto.AgentTask{
+		TaskId:   sessionID,
+		TaskType: "docker_stream",
+		Params: map[string]string{
+			"session_id":   sessionID,
+			"instance_id":  instanceID.String(),
+			"operation":    operation,
+			"container_id": containerID,
+			"image_name":   imageName,
+		},
+	}
+
+	// Add all custom params
+	for k, v := range params {
+		task.Params[k] = v
+	}
+
+	if err := m.agentManager.QueueTask(hostUUID, task); err != nil {
+		// Cleanup session on error
+		m.CloseSession(sessionID)
+		return nil, fmt.Errorf("failed to queue docker_stream task: %w", err)
+	}
+
+	logrus.Infof("[DockerStreamMgr] Queued docker_stream task to host: %s (agent: %s)", hostUUID, agentID)
 
 	return session, nil
 }

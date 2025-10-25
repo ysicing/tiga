@@ -19,10 +19,11 @@ import (
 
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
-	authservices "github.com/ysicing/tiga/internal/services/auth"
-	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/proto"
+
+	authservices "github.com/ysicing/tiga/internal/services/auth"
+	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 )
 
 // TerminalHandler handles Docker container terminal operations
@@ -300,7 +301,7 @@ var upgrader = websocket.Upgrader{
 // @Description Establish WebSocket connection for Docker container terminal
 // @Tags docker-terminal
 // @Param session_id path string true "Session ID"
-// @Param token query string true "JWT Token"
+// @Security BearerAuth
 // @Router /api/v1/docker/terminal/{session_id} [get]
 func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 	sessionIDStr := c.Param("session_id")
@@ -310,17 +311,10 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 		return
 	}
 
-	// Verify JWT token from query parameter (WebSocket doesn't support headers)
-	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
-		return
-	}
-
-	// Validate JWT token
-	claims, err := h.jwtManager.ValidateToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+	// Get username from JWT middleware context
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
@@ -349,9 +343,16 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 
 	logrus.WithFields(logrus.Fields{
 		"session_id":   session.ID,
-		"user":         claims.Username,
+		"user":         username,
 		"container_id": session.ContainerID,
 	}).Info("WebSocket terminal connection established")
+
+	// Get Docker instance to find associated agent
+	var instance models.DockerInstance
+	if err := h.db.Where("id = ?", session.InstanceID).First(&instance).Error; err != nil {
+		h.sendError(conn, "INSTANCE_NOT_FOUND", fmt.Sprintf("Failed to find Docker instance: %v", err))
+		return
+	}
 
 	// Create Docker stream session for terminal exec
 	params := map[string]string{
@@ -360,8 +361,9 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 		"cols":  fmt.Sprintf("%d", session.Cols),
 	}
 
-	dockerSession, err := h.dockerStreamManager.CreateSession(
+	dockerSessionInterface, err := h.dockerStreamManager.CreateSession(
 		session.InstanceID,
+		instance.AgentID.String(),
 		"exec_container",
 		session.ContainerID,
 		"",
@@ -371,14 +373,15 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 		h.sendError(conn, "SESSION_CREATE_FAILED", fmt.Sprintf("Failed to create stream session: %v", err))
 		return
 	}
-	defer h.dockerStreamManager.CloseSession(dockerSession.SessionID)
 
-	// Trigger Agent to connect
-	if err := h.triggerAgentConnection(dockerSession); err != nil {
-		logrus.WithError(err).Error("Failed to trigger Agent connection")
-		h.sendError(conn, "AGENT_TRIGGER_FAILED", fmt.Sprintf("Failed to trigger Agent: %v", err))
+	// Type assert to *host.DockerStreamSession
+	dockerSession, ok := dockerSessionInterface.(*host.DockerStreamSession)
+	if !ok {
+		logrus.Error("Failed to cast session to *host.DockerStreamSession")
+		h.sendError(conn, "SESSION_TYPE_ERROR", "Internal error: invalid session type")
 		return
 	}
+	defer h.dockerStreamManager.CloseSession(dockerSession.SessionID)
 
 	// Wait for Agent to be ready
 	if err := dockerSession.WaitForReady(10 * time.Second); err != nil {
@@ -711,52 +714,4 @@ func (h *TerminalHandler) finalizeRecording(ctx context.Context, session *Termin
 		"file_size":    recording.FileSize,
 		"path":         storagePath,
 	}).Info("Terminal recording saved successfully")
-}
-
-// triggerAgentConnection sends a task to Agent to initiate DockerStream connection
-func (h *TerminalHandler) triggerAgentConnection(dockerSession *host.DockerStreamSession) error {
-	// Get Docker instance to find associated agent
-	var instance models.DockerInstance
-	if err := h.db.Where("id = ?", dockerSession.InstanceID).First(&instance).Error; err != nil {
-		return fmt.Errorf("failed to find Docker instance: %w", err)
-	}
-
-	// Get agent connection to get host UUID
-	var agentConn models.AgentConnection
-	if err := h.db.Where("id = ?", instance.AgentID).First(&agentConn).Error; err != nil {
-		return fmt.Errorf("failed to find agent connection: %w", err)
-	}
-
-	// Get host node to get UUID
-	var hostNode models.HostNode
-	if err := h.db.Where("id = ?", agentConn.HostNodeID).First(&hostNode).Error; err != nil {
-		return fmt.Errorf("failed to find host node: %w", err)
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"session_id":  dockerSession.SessionID,
-		"instance_id": dockerSession.InstanceID,
-		"agent_id":    instance.AgentID,
-		"host_uuid":   hostNode.ID.String(),
-	}).Info("Triggering Agent DockerStream connection for terminal")
-
-	// Create docker_stream task
-	task := &proto.AgentTask{
-		TaskId:   dockerSession.SessionID,
-		TaskType: "docker_stream",
-		Params: map[string]string{
-			"session_id":   dockerSession.SessionID,
-			"operation":    dockerSession.Operation,
-			"container_id": dockerSession.ContainerID,
-			"image_name":   dockerSession.ImageName,
-		},
-	}
-
-	// Add session params
-	for k, v := range dockerSession.Params {
-		task.Params[k] = v
-	}
-
-	// Queue task (non-blocking, no wait for result)
-	return h.agentManager.QueueTask(hostNode.ID.String(), task)
 }

@@ -96,8 +96,8 @@ export function ImagePullDialog({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
           },
+          credentials: 'include', // Use cookie-based auth like apiClient
           body: JSON.stringify({
             image: imageName.trim(),
             registry_auth: registryAuth.trim() || undefined,
@@ -141,6 +141,18 @@ export function ImagePullDialog({
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6))
+
+              // Handle completion event
+              if (data.status === 'completed') {
+                setPullState('success')
+                toast.success(`镜像 ${imageName} 拉取成功`)
+                // Invalidate all images queries for this instance (prefix match)
+                queryClient.invalidateQueries({
+                  queryKey: ['docker', 'instance', instanceId, 'images'],
+                  exact: false, // Match all queries with this prefix
+                })
+                return // Exit the read loop
+              }
 
               // Handle different event types
               if (data.error) {

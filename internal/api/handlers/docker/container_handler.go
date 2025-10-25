@@ -7,8 +7,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/services/docker"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
@@ -96,7 +97,11 @@ func (h *ContainerHandler) GetContainers(c *gin.Context) {
 	// TODO: Implement server-side pagination if needed
 	total := int64(len(resp.Containers))
 
-	basehandlers.RespondPaginated(c, resp.Containers, page, pageSize, total)
+	// Return data in the format expected by frontend: { containers: [...], total: ... }
+	basehandlers.RespondPaginated(c, map[string]interface{}{
+		"containers": resp.Containers,
+		"total":      total,
+	}, page, pageSize, total)
 }
 
 // GetContainer godoc

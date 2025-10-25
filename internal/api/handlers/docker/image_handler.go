@@ -3,14 +3,16 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/services/docker"
+	"github.com/ysicing/tiga/internal/services/host"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
@@ -71,7 +73,11 @@ func (h *ImageHandler) GetImages(c *gin.Context) {
 		return
 	}
 
-	basehandlers.RespondSuccess(c, resp.Images)
+	// Return response with images array and total count
+	basehandlers.RespondSuccess(c, map[string]interface{}{
+		"images": resp.Images,
+		"total":  len(resp.Images),
+	})
 }
 
 // GetImage godoc
@@ -289,7 +295,7 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 	}
 
 	// Start pull image stream
-	stream, err := h.imageService.PullImage(c.Request.Context(), instanceID, req.Image, req.RegistryAuth)
+	sessionInterface, err := h.imageService.PullImage(c.Request.Context(), instanceID, req.Image, req.RegistryAuth)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id": instanceID,
@@ -300,14 +306,19 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 		return
 	}
 
+	// Type assert to *host.DockerStreamSession
+	session, ok := sessionInterface.(*host.DockerStreamSession)
+	if !ok {
+		logrus.Error("Failed to cast session to *host.DockerStreamSession")
+		basehandlers.RespondInternalError(c, fmt.Errorf("internal error: invalid session type"))
+		return
+	}
+
 	// Set SSE headers
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
-
-	// Create a channel to signal when to stop
-	clientGone := c.Request.Context().Done()
 
 	// Create flusher for immediate data sending
 	flusher, ok := c.Writer.(interface{ Flush() })
@@ -320,8 +331,21 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 	logrus.WithFields(logrus.Fields{
 		"instance_id": instanceID,
 		"image":       req.Image,
+		"session_id":  session.SessionID,
 		"user":        username,
 	}).Info("Starting image pull stream")
+
+	// Wait for Agent to connect and be ready (30 second timeout)
+	if err := session.WaitForReady(30 * time.Second); err != nil {
+		logrus.WithError(err).Error("Agent failed to connect")
+		errorData := map[string]interface{}{
+			"error": "Agent did not connect in time",
+		}
+		errorJSON, _ := json.Marshal(errorData)
+		fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", errorJSON)
+		flusher.Flush()
+		return
+	}
 
 	pullSuccess := false
 	pullError := ""
@@ -329,7 +353,7 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 	// Stream pull progress to client
 	for {
 		select {
-		case <-clientGone:
+		case <-c.Request.Context().Done():
 			// Client disconnected
 			logrus.WithFields(logrus.Fields{
 				"instance_id": instanceID,
@@ -340,65 +364,76 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 			_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
 			return
 
-		default:
-			// Read progress from gRPC stream
-			progress, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
-					// Stream ended normally
-					pullSuccess = true
-					logrus.WithFields(logrus.Fields{
-						"instance_id": instanceID,
-						"image":       req.Image,
-					}).Info("Image pull completed")
-
-					// Send completion event
-					completionData := map[string]interface{}{
-						"status":  "completed",
-						"message": "Image pulled successfully",
-					}
-					completionJSON, _ := json.Marshal(completionData)
-					fmt.Fprintf(c.Writer, "event: complete\ndata: %s\n\n", completionJSON)
-					flusher.Flush()
-
-					// Create audit log
-					_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
-					return
-				}
-
-				// Stream error
-				pullSuccess = false
-				pullError = err.Error()
-				logrus.WithError(err).WithFields(logrus.Fields{
-					"instance_id": instanceID,
-					"image":       req.Image,
-				}).Error("Error during image pull")
-
-				// Send error event
-				errorData := map[string]interface{}{
-					"error":   err.Error(),
-					"message": "Failed to pull image",
-				}
-				errorJSON, _ := json.Marshal(errorData)
-				fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", errorJSON)
-				flusher.Flush()
-
-				// Create audit log
-				_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
+		case data, ok := <-session.DataChan:
+			if !ok {
+				// DataChan closed
 				return
 			}
 
-			// Convert progress to JSON
-			progressJSON, err := json.Marshal(progress)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to marshal progress to JSON")
+			// Parse and forward progress data
+			var progressData map[string]interface{}
+			if err := json.Unmarshal(data.Data, &progressData); err != nil {
+				logrus.WithError(err).Warn("Failed to parse progress data")
 				continue
 			}
 
 			// Send progress as SSE event
-			// Format: data: {json}\n\n
+			progressJSON, _ := json.Marshal(progressData)
 			fmt.Fprintf(c.Writer, "data: %s\n\n", progressJSON)
 			flusher.Flush()
+
+		case streamErr, ok := <-session.ErrorChan:
+			if !ok {
+				return
+			}
+
+			// Stream error from Agent
+			pullSuccess = false
+			pullError = streamErr.Error
+			logrus.WithFields(logrus.Fields{
+				"instance_id": instanceID,
+				"image":       req.Image,
+				"error":       pullError,
+			}).Error("Error during image pull")
+
+			// Send error event
+			errorData := map[string]interface{}{
+				"error":   pullError,
+				"message": "Failed to pull image",
+			}
+			errorJSON, _ := json.Marshal(errorData)
+			fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", errorJSON)
+			flusher.Flush()
+
+			// Create audit log
+			_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
+			return
+
+		case closeMsg, ok := <-session.CloseChan:
+			if !ok {
+				return
+			}
+
+			// Stream completed normally
+			pullSuccess = closeMsg.Reason == "completed"
+			logrus.WithFields(logrus.Fields{
+				"instance_id": instanceID,
+				"image":       req.Image,
+				"reason":      closeMsg.Reason,
+			}).Info("Image pull stream closed")
+
+			// Send completion event as data (not named event)
+			completionData := map[string]interface{}{
+				"status":  "completed",
+				"message": "Image pulled successfully",
+			}
+			completionJSON, _ := json.Marshal(completionData)
+			fmt.Fprintf(c.Writer, "data: %s\n\n", completionJSON)
+			flusher.Flush()
+
+			// Create audit log
+			_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
+			return
 		}
 	}
 }

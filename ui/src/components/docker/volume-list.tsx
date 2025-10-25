@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import {
-  Volume,
   useVolumes,
   useDeleteVolume,
   usePruneVolumes,
@@ -158,13 +157,61 @@ export function VolumeList({ instanceId }: VolumeListProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>卷列表</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>卷列表</CardTitle>
+              <CardDescription className="mt-1 flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                正在加载卷列表...
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16" />
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>名称</TableHead>
+                  <TableHead>驱动</TableHead>
+                  <TableHead>挂载点</TableHead>
+                  <TableHead>范围</TableHead>
+                  <TableHead>大小</TableHead>
+                  <TableHead>引用计数</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-48" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-64" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-8" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -224,8 +271,13 @@ export function VolumeList({ instanceId }: VolumeListProps) {
                 <IconPlus className="w-4 h-4 mr-2" />
                 创建卷
               </Button>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <IconRefresh className="w-4 h-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                <IconRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </div>

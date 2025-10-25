@@ -11,8 +11,9 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/models"
-	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 	"github.com/ysicing/tiga/proto"
+
+	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
 const (

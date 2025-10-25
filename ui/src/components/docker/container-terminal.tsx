@@ -64,6 +64,7 @@ export function ContainerTerminal({
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const networkStatsRef = useRef({
     lastReset: Date.now(),
     bytesReceived: 0,
@@ -197,8 +198,20 @@ export function ContainerTerminal({
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(searchAddon)
     terminal.loadAddon(webLinksAddon)
-    terminal.open(terminalRef.current)
-    fitAddon.fit()
+
+    // Safely open terminal
+    try {
+      terminal.open(terminalRef.current)
+
+      // Initial fit and delayed fit to ensure proper sizing
+      fitAddon.fit()
+      setTimeout(() => fitAddon.fit(), 100)
+      setTimeout(() => fitAddon.fit(), 300)
+    } catch (error) {
+      console.error('Failed to open terminal:', error)
+      return
+    }
+
     xtermRef.current = terminal
     fitAddonRef.current = fitAddon
 
@@ -219,165 +232,246 @@ export function ContainerTerminal({
     const handleResize = () => fitAddon.fit()
     window.addEventListener('resize', handleResize)
 
-    // WebSocket connection
-    setIsConnected(false)
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const isDev = process.env.NODE_ENV === 'development'
-    const host = isDev ? 'localhost:12306' : window.location.host
-    const wsUrl = `${protocol}//${host}/api/v1/docker/instances/${instanceId}/containers/${containerId}/terminal`
-    const websocket = new WebSocket(wsUrl)
-    wsRef.current = websocket
+    const handleWheelEvent = (e: WheelEvent | TouchEvent) => {
+      e.stopPropagation()
+      e.preventDefault()
+    }
 
-    websocket.onopen = () => {
-      setIsConnected(true)
+    // Create terminal session first, then establish WebSocket connection
+    setIsConnected(false)
+
+    // Track if component is still mounted (to prevent memory leaks)
+    let isMounted = true
+
+    const initializeTerminal = async () => {
+      try {
+        // Step 1: Create terminal session via REST API
+        const response = await fetch(
+          `/api/v1/docker/instances/${instanceId}/containers/${containerId}/terminal`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              rows: 30,
+              cols: 120,
+              shell: '/bin/sh',
+            }),
+          }
+        )
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error?.message || '创建终端会话失败')
+        }
+
+        const data = await response.json()
+        if (!data.success || !data.data?.session_id) {
+          throw new Error('Invalid session response')
+        }
+
+        const sessionId = data.data.session_id
+
+        // Step 2: Build WebSocket URL (similar to host terminal)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/docker/terminal/${sessionId}`
+
+        console.log('[Docker Terminal] Creating WebSocket connection to:', wsUrl)
+
+        const websocket = new WebSocket(wsUrl)
+        wsRef.current = websocket
+
+        // Set up event handlers immediately (before returning)
+        // This ensures handlers are set even if cleanup happens quickly
+        websocket.onopen = () => {
+          // Check if this WebSocket is still the current one (not replaced by StrictMode remount)
+          if (wsRef.current !== websocket) {
+            console.log('[Docker Terminal] WebSocket replaced, closing old connection')
+            websocket.close()
+            return
+          }
+          if (!isMounted) {
+            console.log('[Docker Terminal] Component unmounted, closing WebSocket')
+            websocket.close()
+            return
+          }
+          console.log('[Docker Terminal] WebSocket connection opened')
+          setIsConnected(true)
       networkStatsRef.current = {
         lastReset: Date.now(),
         bytesReceived: 0,
         bytesSent: 0,
         lastUpdate: Date.now(),
       }
-      setNetworkSpeed({ upload: 0, download: 0 })
+          setNetworkSpeed({ upload: 0, download: 0 })
 
-      // Network speed monitoring
-      if (speedUpdateTimerRef.current)
-        clearInterval(speedUpdateTimerRef.current)
-      speedUpdateTimerRef.current = setInterval(() => {
-        const now = Date.now()
-        const stats = networkStatsRef.current
-        const timeDiff = (now - stats.lastReset) / 1000
-        if (timeDiff > 0) {
-          setNetworkSpeed({
-            upload: stats.bytesSent / timeDiff,
-            download: stats.bytesReceived / timeDiff,
-          })
-          if (timeDiff >= 3) {
-            stats.lastReset = now
-            stats.bytesSent = 0
-            stats.bytesReceived = 0
+          // Ensure terminal fits container after connection
+          if (fitAddonRef.current) {
+            setTimeout(() => {
+              fitAddonRef.current?.fit()
+            }, 100)
+          }
+
+          // Network speed monitoring
+          if (speedUpdateTimerRef.current)
+            clearInterval(speedUpdateTimerRef.current)
+          speedUpdateTimerRef.current = setInterval(() => {
+            const now = Date.now()
+            const stats = networkStatsRef.current
+            const timeDiff = (now - stats.lastReset) / 1000
+            if (timeDiff > 0) {
+              setNetworkSpeed({
+                upload: stats.bytesSent / timeDiff,
+                download: stats.bytesReceived / timeDiff,
+              })
+              if (timeDiff >= 3) {
+                stats.lastReset = now
+                stats.bytesSent = 0
+                stats.bytesReceived = 0
+              }
+            }
+          }, 500)
+
+          // Ping timer (keep-alive)
+          if (pingTimerRef.current) clearInterval(pingTimerRef.current)
+          pingTimerRef.current = setInterval(() => {
+            if (websocket.readyState === WebSocket.OPEN) {
+              const pingMessage = JSON.stringify({ type: 'ping' })
+              websocket.send(pingMessage)
+              updateNetworkStats(new Blob([pingMessage]).size, true)
+            }
+          }, 30000)
+
+          terminal.writeln(`\x1b[32mConnected to container: ${containerName}\x1b[0m`)
+          terminal.writeln('')
+        }
+
+        websocket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data)
+            const dataSize = new Blob([event.data]).size
+            updateNetworkStats(dataSize, false)
+
+            console.log('[Docker Terminal] Message received:', message.type)
+
+            switch (message.type) {
+              case 'output':
+                // Container output (stdout/stderr combined)
+                terminal.write(message.data)
+                break
+              case 'error':
+                console.error('[Docker Terminal] Error message:', message)
+                terminal.writeln(`\x1b[31mError: ${message.message || message.data}\x1b[0m`)
+                setIsConnected(false)
+                break
+              case 'exit':
+                console.log('[Docker Terminal] Exit message:', message)
+                terminal.writeln(
+                  `\x1b[33mProcess exited with code: ${message.exit_code || message.code}\x1b[0m`
+                )
+                setIsConnected(false)
+                break
+              case 'pong':
+                // Keep-alive response, no action needed
+                break
+            }
+          } catch (err) {
+            console.error('[Docker Terminal] Failed to parse WebSocket message:', err, event.data)
           }
         }
-      }, 500)
 
-      // Ping timer (keep-alive)
-      if (pingTimerRef.current) clearInterval(pingTimerRef.current)
-      pingTimerRef.current = setInterval(() => {
-        if (websocket.readyState === WebSocket.OPEN) {
-          const pingMessage = JSON.stringify({ type: 'ping' })
-          websocket.send(pingMessage)
-          updateNetworkStats(new Blob([pingMessage]).size, true)
+        websocket.onerror = (error) => {
+          console.error('[Docker Terminal] WebSocket error:', error)
+          terminal.writeln('\x1b[31mWebSocket connection error\x1b[0m')
+          setIsConnected(false)
         }
-      }, 30000)
 
-      terminal.writeln(`\x1b[32mConnected to container: ${containerName}\x1b[0m`)
-      terminal.writeln('')
-    }
-
-    websocket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data)
-        const dataSize = new Blob([event.data]).size
-        updateNetworkStats(dataSize, false)
-
-        switch (message.type) {
-          case 'output':
-            // Container output (stdout/stderr combined)
-            terminal.write(message.data)
-            break
-          case 'error':
-            terminal.writeln(`\x1b[31mError: ${message.data}\x1b[0m`)
-            setIsConnected(false)
-            break
-          case 'exit':
-            terminal.writeln(
-              `\x1b[33mProcess exited with code: ${message.code}\x1b[0m`
-            )
-            setIsConnected(false)
-            break
-          case 'pong':
-            // Keep-alive response, no action needed
-            break
+        websocket.onclose = (event) => {
+          console.log('[Docker Terminal] WebSocket closed:', { code: event.code, reason: event.reason })
+          setIsConnected(false)
+          setNetworkSpeed({ upload: 0, download: 0 })
+          if (speedUpdateTimerRef.current) {
+            clearInterval(speedUpdateTimerRef.current)
+            speedUpdateTimerRef.current = null
+          }
+          if (pingTimerRef.current) {
+            clearInterval(pingTimerRef.current)
+            pingTimerRef.current = null
+          }
+          if (event.code !== 1000) {
+            terminal.writeln('\x1b[31mConnection closed unexpectedly\x1b[0m')
+            terminal.writeln(`\x1b[33mCode: ${event.code}, Reason: ${event.reason || 'Unknown'}\x1b[0m`)
+          } else {
+            terminal.writeln('\x1b[32mConnection closed\x1b[0m')
+          }
         }
-      } catch (err) {
-        console.error('Failed to parse WebSocket message:', err)
+
+        // Send user input to container
+        terminal.onData((data) => {
+          if (websocket.readyState === WebSocket.OPEN) {
+            const message = JSON.stringify({ type: 'input', data })
+            websocket.send(message)
+            updateNetworkStats(new Blob([message]).size, true)
+          }
+        })
+
+        // Handle terminal resize
+        const handleTerminalResize = () => {
+          if (fitAddonRef.current && websocket.readyState === WebSocket.OPEN) {
+            const { cols, rows } = terminal
+            const message = JSON.stringify({ type: 'resize', cols, rows })
+            websocket.send(message)
+            updateNetworkStats(new Blob([message]).size, true)
+          }
+        }
+        setTimeout(() => handleTerminalResize(), 100)
+
+        if (fitAddonRef.current && terminal.element) {
+          resizeObserverRef.current = new ResizeObserver(handleTerminalResize)
+          resizeObserverRef.current.observe(terminal.element)
+        }
+
+        const currentTerminalRef = terminalRef.current
+        if (currentTerminalRef) {
+          currentTerminalRef.addEventListener('wheel', handleWheelEvent, {
+            passive: false,
+          })
+          currentTerminalRef.addEventListener('touchmove', handleWheelEvent, {
+            passive: false,
+          })
+        }
+      } catch (error: any) {
+        terminal.writeln(`\r\n\x1b[31m✗ ${error.message}\x1b[0m`)
+        terminal.writeln('\r\n\x1b[33mPlease check:')
+        terminal.writeln('  1. Docker instance is online')
+        terminal.writeln('  2. Container is running')
+        terminal.writeln('  3. Network connection is stable\x1b[0m\r\n')
+        throw error
       }
     }
 
-    websocket.onerror = (error) => {
-      console.error('WebSocket error:', error)
-      terminal.writeln('\x1b[31mWebSocket connection error\x1b[0m')
+    // Initialize terminal session and WebSocket
+    initializeTerminal().catch((error) => {
+      console.error('[Docker Terminal] Failed to initialize terminal:', error)
       setIsConnected(false)
-    }
-
-    websocket.onclose = (event) => {
-      setIsConnected(false)
-      setNetworkSpeed({ upload: 0, download: 0 })
-      if (speedUpdateTimerRef.current) {
-        clearInterval(speedUpdateTimerRef.current)
-        speedUpdateTimerRef.current = null
-      }
-      if (pingTimerRef.current) {
-        clearInterval(pingTimerRef.current)
-        pingTimerRef.current = null
-      }
-      if (event.code !== 1000) {
-        terminal.writeln('\x1b[31mConnection closed unexpectedly\x1b[0m')
-      } else {
-        terminal.writeln('\x1b[32mConnection closed\x1b[0m')
-      }
-    }
-
-    // Send user input to container
-    terminal.onData((data) => {
-      if (websocket.readyState === WebSocket.OPEN) {
-        const message = JSON.stringify({ type: 'input', data })
-        websocket.send(message)
-        updateNetworkStats(new Blob([message]).size, true)
-      }
     })
 
-    // Handle terminal resize
-    const handleTerminalResize = () => {
-      if (fitAddonRef.current && websocket.readyState === WebSocket.OPEN) {
-        const { cols, rows } = terminal
-        const message = JSON.stringify({ type: 'resize', cols, rows })
-        websocket.send(message)
-        updateNetworkStats(new Blob([message]).size, true)
-      }
-    }
-    setTimeout(() => handleTerminalResize(), 100)
-
-    let resizeObserver: ResizeObserver | null = null
-    if (fitAddonRef.current && terminal.element) {
-      resizeObserver = new ResizeObserver(handleTerminalResize)
-      resizeObserver.observe(terminal.element)
-    }
-
-    const handleWheelEvent = (e: WheelEvent | TouchEvent) => {
-      e.stopPropagation()
-      e.preventDefault()
-    }
-
-    const currentTerminalRef = terminalRef.current
-    if (currentTerminalRef) {
-      currentTerminalRef.addEventListener('wheel', handleWheelEvent, {
-        passive: false,
-      })
-      currentTerminalRef.addEventListener('touchmove', handleWheelEvent, {
-        passive: false,
-      })
-    }
-
     return () => {
+      isMounted = false  // Mark component as unmounted
       window.removeEventListener('resize', handleResize)
-      if (resizeObserver) {
-        resizeObserver.disconnect()
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect()
       }
-      if (currentTerminalRef) {
-        currentTerminalRef.removeEventListener('wheel', handleWheelEvent)
-        currentTerminalRef.removeEventListener('touchmove', handleWheelEvent)
+      if (terminalRef.current) {
+        terminalRef.current.removeEventListener('wheel', handleWheelEvent)
+        terminalRef.current.removeEventListener('touchmove', handleWheelEvent)
       }
       terminal.dispose()
-      websocket.close()
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
       if (speedUpdateTimerRef.current)
         clearInterval(speedUpdateTimerRef.current)
       if (pingTimerRef.current) clearInterval(pingTimerRef.current)
@@ -406,12 +500,12 @@ export function ContainerTerminal({
     <Card
       className={`flex flex-col gap-0 py-2 ${isFullscreen ? 'fixed inset-0 z-50 h-[100dvh]' : 'h-[calc(100dvh-180px)]'}`}
     >
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <IconTerminal className="h-5 w-5" />
-              Container Terminal
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0 flex-shrink">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2 whitespace-nowrap">
+              <IconTerminal className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+              <span className="hidden sm:inline">Container Terminal</span>
             </CardTitle>
             <ConnectionIndicator
               isConnected={isConnected}
@@ -425,9 +519,9 @@ export function ContainerTerminal({
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Container Name Badge */}
-            <span className="px-2 py-1 text-xs font-mono bg-muted rounded">
+            <span className="hidden md:inline-block px-2 py-1 text-xs font-mono bg-muted rounded truncate max-w-[120px]">
               {containerName}
             </span>
 
@@ -437,11 +531,11 @@ export function ContainerTerminal({
               size="sm"
               onClick={cycleTheme}
               title={`Current theme: ${TERMINAL_THEMES[terminalTheme].name}`}
-              className="relative"
+              className="relative h-8 w-8 p-0"
             >
               <IconPalette className="h-4 w-4" />
               <div
-                className="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-gray-400"
+                className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-gray-400"
                 style={{
                   backgroundColor: TERMINAL_THEMES[terminalTheme].background,
                 }}
@@ -451,7 +545,7 @@ export function ContainerTerminal({
             {/* Settings */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
                   <IconSettings className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -560,11 +654,11 @@ export function ContainerTerminal({
             </Popover>
 
             {/* Clear Terminal */}
-            <Button variant="outline" size="sm" onClick={clearTerminal}>
+            <Button variant="outline" size="sm" onClick={clearTerminal} className="h-8 w-8 p-0">
               <IconClearAll className="h-4 w-4" />
             </Button>
 
-            <Button variant="outline" size="sm" onClick={toggleFullscreen}>
+            <Button variant="outline" size="sm" onClick={toggleFullscreen} className="h-8 w-8 p-0">
               {isFullscreen ? (
                 <IconMinimize className="h-4 w-4" />
               ) : (

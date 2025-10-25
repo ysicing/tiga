@@ -8,8 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ysicing/tiga/internal/docker"
-	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 	"github.com/ysicing/tiga/proto"
+
+	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
 // DockerTaskHandler handles Docker operation tasks sent by the server
@@ -26,8 +27,11 @@ func NewDockerTaskHandler() (*DockerTaskHandler, error) {
 		return nil, err
 	}
 
-	// Test Docker connection
-	if err := dockerClient.Ping(nil); err != nil {
+	// Test Docker connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := dockerClient.Ping(ctx); err != nil {
 		dockerClient.Close()
 		return nil, err
 	}

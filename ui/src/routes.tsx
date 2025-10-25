@@ -27,7 +27,6 @@ import { DatabaseInstanceList } from './pages/database/instance-list'
 import { DbsOverview } from './pages/dbs-overview'
 // Docker Pages
 import { DockerOverview } from './pages/docker-overview'
-import { DockerInstanceList } from './pages/docker/instance-list'
 import { DockerInstanceDetail } from './pages/docker/instance-detail'
 import { DockerInstanceForm } from './pages/docker/instance-form'
 import { ContainersPage } from './pages/docker/containers-page'

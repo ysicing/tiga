@@ -951,6 +951,10 @@
     "images.description": "管理 Docker 镜像",
     "networks": "网络",
     "networks.description": "管理 Docker 网络",
+    "volumes": "卷",
+    "volumes.description": "管理 Docker 卷",
+    "recordings": "终端录像",
+    "recordings.description": "查看终端会话录像",
     "comingSoon.description": "Docker 管理功能正在开发中，敬请期待。"
   },
   "storage": {

@@ -28,7 +28,6 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
-	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
@@ -40,6 +39,7 @@ import (
 	"github.com/ysicing/tiga/proto"
 
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
+	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 )
 
 // Application represents the main application
@@ -351,11 +351,25 @@ func (a *Application) Run(ctx context.Context) error {
 	logrus.Info("Shutting down server...")
 	totalStart := time.Now()
 
-	// Shutdown gRPC server
+	// Shutdown gRPC server with timeout
 	if a.grpcServer != nil {
 		stepStart := time.Now()
-		a.grpcServer.GracefulStop()
-		logrus.Infof("[1/7] ✓ gRPC server stopped (%v)", time.Since(stepStart))
+
+		// Use goroutine + channel to implement timeout for GracefulStop
+		stopChan := make(chan struct{})
+		go func() {
+			a.grpcServer.GracefulStop()
+			close(stopChan)
+		}()
+
+		// Wait for graceful stop or timeout (5 seconds)
+		select {
+		case <-stopChan:
+			logrus.Infof("[1/7] ✓ gRPC server stopped gracefully (%v)", time.Since(stepStart))
+		case <-time.After(5 * time.Second):
+			logrus.Warnf("[1/7] ⚠ gRPC server graceful stop timeout, forcing stop (%v)", time.Since(stepStart))
+			a.grpcServer.Stop() // Force stop
+		}
 	}
 
 	// Shutdown HTTP server
@@ -696,6 +710,21 @@ func (a *Application) registerScheduledTasks(ctx context.Context) error {
 	}
 	logrus.Info("docker_audit_cleanup task registered successfully")
 
-	logrus.Infof("Successfully registered %d scheduled tasks", 6)
+	// Task 7: Terminal Recording Cleanup (runs daily at 3 AM)
+	// Clean up invalid terminal recordings (zero file size or duration)
+	recordingRepo := repository.NewTerminalRecordingRepository(a.db.DB)
+	recordingCleanupService := dockerservices.NewRecordingCleanupService(recordingRepo)
+	recordingCleanupTask := dockerservices.NewRecordingCleanupTask(recordingCleanupService)
+
+	if err := a.scheduler.AddCron(
+		recordingCleanupTask.Name(),
+		"0 3 * * *", // Daily at 3 AM
+		recordingCleanupTask,
+	); err != nil {
+		return fmt.Errorf("failed to register terminal_recording_cleanup task: %w", err)
+	}
+	logrus.Info("terminal_recording_cleanup task registered successfully")
+
+	logrus.Infof("Successfully registered %d scheduled tasks", 7)
 	return nil
 }

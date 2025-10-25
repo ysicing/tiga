@@ -9,10 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/host"
-	"github.com/ysicing/tiga/proto"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 )
 
 // ContainerStatsHandler handles Docker container stats API requests
@@ -58,25 +58,33 @@ func (h *ContainerStatsHandler) GetContainerStats(c *gin.Context) {
 		return
 	}
 
+	// Get Docker instance to find associated agent
+	var instance models.DockerInstance
+	if err := h.db.Where("id = ?", instanceID).First(&instance).Error; err != nil {
+		basehandlers.RespondInternalError(c, fmt.Errorf("failed to find Docker instance: %w", err))
+		return
+	}
+
 	// Create stream session for single stats query (stream=false)
 	params := map[string]string{
 		"stream": "false",
 	}
 
-	session, err := h.dockerStreamManager.CreateSession(instanceID, "get_stats", containerID, "", params)
+	sessionInterface, err := h.dockerStreamManager.CreateSession(instanceID, instance.AgentID.String(), "get_stats", containerID, "", params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create Docker stream session")
 		basehandlers.RespondInternalError(c, err)
 		return
 	}
-	defer h.dockerStreamManager.CloseSession(session.SessionID)
 
-	// Trigger Agent to connect
-	if err := h.triggerAgentConnection(session); err != nil {
-		logrus.WithError(err).Error("Failed to trigger Agent connection")
-		basehandlers.RespondInternalError(c, err)
+	// Type assert to *host.DockerStreamSession
+	session, ok := sessionInterface.(*host.DockerStreamSession)
+	if !ok {
+		logrus.Error("Failed to cast session to *host.DockerStreamSession")
+		basehandlers.RespondInternalError(c, fmt.Errorf("internal error: invalid session type"))
 		return
 	}
+	defer h.dockerStreamManager.CloseSession(session.SessionID)
 
 	// Wait for Agent to be ready
 	if err := session.WaitForReady(10 * time.Second); err != nil {
@@ -147,25 +155,33 @@ func (h *ContainerStatsHandler) GetContainerStatsStream(c *gin.Context) {
 		return
 	}
 
+	// Get Docker instance to find associated agent
+	var instance models.DockerInstance
+	if err := h.db.Where("id = ?", instanceID).First(&instance).Error; err != nil {
+		basehandlers.RespondInternalError(c, fmt.Errorf("failed to find Docker instance: %w", err))
+		return
+	}
+
 	// Create stream session for continuous stats (stream=true)
 	params := map[string]string{
 		"stream": "true",
 	}
 
-	session, err := h.dockerStreamManager.CreateSession(instanceID, "get_stats", containerID, "", params)
+	sessionInterface, err := h.dockerStreamManager.CreateSession(instanceID, instance.AgentID.String(), "get_stats", containerID, "", params)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create Docker stream session")
 		basehandlers.RespondInternalError(c, err)
 		return
 	}
-	defer h.dockerStreamManager.CloseSession(session.SessionID)
 
-	// Trigger Agent to connect
-	if err := h.triggerAgentConnection(session); err != nil {
-		logrus.WithError(err).Error("Failed to trigger Agent connection")
-		basehandlers.RespondInternalError(c, err)
+	// Type assert to *host.DockerStreamSession
+	session, ok := sessionInterface.(*host.DockerStreamSession)
+	if !ok {
+		logrus.Error("Failed to cast session to *host.DockerStreamSession")
+		basehandlers.RespondInternalError(c, fmt.Errorf("internal error: invalid session type"))
 		return
 	}
+	defer h.dockerStreamManager.CloseSession(session.SessionID)
 
 	// Wait for Agent to be ready
 	if err := session.WaitForReady(10 * time.Second); err != nil {
@@ -266,52 +282,4 @@ func (h *ContainerStatsHandler) GetContainerStatsStream(c *gin.Context) {
 			return
 		}
 	}
-}
-
-// triggerAgentConnection sends a task to Agent to initiate DockerStream connection
-func (h *ContainerStatsHandler) triggerAgentConnection(session *host.DockerStreamSession) error {
-	// Get Docker instance to find associated agent
-	var instance models.DockerInstance
-	if err := h.db.Where("id = ?", session.InstanceID).First(&instance).Error; err != nil {
-		return fmt.Errorf("failed to find Docker instance: %w", err)
-	}
-
-	// Get agent connection to get host UUID
-	var agentConn models.AgentConnection
-	if err := h.db.Where("id = ?", instance.AgentID).First(&agentConn).Error; err != nil {
-		return fmt.Errorf("failed to find agent connection: %w", err)
-	}
-
-	// Get host node to get UUID
-	var hostNode models.HostNode
-	if err := h.db.Where("id = ?", agentConn.HostNodeID).First(&hostNode).Error; err != nil {
-		return fmt.Errorf("failed to find host node: %w", err)
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"session_id":  session.SessionID,
-		"instance_id": session.InstanceID,
-		"agent_id":    instance.AgentID,
-		"host_uuid":   hostNode.ID.String(),
-	}).Info("Triggering Agent DockerStream connection")
-
-	// Create docker_stream task
-	task := &proto.AgentTask{
-		TaskId:   session.SessionID,
-		TaskType: "docker_stream",
-		Params: map[string]string{
-			"session_id":   session.SessionID,
-			"operation":    session.Operation,
-			"container_id": session.ContainerID,
-			"image_name":   session.ImageName,
-		},
-	}
-
-	// Add session params
-	for k, v := range session.Params {
-		task.Params[k] = v
-	}
-
-	// Queue task (non-blocking, no wait for result)
-	return h.agentManager.QueueTask(hostNode.ID.String(), task)
 }
