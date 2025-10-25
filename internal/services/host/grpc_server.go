@@ -15,17 +15,19 @@ import (
 // GRPCServer implements the HostMonitor gRPC service
 type GRPCServer struct {
 	proto.UnimplementedHostMonitorServer
-	agentManager    *AgentManager
-	terminalManager *TerminalManager
-	probeScheduler  *monitor.ServiceProbeScheduler
+	agentManager        *AgentManager
+	terminalManager     *TerminalManager
+	dockerStreamManager *DockerStreamManager
+	probeScheduler      *monitor.ServiceProbeScheduler
 }
 
 // NewGRPCServer creates a new gRPC server
-func NewGRPCServer(agentManager *AgentManager, terminalManager *TerminalManager, probeScheduler *monitor.ServiceProbeScheduler) *GRPCServer {
+func NewGRPCServer(agentManager *AgentManager, terminalManager *TerminalManager, dockerStreamManager *DockerStreamManager, probeScheduler *monitor.ServiceProbeScheduler) *GRPCServer {
 	return &GRPCServer{
-		agentManager:    agentManager,
-		terminalManager: terminalManager,
-		probeScheduler:  probeScheduler,
+		agentManager:        agentManager,
+		terminalManager:     terminalManager,
+		dockerStreamManager: dockerStreamManager,
+		probeScheduler:      probeScheduler,
 	}
 }
 
@@ -47,6 +49,11 @@ func (s *GRPCServer) Heartbeat(ctx context.Context, req *proto.HeartbeatRequest)
 // IOStream handles terminal I/O stream
 func (s *GRPCServer) IOStream(stream proto.HostMonitor_IOStreamServer) error {
 	return s.terminalManager.HandleIOStream(stream)
+}
+
+// DockerStream handles Docker streaming operations
+func (s *GRPCServer) DockerStream(stream proto.HostMonitor_DockerStreamServer) error {
+	return s.dockerStreamManager.HandleDockerStream(stream)
 }
 
 // ReportProbeResultBatch handles batch probe result reporting from Agents

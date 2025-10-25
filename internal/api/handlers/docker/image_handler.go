@@ -17,13 +17,13 @@ import (
 // ImageHandler handles Docker image API requests
 type ImageHandler struct {
 	imageService   *docker.ImageService
-	agentForwarder *docker.AgentForwarder
+	agentForwarder *docker.AgentForwarderV2
 }
 
 // NewImageHandler creates a new ImageHandler
 func NewImageHandler(
 	imageService *docker.ImageService,
-	agentForwarder *docker.AgentForwarder,
+	agentForwarder *docker.AgentForwarderV2,
 ) *ImageHandler {
 	return &ImageHandler{
 		imageService:   imageService,

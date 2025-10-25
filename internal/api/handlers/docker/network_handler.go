@@ -13,11 +13,11 @@ import (
 
 // NetworkHandler handles Docker network operations
 type NetworkHandler struct {
-	agentForwarder *docker.AgentForwarder
+	agentForwarder *docker.AgentForwarderV2
 }
 
 // NewNetworkHandler creates a new NetworkHandler instance
-func NewNetworkHandler(agentForwarder *docker.AgentForwarder) *NetworkHandler {
+func NewNetworkHandler(agentForwarder *docker.AgentForwarderV2) *NetworkHandler {
 	return &NetworkHandler{
 		agentForwarder: agentForwarder,
 	}

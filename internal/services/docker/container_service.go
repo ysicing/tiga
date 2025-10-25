@@ -16,7 +16,7 @@ import (
 type ContainerService struct {
 	db              *gorm.DB
 	instanceService *DockerInstanceService
-	agentForwarder  *AgentForwarder
+	agentForwarder  *AgentForwarderV2
 	enableAuditLog  bool
 }
 
@@ -24,7 +24,7 @@ type ContainerService struct {
 func NewContainerService(
 	db *gorm.DB,
 	instanceService *DockerInstanceService,
-	agentForwarder *AgentForwarder,
+	agentForwarder *AgentForwarderV2,
 ) *ContainerService {
 	return &ContainerService{
 		db:              db,

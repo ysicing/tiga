@@ -1,13 +1,17 @@
 package docker
 
 import (
+	"context"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/docker"
 )
@@ -15,18 +19,52 @@ import (
 // InstanceHandler handles Docker instance API requests
 type InstanceHandler struct {
 	instanceService *docker.DockerInstanceService
-	agentForwarder  *docker.AgentForwarder
+	agentForwarder  *docker.AgentForwarderV2
 }
 
 // NewInstanceHandler creates a new InstanceHandler
 func NewInstanceHandler(
 	instanceService *docker.DockerInstanceService,
-	agentForwarder *docker.AgentForwarder,
+	agentForwarder *docker.AgentForwarderV2,
 ) *InstanceHandler {
 	return &InstanceHandler{
 		instanceService: instanceService,
 		agentForwarder:  agentForwarder,
 	}
+}
+
+// DockerInstanceResponse represents the API response for a Docker instance with Agent info
+type DockerInstanceResponse struct {
+	ID          string   `json:"id"`
+	AgentID     string   `json:"agent_id"`
+	AgentName   string   `json:"agent_name"`
+	Name        string   `json:"name"`
+	Host        string   `json:"host"`        // Agent IP address
+	Port        int      `json:"port"`        // gRPC port (default: 50051)
+	Description string   `json:"description"`
+	Status      string   `json:"status"`      // online, offline, unknown, archived
+
+	// Docker daemon info
+	Version          string `json:"version,omitempty"`
+	APIVersion       string `json:"api_version,omitempty"`
+	OS               string `json:"os,omitempty"`
+	Architecture     string `json:"architecture,omitempty"`
+	KernelVersion    string `json:"kernel_version,omitempty"`
+	OperatingSystem  string `json:"operating_system,omitempty"`
+
+	// Resource counts
+	TotalContainers   int    `json:"total_containers,omitempty"`
+	RunningContainers int    `json:"running_containers,omitempty"`
+	TotalImages       int    `json:"total_images,omitempty"`
+
+	// Timestamps
+	LastSeenAt string    `json:"last_seen_at,omitempty"`
+	CreatedAt  string    `json:"created_at"`
+	UpdatedAt  string    `json:"updated_at"`
+
+	// Metadata
+	Labels      map[string]string `json:"labels,omitempty"`
+	Tags        []string          `json:"tags,omitempty"`
 }
 
 // GetInstances godoc
@@ -40,7 +78,7 @@ func NewInstanceHandler(
 // @Param status query string false "Filter by health status (online, offline, archived, unknown)"
 // @Param agent_id query string false "Filter by Agent ID (UUID)"
 // @Param search query string false "Search by name or description"
-// @Success 200 {object} handlers.PaginatedResponse{data=[]models.DockerInstance}
+// @Success 200 {object} handlers.PaginatedResponse{data=[]DockerInstanceResponse}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
 // @Router /api/v1/docker/instances [get]
@@ -85,7 +123,13 @@ func (h *InstanceHandler) GetInstances(c *gin.Context) {
 		return
 	}
 
-	basehandlers.RespondPaginated(c, instances, page, pageSize, total)
+	// Convert to response DTOs with Agent information
+	responses := make([]DockerInstanceResponse, len(instances))
+	for i, instance := range instances {
+		responses[i] = h.toResponse(c.Request.Context(), instance)
+	}
+
+	basehandlers.RespondPaginated(c, responses, page, pageSize, total)
 }
 
 // GetInstance godoc
@@ -95,7 +139,7 @@ func (h *InstanceHandler) GetInstances(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Instance ID (UUID)"
-// @Success 200 {object} handlers.SuccessResponse{data=models.DockerInstance}
+// @Success 200 {object} handlers.SuccessResponse{data=DockerInstanceResponse}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Router /api/v1/docker/instances/{id} [get]
@@ -114,7 +158,55 @@ func (h *InstanceHandler) GetInstance(c *gin.Context) {
 		return
 	}
 
-	basehandlers.RespondSuccess(c, instance)
+	response := h.toResponse(c.Request.Context(), instance)
+	basehandlers.RespondSuccess(c, response)
+}
+
+// toResponse converts a DockerInstance model to DockerInstanceResponse with Agent information
+func (h *InstanceHandler) toResponse(ctx context.Context, instance *models.DockerInstance) DockerInstanceResponse {
+	db := ctx.Value("db").(*gorm.DB)
+
+	response := DockerInstanceResponse{
+		ID:                instance.ID.String(),
+		AgentID:           instance.AgentID.String(),
+		Name:              instance.Name,
+		Description:       instance.Description,
+		Status:            instance.HealthStatus,
+		Version:           instance.DockerVersion,
+		APIVersion:        instance.APIVersion,
+		OS:                instance.OperatingSystem,
+		Architecture:      instance.Architecture,
+		KernelVersion:     instance.KernelVersion,
+		OperatingSystem:   instance.OperatingSystem,
+		TotalContainers:   instance.ContainerCount,
+		TotalImages:       instance.ImageCount,
+		Port:              50051, // Default gRPC port
+		Tags:              instance.Tags,
+		CreatedAt:         instance.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:         instance.UpdatedAt.Format(time.RFC3339),
+	}
+
+	if !instance.LastConnectedAt.IsZero() {
+		response.LastSeenAt = instance.LastConnectedAt.Format(time.RFC3339)
+	}
+
+	// Query Agent information from agent_connections table
+	var agentConn models.AgentConnection
+	if err := db.Where("id = ?", instance.AgentID).First(&agentConn).Error; err == nil {
+		response.Host = agentConn.IPAddress
+
+		// Get host node name as agent_name
+		var hostNode models.HostNode
+		if err := db.Where("id = ?", agentConn.HostNodeID).First(&hostNode).Error; err == nil {
+			response.AgentName = hostNode.Name
+		}
+	} else {
+		logrus.WithError(err).WithField("agent_id", instance.AgentID).Warn("Failed to get agent connection info")
+		response.Host = "unknown"
+		response.AgentName = "unknown"
+	}
+
+	return response
 }
 
 // CreateInstanceRequest represents the request body for creating a Docker instance
@@ -332,20 +424,20 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 
 	// Build info map
 	infoMap := map[string]interface{}{
-		"version":            dockerInfo.Version,
-		"api_version":        dockerInfo.ApiVersion,
-		"min_api_version":    dockerInfo.MinApiVersion,
-		"storage_driver":     dockerInfo.StorageDriver,
-		"operating_system":   dockerInfo.OperatingSystem,
-		"architecture":       dockerInfo.Arch,
-		"kernel_version":     dockerInfo.KernelVersion,
-		"mem_total":          dockerInfo.MemTotal,
-		"n_cpu":              dockerInfo.NCpu,
-		"containers":         dockerInfo.Containers,
-		"containers_running": dockerInfo.ContainersRunning,
-		"containers_paused":  dockerInfo.ContainersPaused,
-		"containers_stopped": dockerInfo.ContainersStopped,
-		"images":             dockerInfo.Images,
+		"version":            dockerInfo.Info.Driver,           // Using driver as version
+		"api_version":        "",                               // Not available in SystemInfo
+		"min_api_version":    "",                               // Not available in SystemInfo
+		"storage_driver":     dockerInfo.Info.Driver,
+		"operating_system":   dockerInfo.Info.OperatingSystem,
+		"architecture":       dockerInfo.Info.Architecture,
+		"kernel_version":     dockerInfo.Info.KernelVersion,
+		"mem_total":          dockerInfo.Info.MemTotal,
+		"n_cpu":              dockerInfo.Info.Ncpu,
+		"containers":         dockerInfo.Info.Containers,
+		"containers_running": dockerInfo.Info.ContainersRunning,
+		"containers_paused":  dockerInfo.Info.ContainersPaused,
+		"containers_stopped": dockerInfo.Info.ContainersStopped,
+		"images":             dockerInfo.Info.Images,
 	}
 
 	response := TestConnectionResponse{
@@ -356,7 +448,7 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 
 	logrus.WithFields(logrus.Fields{
 		"agent_id":       agentID,
-		"docker_version": dockerInfo.Version,
+		"docker_version": dockerInfo.Info.Driver,  // Using driver as version
 	}).Info("Docker connection test successful")
 
 	basehandlers.RespondSuccess(c, response)

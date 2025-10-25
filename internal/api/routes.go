@@ -49,7 +49,9 @@ func SetupRoutes(
 	hostService *hostservices.HostService,
 	stateCollector *hostservices.StateCollector,
 	terminalManager *hostservices.TerminalManager,
+	dockerStreamManager *hostservices.DockerStreamManager,
 	probeScheduler *monitorservices.ServiceProbeScheduler,
+	agentManager *hostservices.AgentManager,
 	cfg *config.Config,
 ) {
 	// Initialize global JWT auth middleware
@@ -148,8 +150,8 @@ func SetupRoutes(
 	)
 
 	// Docker management services
-	dockerAgentForwarder := dockerservices.NewAgentForwarder(db)
-	dockerInstanceService := dockerservices.NewDockerInstanceService(db, dockerAgentForwarder)
+	dockerAgentForwarder := dockerservices.NewAgentForwarderV2(agentManager, db)  // Use task-queue based forwarder
+	dockerInstanceService := dockerservices.NewDockerInstanceService(db)
 	dockerContainerService := dockerservices.NewContainerService(db, dockerInstanceService, dockerAgentForwarder)
 	dockerImageService := dockerservices.NewImageService(db, dockerInstanceService, dockerAgentForwarder)
 	dockerAuditService := dockerservices.NewAuditLogService(auditRepo)
@@ -162,9 +164,7 @@ func SetupRoutes(
 	probeService := monitorservices.NewServiceProbeService(serviceRepo, probeScheduler)
 	sessionManager := websshservices.NewSessionManager(db, "./data/recordings")
 
-	// Get agentManager from hostService (it's accessible via the service)
-	// We need it for WebSSH handler
-	agentManager := hostService.GetAgentManager()
+	// agentManager is already passed as a parameter, no need to get it from hostService
 
 	// Start background services
 	_ = alertservices.NewAlertEngine(monitorAlertRepo, hostRepo, serviceRepo) // Runs in background (monitor alerts)
@@ -249,8 +249,8 @@ func SetupRoutes(
 	// Docker management handlers
 	dockerInstanceHandler := dockerhandlers.NewInstanceHandler(dockerInstanceService, dockerAgentForwarder)
 	dockerContainerHandler := dockerhandlers.NewContainerHandler(dockerContainerService, dockerAgentForwarder)
-	dockerStatsHandler := dockerhandlers.NewContainerStatsHandler(dockerAgentForwarder)
-	dockerLogsHandler := dockerhandlers.NewContainerLogsHandler(dockerAgentForwarder)
+	dockerStatsHandler := dockerhandlers.NewContainerStatsHandler(dockerStreamManager, agentManager, db)
+	dockerLogsHandler := dockerhandlers.NewContainerLogsHandler(dockerStreamManager, agentManager, db)
 	dockerImageHandler := dockerhandlers.NewImageHandler(dockerImageService, dockerAgentForwarder)
 	dockerAuditHandler := dockerhandlers.NewAuditLogHandler(dockerAuditService)
 	dockerVolumeHandler := dockerhandlers.NewVolumeHandler(dockerAgentForwarder)
@@ -258,7 +258,7 @@ func SetupRoutes(
 	dockerSystemHandler := dockerhandlers.NewSystemHandler(dockerAgentForwarder)
 
 	// Terminal handlers (using terminalRecordingRepo created earlier)
-	dockerTerminalHandler := dockerhandlers.NewTerminalHandler(db, dockerAgentForwarder, dockerInstanceService, jwtManager, terminalRecordingRepo)
+	dockerTerminalHandler := dockerhandlers.NewTerminalHandler(db, dockerStreamManager, agentManager, dockerInstanceService, jwtManager, terminalRecordingRepo)
 	dockerRecordingHandler := dockerhandlers.NewRecordingHandler(db, terminalRecordingRepo)
 
 	// Host monitoring handlers

@@ -16,7 +16,7 @@ import (
 type ImageService struct {
 	db              *gorm.DB
 	instanceService *DockerInstanceService
-	agentForwarder  *AgentForwarder
+	agentForwarder  *AgentForwarderV2
 	enableAuditLog  bool
 }
 
@@ -24,7 +24,7 @@ type ImageService struct {
 func NewImageService(
 	db *gorm.DB,
 	instanceService *DockerInstanceService,
-	agentForwarder *AgentForwarder,
+	agentForwarder *AgentForwarderV2,
 ) *ImageService {
 	return &ImageService{
 		db:              db,
@@ -138,7 +138,12 @@ func (s *ImageService) TagImage(ctx context.Context, instanceID uuid.UUID, sourc
 
 // PullImage initiates an image pull (returns stream client for progress updates)
 // Note: Audit log is created when pull completes (in the caller that reads the stream)
+// TODO: PullImage is a streaming operation and cannot be implemented with task queue mode.
+// This needs to either use direct gRPC connection or be reimplemented as a non-streaming operation.
 func (s *ImageService) PullImage(ctx context.Context, instanceID uuid.UUID, image string, registryAuth string) (pb.DockerService_PullImageClient, error) {
+	return nil, fmt.Errorf("PullImage streaming operation is not supported in task queue mode - requires direct agent connection")
+
+	/* Original implementation - commented out until streaming is supported
 	// Pre-check: ensure instance is online
 	instance, err := s.instanceService.GetByID(ctx, instanceID)
 	if err != nil {
@@ -167,6 +172,7 @@ func (s *ImageService) PullImage(ctx context.Context, instanceID uuid.UUID, imag
 	}
 
 	return stream, nil
+	*/
 }
 
 // CreatePullAuditLog creates an audit log for image pull operation

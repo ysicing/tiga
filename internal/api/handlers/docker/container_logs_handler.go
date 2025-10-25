@@ -3,43 +3,46 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
-	"github.com/ysicing/tiga/internal/services/docker"
-	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
+	"github.com/ysicing/tiga/internal/models"
+	"github.com/ysicing/tiga/internal/services/host"
+	"github.com/ysicing/tiga/proto"
 )
 
 // ContainerLogsHandler handles Docker container logs API requests
 type ContainerLogsHandler struct {
-	agentForwarder *docker.AgentForwarder
+	dockerStreamManager *host.DockerStreamManager
+	agentManager        *host.AgentManager
+	db                  *gorm.DB
 }
 
 // NewContainerLogsHandler creates a new ContainerLogsHandler
-func NewContainerLogsHandler(agentForwarder *docker.AgentForwarder) *ContainerLogsHandler {
+func NewContainerLogsHandler(dockerStreamManager *host.DockerStreamManager, agentManager *host.AgentManager, db *gorm.DB) *ContainerLogsHandler {
 	return &ContainerLogsHandler{
-		agentForwarder: agentForwarder,
+		dockerStreamManager: dockerStreamManager,
+		agentManager:        agentManager,
+		db:                  db,
 	}
 }
 
 // GetContainerLogs godoc
 // @Summary Get container logs (historical)
-// @Description Get historical logs from a Docker container
+// @Description Get historical logs from a Docker container (non-streaming)
 // @Tags docker-containers
 // @Accept json
 // @Produce json
 // @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
-// @Param tail query int false "Number of lines to show from the end (default: 100)"
+// @Param tail query string false "Number of lines to show from the end (default: 100)"
 // @Param since query string false "Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)"
 // @Param timestamps query boolean false "Show timestamps (default: false)"
-// @Param stdout query boolean false "Show stdout (default: true)"
-// @Param stderr query boolean false "Show stderr (default: true)"
-// @Success 200 {object} handlers.SuccessResponse{data=[]object}
+// @Success 200 {object} handlers.SuccessResponse{data=[]string}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse
@@ -59,65 +62,82 @@ func (h *ContainerLogsHandler) GetContainerLogs(c *gin.Context) {
 	}
 
 	// Parse query parameters
-	tailStr := c.DefaultQuery("tail", "100")
-	sinceStr := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "false") == "true"
-	stdout := c.DefaultQuery("stdout", "true") == "true"
-	stderr := c.DefaultQuery("stderr", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "false")
 
-	// Parse since parameter (Unix timestamp or relative time)
-	var since int64
-	if sinceStr != "" {
-		// Try to parse as Unix timestamp
-		if ts, err := strconv.ParseInt(sinceStr, 10, 64); err == nil {
-			since = ts
-		}
-		// TODO: Support relative time like "42m" (requires time parsing)
+	// Create stream session for historical logs (follow=false)
+	params := map[string]string{
+		"tail":       tail,
+		"follow":     "false",
+		"timestamps": timestamps,
+	}
+	if since != "" {
+		params["since"] = since
 	}
 
-	// Create logs request (follow=false for historical logs)
-	req := &pb.GetContainerLogsRequest{
-		ContainerId: containerID,
-		Follow:      false,
-		Tail:        tailStr,
-		Since:       since,
-		Timestamps:  timestamps,
-		Stdout:      stdout,
-		Stderr:      stderr,
-	}
-
-	// Get logs stream from agent
-	stream, err := h.agentForwarder.GetContainerLogs(instanceID, req)
+	session, err := h.dockerStreamManager.CreateSession(instanceID, "get_logs", containerID, "", params)
 	if err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"instance_id":  instanceID,
-			"container_id": containerID,
-		}).Error("Failed to get container logs stream")
+		logrus.WithError(err).Error("Failed to create Docker stream session")
+		basehandlers.RespondInternalError(c, err)
+		return
+	}
+	defer h.dockerStreamManager.CloseSession(session.SessionID)
+
+	// Trigger Agent to connect
+	if err := h.triggerAgentConnection(session); err != nil {
+		logrus.WithError(err).Error("Failed to trigger Agent connection")
 		basehandlers.RespondInternalError(c, err)
 		return
 	}
 
-	// Collect all log entries
-	var logs []interface{}
-	for {
-		logEntry, err := stream.Recv()
-		if err != nil {
-			if err == io.EOF {
-				// Stream ended normally
-				break
-			}
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"instance_id":  instanceID,
-				"container_id": containerID,
-			}).Error("Failed to receive container logs")
-			basehandlers.RespondInternalError(c, err)
-			return
-		}
-
-		logs = append(logs, logEntry)
+	// Wait for Agent to be ready
+	if err := session.WaitForReady(10 * time.Second); err != nil {
+		logrus.WithError(err).Error("Agent failed to become ready")
+		basehandlers.RespondInternalError(c, fmt.Errorf("agent not ready: %w", err))
+		return
 	}
 
-	basehandlers.RespondSuccess(c, logs)
+	// Collect logs until stream closes
+	var logs []string
+	timeout := time.After(30 * time.Second) // 30 second timeout for historical logs
+
+	for {
+		select {
+		case data, ok := <-session.DataChan:
+			if !ok {
+				// Channel closed, stream ended
+				basehandlers.RespondSuccess(c, logs)
+				return
+			}
+			logs = append(logs, string(data.Data))
+
+		case streamErr, ok := <-session.ErrorChan:
+			if ok {
+				logrus.WithFields(logrus.Fields{
+					"session_id": session.SessionID,
+					"error":      streamErr.Error,
+				}).Error("Stream error")
+				basehandlers.RespondInternalError(c, fmt.Errorf("stream error: %s", streamErr.Error))
+				return
+			}
+
+		case closeMsg, ok := <-session.CloseChan:
+			if ok {
+				logrus.WithFields(logrus.Fields{
+					"session_id": session.SessionID,
+					"reason":     closeMsg.Reason,
+				}).Info("Stream closed by agent")
+			}
+			basehandlers.RespondSuccess(c, logs)
+			return
+
+		case <-timeout:
+			logrus.Warn("Timeout waiting for logs")
+			basehandlers.RespondInternalError(c, fmt.Errorf("timeout waiting for logs"))
+			return
+		}
+	}
 }
 
 // GetContainerLogsStream godoc
@@ -128,11 +148,9 @@ func (h *ContainerLogsHandler) GetContainerLogs(c *gin.Context) {
 // @Produce text/event-stream
 // @Param id path string true "Docker Instance ID (UUID)"
 // @Param container_id path string true "Container ID or name"
-// @Param tail query int false "Number of lines to show from the end (default: 100)"
+// @Param tail query string false "Number of lines to show from the end (default: 100)"
 // @Param since query string false "Show logs since timestamp or relative"
 // @Param timestamps query boolean false "Show timestamps (default: false)"
-// @Param stdout query boolean false "Show stdout (default: true)"
-// @Param stderr query boolean false "Show stderr (default: true)"
 // @Success 200 {string} string "SSE stream of container logs"
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
@@ -153,41 +171,39 @@ func (h *ContainerLogsHandler) GetContainerLogsStream(c *gin.Context) {
 	}
 
 	// Parse query parameters
-	tailStr := c.DefaultQuery("tail", "100")
-	sinceStr := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "false") == "true"
-	stdout := c.DefaultQuery("stdout", "true") == "true"
-	stderr := c.DefaultQuery("stderr", "true") == "true"
+	tail := c.DefaultQuery("tail", "100")
+	since := c.Query("since")
+	timestamps := c.DefaultQuery("timestamps", "false")
 
-	// Parse since parameter (Unix timestamp or relative time)
-	var since int64
-	if sinceStr != "" {
-		// Try to parse as Unix timestamp
-		if ts, err := strconv.ParseInt(sinceStr, 10, 64); err == nil {
-			since = ts
-		}
-		// TODO: Support relative time like "42m" (requires time parsing)
+	// Create stream session for real-time logs (follow=true)
+	params := map[string]string{
+		"tail":       tail,
+		"follow":     "true",
+		"timestamps": timestamps,
+	}
+	if since != "" {
+		params["since"] = since
 	}
 
-	// Create logs request (follow=true for streaming)
-	req := &pb.GetContainerLogsRequest{
-		ContainerId: containerID,
-		Follow:      true,
-		Tail:        tailStr,
-		Since:       since,
-		Timestamps:  timestamps,
-		Stdout:      stdout,
-		Stderr:      stderr,
-	}
-
-	// Get logs stream from agent
-	stream, err := h.agentForwarder.GetContainerLogs(instanceID, req)
+	session, err := h.dockerStreamManager.CreateSession(instanceID, "get_logs", containerID, "", params)
 	if err != nil {
-		logrus.WithError(err).WithFields(logrus.Fields{
-			"instance_id":  instanceID,
-			"container_id": containerID,
-		}).Error("Failed to get container logs stream")
+		logrus.WithError(err).Error("Failed to create Docker stream session")
 		basehandlers.RespondInternalError(c, err)
+		return
+	}
+	defer h.dockerStreamManager.CloseSession(session.SessionID)
+
+	// Trigger Agent to connect
+	if err := h.triggerAgentConnection(session); err != nil {
+		logrus.WithError(err).Error("Failed to trigger Agent connection")
+		basehandlers.RespondInternalError(c, err)
+		return
+	}
+
+	// Wait for Agent to be ready
+	if err := session.WaitForReady(10 * time.Second); err != nil {
+		logrus.WithError(err).Error("Agent failed to become ready")
+		basehandlers.RespondInternalError(c, fmt.Errorf("agent not ready: %w", err))
 		return
 	}
 
@@ -196,9 +212,6 @@ func (h *ContainerLogsHandler) GetContainerLogsStream(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
-
-	// Create a channel to signal when to stop
-	clientGone := c.Request.Context().Done()
 
 	// Create flusher for immediate data sending
 	flusher, ok := c.Writer.(interface{ Flush() })
@@ -211,9 +224,13 @@ func (h *ContainerLogsHandler) GetContainerLogsStream(c *gin.Context) {
 	logrus.WithFields(logrus.Fields{
 		"instance_id":  instanceID,
 		"container_id": containerID,
-		"tail":         tailStr,
+		"session_id":   session.SessionID,
+		"tail":         tail,
 		"timestamps":   timestamps,
 	}).Info("Starting container logs stream")
+
+	// Monitor client disconnect
+	clientGone := c.Request.Context().Done()
 
 	// Stream logs to client
 	for {
@@ -223,30 +240,40 @@ func (h *ContainerLogsHandler) GetContainerLogsStream(c *gin.Context) {
 			logrus.WithFields(logrus.Fields{
 				"instance_id":  instanceID,
 				"container_id": containerID,
+				"session_id":   session.SessionID,
 			}).Info("Client disconnected from logs stream")
 			return
 
-		default:
-			// Read log entry from gRPC stream
-			logEntry, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
-					// Stream ended normally
-					logrus.WithFields(logrus.Fields{
-						"instance_id":  instanceID,
-						"container_id": containerID,
-					}).Info("Logs stream ended")
-					return
-				}
-				// Stream error
-				logrus.WithError(err).WithFields(logrus.Fields{
+		case data, ok := <-session.DataChan:
+			if !ok {
+				// Channel closed, stream ended
+				logrus.WithFields(logrus.Fields{
 					"instance_id":  instanceID,
 					"container_id": containerID,
-				}).Error("Error receiving container logs")
+					"session_id":   session.SessionID,
+				}).Info("Logs stream ended normally")
+				return
+			}
+
+			// Send log data as SSE event
+			logData := map[string]interface{}{
+				"type": data.DataType,
+				"data": string(data.Data),
+			}
+			logJSON, _ := json.Marshal(logData)
+			fmt.Fprintf(c.Writer, "data: %s\n\n", logJSON)
+			flusher.Flush()
+
+		case streamErr, ok := <-session.ErrorChan:
+			if ok {
+				logrus.WithFields(logrus.Fields{
+					"session_id": session.SessionID,
+					"error":      streamErr.Error,
+				}).Error("Stream error")
 
 				// Send error event
 				errorData := map[string]interface{}{
-					"error":   err.Error(),
+					"error":   streamErr.Error,
 					"message": "Failed to receive logs",
 				}
 				errorJSON, _ := json.Marshal(errorData)
@@ -255,17 +282,71 @@ func (h *ContainerLogsHandler) GetContainerLogsStream(c *gin.Context) {
 				return
 			}
 
-			// Convert log entry to JSON
-			logJSON, err := json.Marshal(logEntry)
-			if err != nil {
-				logrus.WithError(err).Error("Failed to marshal log entry to JSON")
-				continue
-			}
+		case closeMsg, ok := <-session.CloseChan:
+			if ok {
+				logrus.WithFields(logrus.Fields{
+					"session_id": session.SessionID,
+					"reason":     closeMsg.Reason,
+				}).Info("Stream closed by agent")
 
-			// Send log as SSE event
-			// Format: data: {json}\n\n
-			fmt.Fprintf(c.Writer, "data: %s\n\n", logJSON)
-			flusher.Flush()
+				// Send close event
+				closeData := map[string]interface{}{
+					"reason":  closeMsg.Reason,
+					"message": "Stream closed",
+				}
+				closeJSON, _ := json.Marshal(closeData)
+				fmt.Fprintf(c.Writer, "event: close\ndata: %s\n\n", closeJSON)
+				flusher.Flush()
+			}
+			return
 		}
 	}
+}
+
+// triggerAgentConnection sends a task to Agent to initiate DockerStream connection
+func (h *ContainerLogsHandler) triggerAgentConnection(session *host.DockerStreamSession) error {
+	// Get Docker instance to find associated agent
+	var instance models.DockerInstance
+	if err := h.db.Where("id = ?", session.InstanceID).First(&instance).Error; err != nil {
+		return fmt.Errorf("failed to find Docker instance: %w", err)
+	}
+
+	// Get agent connection to get host UUID
+	var agentConn models.AgentConnection
+	if err := h.db.Where("id = ?", instance.AgentID).First(&agentConn).Error; err != nil {
+		return fmt.Errorf("failed to find agent connection: %w", err)
+	}
+
+	// Get host node to get UUID
+	var hostNode models.HostNode
+	if err := h.db.Where("id = ?", agentConn.HostNodeID).First(&hostNode).Error; err != nil {
+		return fmt.Errorf("failed to find host node: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"session_id":  session.SessionID,
+		"instance_id": session.InstanceID,
+		"agent_id":    instance.AgentID,
+		"host_uuid":   hostNode.ID.String(),
+	}).Info("Triggering Agent DockerStream connection")
+
+	// Create docker_stream task
+	task := &proto.AgentTask{
+		TaskId:   session.SessionID,
+		TaskType: "docker_stream",
+		Params: map[string]string{
+			"session_id":   session.SessionID,
+			"operation":    session.Operation,
+			"container_id": session.ContainerID,
+			"image_name":   session.ImageName,
+		},
+	}
+
+	// Add session params
+	for k, v := range session.Params {
+		task.Params[k] = v
+	}
+
+	// Queue task (non-blocking, no wait for result)
+	return h.agentManager.QueueTask(hostNode.ID.String(), task)
 }

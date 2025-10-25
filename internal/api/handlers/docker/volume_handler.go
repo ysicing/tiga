@@ -13,11 +13,11 @@ import (
 
 // VolumeHandler handles Docker volume operations
 type VolumeHandler struct {
-	agentForwarder *docker.AgentForwarder
+	agentForwarder *docker.AgentForwarderV2
 }
 
 // NewVolumeHandler creates a new VolumeHandler instance
-func NewVolumeHandler(agentForwarder *docker.AgentForwarder) *VolumeHandler {
+func NewVolumeHandler(agentForwarder *docker.AgentForwarderV2) *VolumeHandler {
 	return &VolumeHandler{
 		agentForwarder: agentForwarder,
 	}
