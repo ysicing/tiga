@@ -33,6 +33,10 @@ type AgentConnection struct {
 	// Task queue for pending tasks
 	taskQueue chan *proto.AgentTask
 	taskMu    sync.Mutex
+
+	// Task results waiting channels
+	pendingResults map[string]chan *proto.TaskResult
+	resultsMu      sync.RWMutex
 }
 
 // AgentManager manages agent connections and gRPC streams
@@ -42,7 +46,6 @@ type AgentManager struct {
 	db                    *gorm.DB
 	auditLogger           *AuditLogger                  // T038: 统一审计
 	dockerInstanceService *docker.DockerInstanceService // T032: Docker实例集成
-	agentForwarder        *docker.AgentForwarder        // T032: Agent转发器
 
 	// Active connections map: UUID -> Connection
 	connections sync.Map
@@ -61,7 +64,6 @@ func NewAgentManager(
 	db *gorm.DB,
 	auditLogger *AuditLogger,
 	dockerInstanceService *docker.DockerInstanceService,
-	agentForwarder *docker.AgentForwarder,
 ) *AgentManager {
 	return &AgentManager{
 		hostRepo:              hostRepo,
@@ -69,7 +71,6 @@ func NewAgentManager(
 		db:                    db,
 		auditLogger:           auditLogger,
 		dockerInstanceService: dockerInstanceService,
-		agentForwarder:        agentForwarder,
 		heartbeatInterval:     30 * time.Second,
 		heartbeatTimeout:      90 * time.Second,
 	}
@@ -237,6 +238,13 @@ func (m *AgentManager) HandleReportState(stream proto.HostMonitor_ReportStateSer
 				}
 			}
 
+			// Process task results
+			if len(req.TaskResults) > 0 {
+				if err := m.processTaskResults(currentUUID, req.TaskResults); err != nil {
+					logrus.WithError(err).Warn("[AgentManager] Failed to process task results")
+				}
+			}
+
 			// Send acknowledgment with any pending tasks
 			resp := &proto.ReportStateResponse{
 				Success: true,
@@ -323,13 +331,14 @@ func (m *AgentManager) RegisterConnection(uuid string, hostNodeID uuid.UUID, str
 	}
 
 	conn := &AgentConnection{
-		UUID:       uuid,
-		HostNodeID: hostNodeID,
-		Stream:     stream,
-		Connected:  time.Now(),
-		LastSeen:   time.Now(),
-		cancel:     cancel,
-		taskQueue:  make(chan *proto.AgentTask, 100), // Buffered channel
+		UUID:           uuid,
+		HostNodeID:     hostNodeID,
+		Stream:         stream,
+		Connected:      time.Now(),
+		LastSeen:       time.Now(),
+		cancel:         cancel,
+		taskQueue:      make(chan *proto.AgentTask, 100), // Buffered channel
+		pendingResults: make(map[string]chan *proto.TaskResult),
 	}
 
 	m.connections.Store(uuid, conn)
@@ -679,79 +688,114 @@ func (m *AgentManager) discoverDockerInstanceFromProto(agentID uuid.UUID, hostID
 	}).Info("Docker instance auto-discovered/updated successfully")
 }
 
-// discoverDockerInstance attempts to discover Docker on the agent and create/update Docker instance
-// T032: Docker实例自动发现（已废弃，保留以支持旧的独立Docker Agent架构）
-// DEPRECATED: 使用 discoverDockerInstanceFromProto 代替
-func (m *AgentManager) discoverDockerInstance(agentID uuid.UUID, hostID uuid.UUID) {
-	if m.dockerInstanceService == nil || m.agentForwarder == nil {
-		return
+
+// processTaskResults handles task results received from agent
+func (m *AgentManager) processTaskResults(uuid string, results []*proto.TaskResult) error {
+	conn, ok := m.connections.Load(uuid)
+	if !ok {
+		return fmt.Errorf("agent connection not found: %s", uuid)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	agentConn := conn.(*AgentConnection)
 
-	// Get host node to retrieve hostname
-	host, err := m.hostRepo.GetByID(ctx, hostID)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to get host node for Docker instance naming")
-		return
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"agent_id": agentID,
-		"host_id":  hostID,
-	}).Debug("Starting Docker instance discovery")
-
-	// Try to get Docker info from agent
-	dockerInfo, err := m.agentForwarder.GetDockerInfo(agentID)
-	if err != nil {
+	for _, result := range results {
 		logrus.WithFields(logrus.Fields{
-			"agent_id": agentID,
-			"error":    err.Error(),
-		}).Debug("No Docker found on agent (this is normal if Docker is not installed)")
-		return
+			"agent_uuid": uuid,
+			"task_id":    result.TaskId,
+			"success":    result.Success,
+		}).Debug("[AgentManager] Processing task result")
+
+		// Deliver result to waiting channel if exists
+		agentConn.resultsMu.RLock()
+		resultChan, exists := agentConn.pendingResults[result.TaskId]
+		agentConn.resultsMu.RUnlock()
+
+		if exists {
+			// Non-blocking send to avoid deadlock
+			select {
+			case resultChan <- result:
+				logrus.Debugf("[AgentManager] Task result delivered: task_id=%s", result.TaskId)
+			default:
+				logrus.Warnf("[AgentManager] Result channel full or closed: task_id=%s", result.TaskId)
+			}
+		} else {
+			logrus.Warnf("[AgentManager] No waiting channel for task result: task_id=%s", result.TaskId)
+		}
 	}
 
-	// Docker detected, create info map
-	infoMap := map[string]interface{}{
-		"version":          dockerInfo.Version,
-		"api_version":      dockerInfo.ApiVersion,
-		"min_api_version":  dockerInfo.MinApiVersion,
-		"storage_driver":   dockerInfo.StorageDriver,
-		"operating_system": dockerInfo.OperatingSystem,
-		"architecture":     dockerInfo.Arch,
-		"kernel_version":   dockerInfo.KernelVersion,
-		"mem_total":        dockerInfo.MemTotal,
-		"n_cpu":            dockerInfo.NCpu,
-		"containers":       dockerInfo.Containers,
-		"images":           dockerInfo.Images,
-	}
-
-	// Auto-discover or update Docker instance (use hostname)
-	instance, err := m.dockerInstanceService.AutoDiscoverOrUpdate(ctx, agentID, host.Name, infoMap)
-	if err != nil {
-		logrus.WithError(err).Error("Failed to auto-discover Docker instance")
-		return
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"instance_id":    instance.ID,
-		"instance_name":  instance.Name,
-		"agent_id":       agentID,
-		"docker_version": dockerInfo.Version,
-	}).Info("Docker instance auto-discovered/updated")
+	return nil
 }
 
-// ArchiveDockerInstancesByHostID marks Docker instances as archived when a host is deleted
-// T032: Agent删除时标记Docker实例archived
-func (m *AgentManager) ArchiveDockerInstancesByHostID(ctx context.Context, hostID uuid.UUID) error {
-	if m.dockerInstanceService == nil {
-		return nil // Docker service not initialized, skip archiving
+// QueueTaskAndWait queues a task to the agent and waits for the result
+func (m *AgentManager) QueueTaskAndWait(ctx context.Context, uuid string, task *proto.AgentTask, timeout time.Duration) (*proto.TaskResult, error) {
+	conn, ok := m.connections.Load(uuid)
+	if !ok {
+		return nil, fmt.Errorf("agent not connected: %s", uuid)
 	}
 
-	// Get AgentConnection record to find agent ID
+	agentConn := conn.(*AgentConnection)
+
+	// Create result channel
+	resultChan := make(chan *proto.TaskResult, 1)
+
+	// Register the channel
+	agentConn.resultsMu.Lock()
+	agentConn.pendingResults[task.TaskId] = resultChan
+	agentConn.resultsMu.Unlock()
+
+	// Cleanup on exit
+	defer func() {
+		agentConn.resultsMu.Lock()
+		delete(agentConn.pendingResults, task.TaskId)
+		agentConn.resultsMu.Unlock()
+		close(resultChan)
+	}()
+
+	// Queue the task
+	if err := m.QueueTask(uuid, task); err != nil {
+		return nil, err
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"agent_uuid": uuid,
+		"task_id":    task.TaskId,
+		"task_type":  task.TaskType,
+		"timeout":    timeout,
+	}).Debug("[AgentManager] Waiting for task result")
+
+	// Wait for result with timeout
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	select {
+	case result := <-resultChan:
+		if result == nil {
+			return nil, fmt.Errorf("received nil result for task: %s", task.TaskId)
+		}
+		logrus.WithFields(logrus.Fields{
+			"agent_uuid": uuid,
+			"task_id":    task.TaskId,
+			"success":    result.Success,
+		}).Debug("[AgentManager] Received task result")
+		return result, nil
+	case <-timeoutCtx.Done():
+		return nil, fmt.Errorf("timeout waiting for task result: task_id=%s, timeout=%v", task.TaskId, timeout)
+	case <-ctx.Done():
+		return nil, fmt.Errorf("context cancelled while waiting for task result: task_id=%s", task.TaskId)
+	}
+}
+
+
+// ArchiveDockerInstancesByHostID archives all Docker instances for a host when it's deleted
+// T032: Docker实例生命周期管理
+func (m *AgentManager) ArchiveDockerInstancesByHostID(ctx context.Context, hostID uuid.UUID) error {
+	if m.dockerInstanceService == nil {
+		return nil
+	}
+
+	// Get agent connection for this host
 	var agentConn models.AgentConnection
-	if err := m.db.WithContext(ctx).Where("host_node_id = ?", hostID).First(&agentConn).Error; err != nil {
+	if err := m.db.Where("host_node_id = ?", hostID).First(&agentConn).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			// No agent connection found, nothing to archive
 			logrus.WithField("host_id", hostID).Debug("No agent connection found for host deletion")

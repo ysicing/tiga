@@ -22,6 +22,9 @@ service HostMonitor {
 
   // IOStream PTY终端I/O流(双向流)
   rpc IOStream(stream IOStreamData) returns (stream IOStreamData);
+
+  // DockerStream Docker流式操作(双向流) - 用于容器终端、日志、统计等流式数据
+  rpc DockerStream(stream DockerStreamMessage) returns (stream DockerStreamMessage);
 }
 
 // 主机硬件信息
@@ -113,6 +116,16 @@ message RegisterAgentResponse {
 message ReportStateRequest {
   string uuid = 1;                  // 主机UUID
   HostState state = 2;              // 监控状态
+  repeated TaskResult task_results = 3; // 任务执行结果
+}
+
+// 任务执行结果
+message TaskResult {
+  string task_id = 1;               // 任务ID（对应AgentTask.task_id）
+  bool success = 2;                 // 是否成功
+  string error = 3;                 // 错误信息
+  bytes payload = 4;                // 结果数据（JSON格式）
+  int64 timestamp = 5;              // 完成时间戳
 }
 
 // 上报状态响应
@@ -125,8 +138,9 @@ message ReportStateResponse {
 // Agent任务
 message AgentTask {
   string task_id = 1;               // 任务ID
-  string task_type = 2;             // 任务类型(terminal/probe/command)
+  string task_type = 2;             // 任务类型(terminal/probe/command/docker)
   map<string, string> params = 3;   // 任务参数
+  bytes payload = 4;                // 请求数据（JSON格式，用于复杂参数）
 }
 
 // 心跳请求
@@ -169,4 +183,54 @@ message ReportProbeResultBatchResponse {
   string message = 2;               // 消息
   int32 processed = 3;              // 成功处理的结果数量
   int32 failed = 4;                 // 失败的结果数量
+}
+
+// ==================== Docker 流式操作消息 ====================
+
+// Docker流式操作消息(双向流)
+message DockerStreamMessage {
+  oneof message {
+    DockerStreamInit init = 1;        // 初始化请求/响应
+    DockerStreamData data = 2;        // 数据传输
+    DockerStreamResize resize = 3;    // 终端窗口大小调整
+    DockerStreamClose close = 4;      // 关闭流
+    DockerStreamError error = 5;      // 错误
+  }
+}
+
+// Docker流初始化
+message DockerStreamInit {
+  string session_id = 1;              // 会话ID(Server生成)
+  string instance_id = 2;             // Docker实例ID(Server→Agent)
+  string operation = 3;               // 操作类型: exec_container, get_logs, get_stats, pull_image, get_events
+  string container_id = 4;            // 容器ID(用于exec/logs/stats)
+  string image_name = 5;              // 镜像名称(用于pull_image)
+  map<string, string> params = 6;    // 操作参数
+  bool ready = 7;                     // Agent就绪标志(Agent→Server)
+}
+
+// Docker流数据
+message DockerStreamData {
+  string session_id = 1;              // 会话ID
+  bytes data = 2;                     // 流式数据
+  string data_type = 3;               // 数据类型: stdout, stderr, stats, events
+}
+
+// 终端窗口大小调整
+message DockerStreamResize {
+  string session_id = 1;              // 会话ID
+  uint32 width = 2;                   // 列数
+  uint32 height = 3;                  // 行数
+}
+
+// Docker流关闭
+message DockerStreamClose {
+  string session_id = 1;              // 会话ID
+  string reason = 2;                  // 关闭原因
+}
+
+// Docker流错误
+message DockerStreamError {
+  string session_id = 1;              // 会话ID
+  string error = 2;                   // 错误信息
 }

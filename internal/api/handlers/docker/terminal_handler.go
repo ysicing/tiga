@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,23 +15,25 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
 	dockerservices "github.com/ysicing/tiga/internal/services/docker"
-	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
-	"gorm.io/gorm"
+	"github.com/ysicing/tiga/internal/services/host"
+	"github.com/ysicing/tiga/proto"
 )
 
 // TerminalHandler handles Docker container terminal operations
 type TerminalHandler struct {
-	db                 *gorm.DB
-	agentForwarder     *dockerservices.AgentForwarder
-	instanceService    *dockerservices.DockerInstanceService
-	jwtManager         *authservices.JWTManager
-	recordingRepo      repository.TerminalRecordingRepositoryInterface
-	recordingDir       string // Directory to store recording files
+	db                  *gorm.DB
+	dockerStreamManager *host.DockerStreamManager
+	agentManager        *host.AgentManager
+	instanceService     *dockerservices.DockerInstanceService
+	jwtManager          *authservices.JWTManager
+	recordingRepo       repository.TerminalRecordingRepositoryInterface
+	recordingDir        string // Directory to store recording files
 
 	// Session management
 	sessions sync.Map // session_id -> *TerminalSession
@@ -41,7 +42,8 @@ type TerminalHandler struct {
 // NewTerminalHandler creates a new TerminalHandler
 func NewTerminalHandler(
 	db *gorm.DB,
-	agentForwarder *dockerservices.AgentForwarder,
+	dockerStreamManager *host.DockerStreamManager,
+	agentManager *host.AgentManager,
 	instanceService *dockerservices.DockerInstanceService,
 	jwtManager *authservices.JWTManager,
 	recordingRepo repository.TerminalRecordingRepositoryInterface,
@@ -58,12 +60,13 @@ func NewTerminalHandler(
 	}
 
 	handler := &TerminalHandler{
-		db:              db,
-		agentForwarder:  agentForwarder,
-		instanceService: instanceService,
-		jwtManager:      jwtManager,
-		recordingRepo:   recordingRepo,
-		recordingDir:    recordingDir,
+		db:                  db,
+		dockerStreamManager: dockerStreamManager,
+		agentManager:        agentManager,
+		instanceService:     instanceService,
+		jwtManager:          jwtManager,
+		recordingRepo:       recordingRepo,
+		recordingDir:        recordingDir,
 	}
 
 	// Cleanup expired sessions every 5 minutes
@@ -186,32 +189,8 @@ func (h *TerminalHandler) CreateTerminalSession(c *gin.Context) {
 		return
 	}
 
-	// Get container details to verify it exists and is running
-	container, err := h.agentForwarder.GetContainer(instance.AgentID, &pb.GetContainerRequest{
-		ContainerId: containerID,
-	})
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "CONTAINER_NOT_FOUND",
-				"message": "容器不存在",
-			},
-		})
-		return
-	}
-
-	// Check if container is running
-	if container.Container == nil || container.Container.State == nil || !container.Container.State.Running {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "BAD_REQUEST",
-				"message": "容器未在运行",
-			},
-		})
-		return
-	}
+	// Note: Removed GetContainer verification as it requires streaming
+	// The Agent will verify container exists when executing the terminal command
 
 	// Get user info from JWT context
 	userIDVal, _ := c.Get("user_id")
@@ -374,47 +353,48 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 		"container_id": session.ContainerID,
 	}).Info("WebSocket terminal connection established")
 
-	// Get Docker instance
-	instance, err := h.instanceService.GetByID(c.Request.Context(), session.InstanceID)
+	// Create Docker stream session for terminal exec
+	params := map[string]string{
+		"shell": session.Shell,
+		"rows":  fmt.Sprintf("%d", session.Rows),
+		"cols":  fmt.Sprintf("%d", session.Cols),
+	}
+
+	dockerSession, err := h.dockerStreamManager.CreateSession(
+		session.InstanceID,
+		"exec_container",
+		session.ContainerID,
+		"",
+		params,
+	)
 	if err != nil {
-		h.sendError(conn, "INSTANCE_NOT_FOUND", "Docker instance not found")
+		h.sendError(conn, "SESSION_CREATE_FAILED", fmt.Sprintf("Failed to create stream session: %v", err))
+		return
+	}
+	defer h.dockerStreamManager.CloseSession(dockerSession.SessionID)
+
+	// Trigger Agent to connect
+	if err := h.triggerAgentConnection(dockerSession); err != nil {
+		logrus.WithError(err).Error("Failed to trigger Agent connection")
+		h.sendError(conn, "AGENT_TRIGGER_FAILED", fmt.Sprintf("Failed to trigger Agent: %v", err))
 		return
 	}
 
-	// Create gRPC stream context
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
-
-	// Start bidirectional gRPC stream with Agent
-	stream, err := h.agentForwarder.ExecContainer(instance.AgentID)
-	if err != nil {
-		h.sendError(conn, "EXEC_FAILED", fmt.Sprintf("Failed to start exec session: %v", err))
-		return
-	}
-
-	// Send ExecStart message to Agent
-	startReq := &pb.ExecRequest{
-		Request: &pb.ExecRequest_Start{
-			Start: &pb.ExecStart{
-				ContainerId:  session.ContainerID,
-				Cmd:          []string{session.Shell},
-				Tty:          true,
-				AttachStdin:  true,
-				AttachStdout: true,
-				AttachStderr: true,
-			},
-		},
-	}
-
-	if err := stream.Send(startReq); err != nil {
-		h.sendError(conn, "EXEC_FAILED", fmt.Sprintf("Failed to send exec start: %v", err))
+	// Wait for Agent to be ready
+	if err := dockerSession.WaitForReady(10 * time.Second); err != nil {
+		logrus.WithError(err).Error("Agent failed to become ready")
+		h.sendError(conn, "AGENT_NOT_READY", fmt.Sprintf("Agent not ready: %v", err))
 		return
 	}
 
 	// Send welcome message
 	h.sendOutput(conn, session, "Connected to container terminal\r\n")
 
-	// Goroutine: Read from Agent gRPC stream and write to WebSocket
+	// Create context for cancellation
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
+	// Goroutine: Read from Docker stream and write to WebSocket
 	go func() {
 		defer func() {
 			// Finalize recording when stream ends
@@ -422,27 +402,32 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 		}()
 
 		for {
-			resp, err := stream.Recv()
-			if err != nil {
-				if err == io.EOF {
+			select {
+			case data, ok := <-dockerSession.DataChan:
+				if !ok {
 					h.sendExit(conn, 0)
-				} else {
-					h.sendError(conn, "AGENT_DISCONNECTED", fmt.Sprintf("Agent stream error: %v", err))
+					cancel()
+					return
+				}
+				// Send output to WebSocket and record it
+				h.sendOutput(conn, session, string(data.Data))
+
+			case streamErr, ok := <-dockerSession.ErrorChan:
+				if ok {
+					h.sendError(conn, "EXEC_ERROR", streamErr.Error)
 				}
 				cancel()
 				return
-			}
 
-			switch msg := resp.Response.(type) {
-			case *pb.ExecResponse_Output:
-				h.sendOutput(conn, session, string(msg.Output.Data))
-			case *pb.ExecResponse_Exit:
-				h.sendExit(conn, msg.Exit.ExitCode)
+			case closeMsg, ok := <-dockerSession.CloseChan:
+				if ok {
+					logrus.WithField("reason", closeMsg.Reason).Info("Docker stream closed")
+				}
+				h.sendExit(conn, 0)
 				cancel()
 				return
-			case *pb.ExecResponse_Error:
-				h.sendError(conn, "EXEC_ERROR", msg.Error.Message)
-				cancel()
+
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -474,7 +459,7 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 		}
 	}()
 
-	// Main loop: Read from WebSocket and forward to Agent gRPC
+	// Main loop: Read from WebSocket and forward to Docker stream
 	for {
 		select {
 		case <-ctx.Done():
@@ -494,18 +479,22 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 				// Record input frame
 				h.recordFrame(session, "i", []byte(msg.Data))
 
-				// Forward input to Agent
-				inputReq := &pb.ExecRequest{
-					Request: &pb.ExecRequest_Input{
-						Input: &pb.ExecInput{
-							Data: []byte(msg.Data),
+				// Forward input to Agent via InputChan
+				inputMsg := &proto.DockerStreamMessage{
+					Message: &proto.DockerStreamMessage_Data{
+						Data: &proto.DockerStreamData{
+							SessionId: dockerSession.SessionID,
+							Data:      []byte(msg.Data),
+							DataType:  "stdin",
 						},
 					},
 				}
-				if err := stream.Send(inputReq); err != nil {
-					logrus.WithError(err).Error("Failed to send input to Agent")
-					cancel()
-					return
+
+				select {
+				case dockerSession.InputChan <- inputMsg:
+					// Input sent successfully
+				default:
+					logrus.Warn("InputChan full, dropping input")
 				}
 
 				// Update heartbeat
@@ -514,17 +503,22 @@ func (h *TerminalHandler) HandleWebSocketTerminal(c *gin.Context) {
 				heartbeatMu.Unlock()
 
 			case "resize":
-				// Forward resize to Agent
-				resizeReq := &pb.ExecRequest{
-					Request: &pb.ExecRequest_Resize{
-						Resize: &pb.ExecResize{
-							Width:  uint32(msg.Cols),
-							Height: uint32(msg.Rows),
+				// Forward resize to Agent via InputChan
+				resizeMsg := &proto.DockerStreamMessage{
+					Message: &proto.DockerStreamMessage_Resize{
+						Resize: &proto.DockerStreamResize{
+							SessionId: dockerSession.SessionID,
+							Width:     uint32(msg.Cols),
+							Height:    uint32(msg.Rows),
 						},
 					},
 				}
-				if err := stream.Send(resizeReq); err != nil {
-					logrus.WithError(err).Warn("Failed to send resize to Agent")
+
+				select {
+				case dockerSession.InputChan <- resizeMsg:
+					// Resize sent successfully
+				default:
+					logrus.Warn("InputChan full, dropping resize")
 				}
 
 			case "ping":
@@ -717,4 +711,52 @@ func (h *TerminalHandler) finalizeRecording(ctx context.Context, session *Termin
 		"file_size":    recording.FileSize,
 		"path":         storagePath,
 	}).Info("Terminal recording saved successfully")
+}
+
+// triggerAgentConnection sends a task to Agent to initiate DockerStream connection
+func (h *TerminalHandler) triggerAgentConnection(dockerSession *host.DockerStreamSession) error {
+	// Get Docker instance to find associated agent
+	var instance models.DockerInstance
+	if err := h.db.Where("id = ?", dockerSession.InstanceID).First(&instance).Error; err != nil {
+		return fmt.Errorf("failed to find Docker instance: %w", err)
+	}
+
+	// Get agent connection to get host UUID
+	var agentConn models.AgentConnection
+	if err := h.db.Where("id = ?", instance.AgentID).First(&agentConn).Error; err != nil {
+		return fmt.Errorf("failed to find agent connection: %w", err)
+	}
+
+	// Get host node to get UUID
+	var hostNode models.HostNode
+	if err := h.db.Where("id = ?", agentConn.HostNodeID).First(&hostNode).Error; err != nil {
+		return fmt.Errorf("failed to find host node: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"session_id":  dockerSession.SessionID,
+		"instance_id": dockerSession.InstanceID,
+		"agent_id":    instance.AgentID,
+		"host_uuid":   hostNode.ID.String(),
+	}).Info("Triggering Agent DockerStream connection for terminal")
+
+	// Create docker_stream task
+	task := &proto.AgentTask{
+		TaskId:   dockerSession.SessionID,
+		TaskType: "docker_stream",
+		Params: map[string]string{
+			"session_id":   dockerSession.SessionID,
+			"operation":    dockerSession.Operation,
+			"container_id": dockerSession.ContainerID,
+			"image_name":   dockerSession.ImageName,
+		},
+	}
+
+	// Add session params
+	for k, v := range dockerSession.Params {
+		task.Params[k] = v
+	}
+
+	// Queue task (non-blocking, no wait for result)
+	return h.agentManager.QueueTask(hostNode.ID.String(), task)
 }

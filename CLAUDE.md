@@ -850,3 +850,167 @@ ws://localhost:12306/api/v1/k8s/terminal/:session_id
 - 快速开始：`.claude/specs/005-k8s-kite-k8s/quickstart.md`
 - 数据模型：`.claude/specs/005-k8s-kite-k8s/data-model.md`
 - API 契约：`.claude/specs/005-k8s-kite-k8s/contracts/`
+
+## Docker 管理子系统（架构优化）
+
+**功能分支**: `007-docker-docker-agent`
+**完成时间**: 2025-10-25
+
+### 核心架构原则
+
+**关键设计决策**: Agent 位于 NAT/防火墙后，Server 无法主动连接 Agent。所有通信必须通过 Agent 主动建立的连接进行。
+
+### 双模式 Docker 管理
+
+#### 1. **非流式操作**（通过任务队列）
+
+**通信路径**: User → Server API → AgentForwarderV2 → 任务队列 → Agent → Docker
+
+**包含操作** (29个):
+- **容器管理**: List/Get/Start/Stop/Restart/Pause/Unpause/Delete Container
+- **镜像管理**: List/Get/Delete/Tag Image
+- **网络管理**: List/Get/Create/Delete/Connect/Disconnect Network
+- **卷管理**: List/Get/Create/Delete/Prune Volumes
+- **系统信息**: GetSystemInfo, GetDockerInfo, GetVersion, GetDiskUsage, Ping
+
+**实现**:
+- Server: `internal/services/docker/agent_forwarder_v2.go`
+- Agent: `cmd/tiga-agent/docker_handler.go`
+- Proto: `proto/host_monitor.proto` (AgentTask/TaskResult)
+
+**执行流程**:
+```
+1. Server 创建 AgentTask (operation, params, payload)
+2. 任务加入队列等待 Agent 上报
+3. Agent 通过 ReportState 双向流接收任务
+4. Agent 执行 Docker 操作
+5. Agent 返回 TaskResult (success, payload)
+6. Server 接收结果并响应 API 请求
+```
+
+#### 2. **流式操作**（通过 DockerStream）
+
+**通信路径**: User → Server API → DockerStream 会话 → Agent (主动连接) → Docker
+
+**包含操作** (5个):
+- **容器终端**: ExecContainer (双向流，stdin/stdout)
+- **容器日志**: GetContainerLogs (服务端流)
+- **容器统计**: GetContainerStats (服务端流，JSON)
+- **镜像拉取**: PullImage (进度流)
+- **Docker 事件**: GetEvents (事件流)
+
+**实现**:
+- Server: `internal/services/host/docker_stream_manager.go` (待实现)
+- Agent: `cmd/tiga-agent/docker_stream_handler.go`
+- Proto: `proto/host_monitor.proto` (DockerStream RPC)
+
+**执行流程**:
+```
+1. User 请求流式操作（如容器日志）
+2. Server 创建 Docker 流会话，session_id 加入等待队列
+3. Agent 检测到待处理的 Docker 流任务
+4. Agent 主动建立 DockerStream gRPC 连接
+5. Server 发送 DockerStreamInit (operation, container_id, params)
+6. Agent 执行 Docker 流操作，持续发送 DockerStreamData
+7. Server 将流数据转发给 User (WebSocket/SSE)
+8. 操作完成后发送 DockerStreamClose
+```
+
+### Proto 消息设计
+
+**DockerStream RPC**:
+```protobuf
+service HostMonitor {
+  rpc DockerStream(stream DockerStreamMessage) returns (stream DockerStreamMessage);
+}
+
+message DockerStreamMessage {
+  oneof message {
+    DockerStreamInit init = 1;        // 初始化
+    DockerStreamData data = 2;        // 数据传输
+    DockerStreamResize resize = 3;    // 终端调整
+    DockerStreamClose close = 4;      // 关闭
+    DockerStreamError error = 5;      // 错误
+  }
+}
+
+message DockerStreamInit {
+  string session_id = 1;              // Server 生成的会话ID
+  string instance_id = 2;             // Docker 实例ID
+  string operation = 3;               // 操作类型
+  string container_id = 4;            // 容器ID
+  map<string, string> params = 6;    // 操作参数
+  bool ready = 7;                     // Agent 就绪标志
+}
+
+message DockerStreamData {
+  string session_id = 1;
+  bytes data = 2;                     // 流式数据
+  string data_type = 3;               // stdout/stderr/stats/events
+}
+```
+
+### 关键文件
+
+**Agent 端**:
+- `cmd/tiga-agent/docker_handler.go` - 任务队列模式处理器
+- `cmd/tiga-agent/docker_stream_handler.go` - 流式操作处理器
+- `internal/docker/` - Docker 客户端封装
+
+**Server 端**:
+- `internal/services/docker/agent_forwarder_v2.go` - 任务队列转发器
+- `internal/services/docker/agent_forwarder.go` - ⚠️ 废弃（待移除）
+- `internal/api/handlers/docker/` - Docker API 处理器
+
+**Proto**:
+- `proto/host_monitor.proto` - 主机监控 + Docker 流式操作
+
+### 架构演进历史
+
+**Phase 1** (废弃): Agent 启动独立 Docker gRPC 服务端 (:50051)
+- ❌ 问题: Server 无法反向连接 NAT 后的 Agent
+
+**Phase 2** (当前): Agent 主动建立连接
+- ✅ 非流式操作: 通过 ReportState 双向流（任务队列）
+- ✅ 流式操作: 通过 DockerStream 双向流（Agent 主动连接）
+
+### 使用示例
+
+**非流式操作** (容器启动):
+```bash
+POST /api/v1/docker/instances/{id}/containers/{cid}/start
+→ AgentForwarderV2.StartContainer()
+  → 创建 AgentTask
+  → 加入任务队列
+  → Agent 执行并返回 TaskResult
+  → Server 响应 API
+```
+
+**流式操作** (容器日志):
+```bash
+GET /api/v1/docker/instances/{id}/containers/{cid}/logs (SSE)
+→ ContainerLogsHandler.GetLogs()
+  → 创建 Docker 流会话 (session_id)
+  → 等待 Agent 连接
+  → Agent 建立 DockerStream
+  → Server 发送 DockerStreamInit(get_logs)
+  → Agent 持续发送日志数据
+  → Server 转发到 SSE 连接
+```
+
+### 待完成工作
+
+- [ ] Server 端 Docker 流会话管理器实现
+- [ ] 容器终端 (ExecContainer) 双向流实现
+- [ ] 镜像拉取进度流实现
+- [ ] Docker 事件流实现
+- [ ] 移除废弃的 AgentForwarder 代码
+- [ ] 功能测试验证
+
+### 架构优势
+
+1. **NAT 友好**: Agent 主动连接，无需公网 IP
+2. **统一 Agent**: 不需要独立的 Docker Agent 进程
+3. **双模式互补**: 简单操作用任务队列，复杂流式用专用连接
+4. **可扩展**: 未来可添加更多流式操作（如 Attach Container）
+

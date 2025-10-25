@@ -343,6 +343,24 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 	probeHandler.Start()
 	defer probeHandler.Stop() // Ensure buffer is flushed on exit
 
+	// Initialize Docker task handler if Docker is available
+	var dockerHandler *DockerTaskHandler
+	var dockerStreamHandler *DockerStreamHandler
+	if dockerInfo := col.CollectDockerInfo(); dockerInfo.Installed {
+		var err error
+		dockerHandler, err = NewDockerTaskHandler()
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to initialize Docker task handler, Docker operations will be unavailable")
+		} else {
+			defer dockerHandler.Close()
+			logrus.Info("Docker task handler initialized successfully")
+
+			// Create Docker stream handler using the same Docker client
+			dockerStreamHandler = NewDockerStreamHandler(dockerHandler.dockerClient)
+			logrus.Info("Docker stream handler initialized successfully")
+		}
+	}
+
 	// Create the bidirectional stream
 	stream, err := client.ReportState(ctx)
 	if err != nil {
@@ -352,6 +370,9 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 
 	// Channel to signal stream errors
 	streamErr := make(chan error, 1)
+
+	// Channel for task results
+	taskResults := make(chan *proto.TaskResult, 100)
 
 	// Start receiving responses in a separate goroutine
 	go func() {
@@ -373,7 +394,7 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 
 			// Handle tasks from server
 			for _, task := range resp.Tasks {
-				go handleTask(client, probeHandler, task, config)
+				go handleTask(client, probeHandler, dockerHandler, dockerStreamHandler, taskResults, task, config)
 			}
 		}
 	}()
@@ -383,7 +404,7 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 	defer ticker.Stop()
 
 	// Report immediately on start
-	if err := reportState(stream, col, config); err != nil {
+	if err := reportState(stream, col, config, nil); err != nil {
 		logrus.Errorf("Failed to send initial state: %v", err)
 		return
 	}
@@ -398,7 +419,18 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 			stream.CloseSend()
 			return
 		case <-ticker.C:
-			if err := reportState(stream, col, config); err != nil {
+			// Collect any pending task results
+			var results []*proto.TaskResult
+			for {
+				select {
+				case result := <-taskResults:
+					results = append(results, result)
+				default:
+					goto sendState
+				}
+			}
+		sendState:
+			if err := reportState(stream, col, config, results); err != nil {
 				logrus.Errorf("Failed to send state: %v, will reconnect", err)
 				stream.CloseSend()
 				return
@@ -408,7 +440,7 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 }
 
 // reportState collects current state and sends it to server
-func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Collector, config *Config) error {
+func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Collector, config *Config, taskResults []*proto.TaskResult) error {
 	state, err := col.CollectHostState()
 	if err != nil {
 		return fmt.Errorf("failed to collect host state: %w", err)
@@ -441,10 +473,11 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 		TrafficDeltaRecv: state.TrafficDeltaRecv,
 	}
 
-	// Send to server
+	// Send to server with task results
 	req := &proto.ReportStateRequest{
-		Uuid:  config.UUID,
-		State: protoState,
+		Uuid:        config.UUID,
+		State:       protoState,
+		TaskResults: taskResults,
 	}
 
 	if err := stream.Send(req); err != nil {
@@ -455,11 +488,15 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 		state.CPUUsage, state.MemUsage, state.DiskUsage,
 		state.TrafficDeltaSent, state.TrafficDeltaRecv)
 
+	if len(taskResults) > 0 {
+		logrus.Debugf("Sent %d task results with state report", len(taskResults))
+	}
+
 	return nil
 }
 
 // handleTask processes tasks sent by the server
-func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, task *proto.AgentTask, config *Config) {
+func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, dockerHandler *DockerTaskHandler, dockerStreamHandler *DockerStreamHandler, taskResults chan<- *proto.TaskResult, task *proto.AgentTask, config *Config) {
 	logrus.Infof("[Task] Received task: id=%s type=%s", task.TaskId, task.TaskType)
 	logrus.Debugf("[Task] Task params: %+v", task.Params)
 
@@ -485,6 +522,38 @@ func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, 
 		// Handle service probe tasks (using shared probe handler for batch reporting)
 		probeHandler.HandleProbeTask(task, config)
 
+	case "docker":
+		// Handle Docker tasks
+		if dockerHandler == nil {
+			logrus.Warnf("[Task:Docker] Docker handler not available (Docker not installed or initialization failed)")
+			// Send error result
+			taskResults <- &proto.TaskResult{
+				TaskId:    task.TaskId,
+				Success:   false,
+				Error:     "Docker handler not available",
+				Timestamp: time.Now().UnixMilli(),
+			}
+			return
+		}
+		logrus.Infof("[Task:Docker] Processing Docker task: %s", task.Params["operation"])
+		result := dockerHandler.HandleDockerTask(task)
+		taskResults <- result
+		if result.Success {
+			logrus.Infof("[Task:Docker] Task completed successfully: id=%s", task.TaskId)
+		} else {
+			logrus.Errorf("[Task:Docker] Task failed: id=%s error=%s", task.TaskId, result.Error)
+		}
+
+	case "docker_stream":
+		// Handle Docker stream tasks
+		if dockerStreamHandler == nil {
+			logrus.Warnf("[Task:DockerStream] Docker stream handler not available")
+			return
+		}
+		logrus.Infof("[Task:DockerStream] Starting Docker stream session")
+		// Initiate DockerStream connection
+		go handleDockerStreamSession(client, dockerStreamHandler)
+
 	case "command":
 		// TODO: Handle command execution tasks
 		logrus.Warnf("[Task:Command] Command tasks not yet implemented")
@@ -492,4 +561,25 @@ func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, 
 	default:
 		logrus.Warnf("[Task] Unknown task type: %s", task.TaskType)
 	}
+}
+
+// handleDockerStreamSession initiates and handles a Docker stream connection
+func handleDockerStreamSession(client proto.HostMonitorClient, dockerStreamHandler *DockerStreamHandler) {
+	logrus.Info("[DockerStream] Initiating DockerStream connection to server")
+
+	// Create Docker stream
+	stream, err := client.DockerStream(context.Background())
+	if err != nil {
+		logrus.WithError(err).Error("[DockerStream] Failed to create DockerStream")
+		return
+	}
+
+	logrus.Info("[DockerStream] DockerStream connection established")
+
+	// Handle the stream (this is a blocking call)
+	if err := dockerStreamHandler.HandleDockerStream(stream); err != nil {
+		logrus.WithError(err).Error("[DockerStream] Stream handling error")
+	}
+
+	logrus.Info("[DockerStream] DockerStream connection closed")
 }

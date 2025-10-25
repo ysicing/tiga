@@ -15,11 +15,11 @@ import (
 
 // SystemHandler handles Docker system-level operations
 type SystemHandler struct {
-	agentForwarder *docker.AgentForwarder
+	agentForwarder *docker.AgentForwarderV2
 }
 
 // NewSystemHandler creates a new SystemHandler instance
-func NewSystemHandler(agentForwarder *docker.AgentForwarder) *SystemHandler {
+func NewSystemHandler(agentForwarder *docker.AgentForwarderV2) *SystemHandler {
 	return &SystemHandler{
 		agentForwarder: agentForwarder,
 	}

@@ -55,12 +55,12 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 	}
 	hostRepository := repository.NewHostRepository(gormDB)
 	auditEventRepository := repository.NewAuditEventRepository(gormDB)
-	agentForwarder := docker.NewAgentForwarder(gormDB)
-	dockerInstanceService := docker.NewDockerInstanceService(gormDB, agentForwarder)
-	hostMonitoringComponents := provideHostMonitoringComponents(hostRepository, gormDB, auditEventRepository, dockerInstanceService, agentForwarder)
+	dockerInstanceService := docker.NewDockerInstanceService(gormDB)
+	hostMonitoringComponents := provideHostMonitoringComponents(hostRepository, gormDB, auditEventRepository, dockerInstanceService)
 	stateCollector := provideStateCollector(hostMonitoringComponents)
 	agentManager := provideAgentManager(hostMonitoringComponents)
 	terminalManager := host.NewTerminalManager()
+	dockerStreamManager := host.NewDockerStreamManager()
 	hostService := provideHostService(hostRepository, agentManager, stateCollector, cfg)
 	serviceRepository := repository.NewServiceRepository(gormDB)
 	monitorAlertRepository := repository.NewMonitorAlertRepository(gormDB)
@@ -75,7 +75,7 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 	cacheService := k8s.NewCacheService()
 	relationsService := k8s.NewRelationsService()
 	searchService := provideSearchService(cacheService)
-	application, err := newWireApplication(cfg, configPath, installMode, staticFS, database, schedulerScheduler, managerCoordinator, jwtManager, hostRepository, stateCollector, agentManager, terminalManager, hostService, serviceProbeScheduler, k8sService, clusterHealthService, autoDiscoveryService, cacheService, relationsService, searchService)
+	application, err := newWireApplication(cfg, configPath, installMode, staticFS, database, schedulerScheduler, managerCoordinator, jwtManager, hostRepository, stateCollector, agentManager, terminalManager, dockerStreamManager, hostService, serviceProbeScheduler, k8sService, clusterHealthService, autoDiscoveryService, cacheService, relationsService, searchService)
 	if err != nil {
 		return nil, err
 	}
@@ -105,14 +105,16 @@ type HostMonitoringComponents struct {
 
 // HostServiceSet provides host monitoring services
 var HostServiceSet = wire.NewSet(
-	provideHostMonitoringComponents, host.NewTerminalManager, provideHostService,
+	provideHostMonitoringComponents, host.NewTerminalManager, host.NewDockerStreamManager, provideHostService,
 	provideStateCollector,
 	provideAgentManager,
 )
 
 // DockerServiceSet provides Docker management services
 // T032: Docker services needed for AgentManager integration
-var DockerServiceSet = wire.NewSet(docker.NewAgentForwarder, docker.NewDockerInstanceService)
+var DockerServiceSet = wire.NewSet(
+	provideAgentForwarderV2, docker.NewDockerInstanceService,
+)
 
 // MonitoringServiceSet provides monitoring services
 var MonitoringServiceSet = wire.NewSet(
@@ -165,14 +167,13 @@ func provideHostMonitoringComponents(
 	hostRepo repository.HostRepository, db2 *gorm.DB,
 	auditEventRepo repository.AuditEventRepository,
 	dockerInstanceService *docker.DockerInstanceService,
-	agentForwarder *docker.AgentForwarder,
 ) *HostMonitoringComponents {
 
 	stateCollector := host.NewStateCollector(hostRepo)
 
 	auditLogger := host.NewAuditLogger(auditEventRepo, nil)
 
-	agentManager := host.NewAgentManager(hostRepo, stateCollector, db2, auditLogger, dockerInstanceService, agentForwarder)
+	agentManager := host.NewAgentManager(hostRepo, stateCollector, db2, auditLogger, dockerInstanceService)
 
 	stateCollector.SetAgentManager(agentManager)
 
@@ -190,6 +191,11 @@ func provideStateCollector(components *HostMonitoringComponents) *host.StateColl
 // Extract AgentManager from HostMonitoringComponents
 func provideAgentManager(components *HostMonitoringComponents) *host.AgentManager {
 	return components.AgentManager
+}
+
+// Provide AgentForwarderV2 using AgentManager for task queue
+func provideAgentForwarderV2(agentManager *host.AgentManager, db2 *gorm.DB) *docker.AgentForwarderV2 {
+	return docker.NewAgentForwarderV2(agentManager, db2)
 }
 
 // T038: Provide AuditLogger for host subsystem (used by handlers)
@@ -257,6 +263,7 @@ func newWireApplication(
 	stateCollector *host.StateCollector,
 	agentManager *host.AgentManager,
 	terminalManager *host.TerminalManager,
+	dockerStreamManager *host.DockerStreamManager,
 	hostService *host.HostService,
 	probeScheduler *monitor.ServiceProbeScheduler,
 	k8sService *services.K8sService,
@@ -280,6 +287,7 @@ func newWireApplication(
 		stateCollector:       stateCollector,
 		agentManager:         agentManager,
 		terminalManager:      terminalManager,
+		dockerStreamManager:  dockerStreamManager,
 		hostService:          hostService,
 		probeScheduler:       probeScheduler,
 		k8sService:           k8sService,

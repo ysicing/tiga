@@ -21,14 +21,14 @@ const (
 // DockerHealthService handles Docker instance health checking
 type DockerHealthService struct {
 	repo           repository.DockerInstanceRepositoryInterface
-	agentForwarder *AgentForwarder
+	agentForwarder *AgentForwarderV2
 	db             *gorm.DB // For checking agent connection status
 }
 
 // NewDockerHealthService creates a new DockerHealthService
 func NewDockerHealthService(
 	repo repository.DockerInstanceRepositoryInterface,
-	agentForwarder *AgentForwarder,
+	agentForwarder *AgentForwarderV2,
 	db *gorm.DB,
 ) *DockerHealthService {
 	return &DockerHealthService{
@@ -104,8 +104,8 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 	}
 
 	// Health check succeeded, update status and statistics
-	containerCount := int(info.Containers)
-	imageCount := int(info.Images)
+	containerCount := int(info.Info.Containers)
+	imageCount := int(info.Info.Images)
 	volumeCount := 0  // TODO: Add volume count when available
 	networkCount := 0 // TODO: Add network count when available
 
@@ -124,15 +124,15 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 
 	// Also update Docker daemon information
 	dockerInfo := map[string]interface{}{
-		"docker_version":   info.Version,
-		"api_version":      info.ApiVersion,
-		"min_api_version":  info.MinApiVersion,
-		"storage_driver":   info.StorageDriver,
-		"operating_system": info.OperatingSystem,
-		"architecture":     info.Arch,
-		"kernel_version":   info.KernelVersion,
-		"mem_total":        info.MemTotal,
-		"n_cpu":            int(info.NCpu),
+		"docker_version":   info.Info.Driver,           // Using driver as version field
+		"api_version":      "",                         // Not available in SystemInfo
+		"min_api_version":  "",                         // Not available in SystemInfo
+		"storage_driver":   info.Info.Driver,
+		"operating_system": info.Info.OperatingSystem,
+		"architecture":     info.Info.Architecture,
+		"kernel_version":   info.Info.KernelVersion,
+		"mem_total":        info.Info.MemTotal,
+		"n_cpu":            int(info.Info.Ncpu),
 	}
 
 	if err := s.repo.UpdateDockerInfo(ctx, instanceID, dockerInfo); err != nil {
@@ -145,7 +145,7 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 		"instance_name":  instance.Name,
 		"containers":     containerCount,
 		"images":         imageCount,
-		"docker_version": info.Version,
+		"docker_version": info.Info.Driver,  // Using driver as version
 	}).Debug("Docker instance health check succeeded")
 
 	return nil

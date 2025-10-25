@@ -15,13 +15,13 @@ import (
 // ContainerHandler handles Docker container API requests
 type ContainerHandler struct {
 	containerService *docker.ContainerService
-	agentForwarder   *docker.AgentForwarder
+	agentForwarder   *docker.AgentForwarderV2
 }
 
 // NewContainerHandler creates a new ContainerHandler
 func NewContainerHandler(
 	containerService *docker.ContainerService,
-	agentForwarder *docker.AgentForwarder,
+	agentForwarder *docker.AgentForwarderV2,
 ) *ContainerHandler {
 	return &ContainerHandler{
 		containerService: containerService,

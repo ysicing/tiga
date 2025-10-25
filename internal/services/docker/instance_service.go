@@ -14,17 +14,15 @@ import (
 
 // DockerInstanceService handles business logic for Docker instances
 type DockerInstanceService struct {
-	repo           repository.DockerInstanceRepositoryInterface
-	agentForwarder *AgentForwarder
-	db             *gorm.DB
+	repo repository.DockerInstanceRepositoryInterface
+	db   *gorm.DB
 }
 
 // NewDockerInstanceService creates a new DockerInstanceService
-func NewDockerInstanceService(db *gorm.DB, agentForwarder *AgentForwarder) *DockerInstanceService {
+func NewDockerInstanceService(db *gorm.DB) *DockerInstanceService {
 	return &DockerInstanceService{
-		repo:           repository.NewDockerInstanceRepository(db),
-		agentForwarder: agentForwarder,
-		db:             db,
+		repo: repository.NewDockerInstanceRepository(db),
+		db:   db,
 	}
 }
 
@@ -198,7 +196,7 @@ func (s *DockerInstanceService) GetStatistics(ctx context.Context) (*repository.
 	return stats, nil
 }
 
-// TestConnection tests the connection to a Docker instance by calling GetDockerInfo
+// TestConnection tests the connection to a Docker instance by checking agent status
 func (s *DockerInstanceService) TestConnection(ctx context.Context, id uuid.UUID) (bool, error) {
 	// Get instance
 	instance, err := s.repo.GetByID(ctx, id)
@@ -206,21 +204,33 @@ func (s *DockerInstanceService) TestConnection(ctx context.Context, id uuid.UUID
 		return false, fmt.Errorf("instance not found: %w", err)
 	}
 
-	// Try to call GetDockerInfo via agent forwarder
-	_, err = s.agentForwarder.GetDockerInfo(instance.AgentID)
-	if err != nil {
+	// Get the agent connection record to check online status
+	var agentConn models.AgentConnection
+	if err := s.db.Where("id = ?", instance.AgentID).First(&agentConn).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			logrus.WithFields(logrus.Fields{
+				"instance_id": id,
+				"agent_id":    instance.AgentID,
+			}).Warn("Agent connection not found")
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to query agent connection: %w", err)
+	}
+
+	// Check if agent is online
+	if agentConn.Status != models.AgentStatusOnline {
 		logrus.WithFields(logrus.Fields{
 			"instance_id": id,
 			"agent_id":    instance.AgentID,
-			"error":       err.Error(),
-		}).Warn("Failed to connect to Docker instance")
+			"status":      agentConn.Status,
+		}).Info("Agent is not online")
 		return false, nil
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"instance_id": id,
 		"agent_id":    instance.AgentID,
-	}).Info("Successfully connected to Docker instance")
+	}).Info("Agent is online - Docker instance accessible")
 
 	return true, nil
 }

@@ -58,11 +58,12 @@ type Application struct {
 	staticFS       embed.FS
 
 	// Host monitoring services (shared between gRPC and HTTP)
-	hostRepo        repository.HostRepository
-	stateCollector  *host.StateCollector
-	agentManager    *host.AgentManager
-	terminalManager *host.TerminalManager
-	hostService     *host.HostService
+	hostRepo            repository.HostRepository
+	stateCollector      *host.StateCollector
+	agentManager        *host.AgentManager
+	terminalManager     *host.TerminalManager
+	dockerStreamManager *host.DockerStreamManager
+	hostService         *host.HostService
 
 	// Service monitoring
 	probeScheduler *monitor.ServiceProbeScheduler
@@ -200,7 +201,9 @@ func (a *Application) Initialize(ctx context.Context) error {
 		a.hostService,
 		a.stateCollector,
 		a.terminalManager,
+		a.dockerStreamManager,
 		a.probeScheduler,
+		a.agentManager,
 		a.config,
 	)
 
@@ -216,7 +219,7 @@ func (a *Application) Initialize(ctx context.Context) error {
 	}
 
 	// Initialize gRPC server for Agent communication
-	grpcService := host.NewGRPCServer(a.agentManager, a.terminalManager, a.probeScheduler)
+	grpcService := host.NewGRPCServer(a.agentManager, a.terminalManager, a.dockerStreamManager, a.probeScheduler)
 
 	a.grpcServer = grpc.NewServer()
 	proto.RegisterHostMonitorServer(a.grpcServer, grpcService)
@@ -662,7 +665,7 @@ func (a *Application) registerScheduledTasks(ctx context.Context) error {
 	// Task 5: Docker Health Check (T030 - runs every 60 seconds)
 	// Check Docker instance health status via Agent gRPC
 	dockerInstanceRepo := repository.NewDockerInstanceRepository(a.db.DB)
-	dockerForwarder := dockerservices.NewAgentForwarder(a.db.DB)
+	dockerForwarder := dockerservices.NewAgentForwarderV2(a.agentManager, a.db.DB)
 	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerForwarder, a.db.DB)
 
 	dockerHealthTask := scheduler.NewDockerHealthCheckTask(dockerHealthService)
