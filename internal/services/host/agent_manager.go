@@ -688,7 +688,6 @@ func (m *AgentManager) discoverDockerInstanceFromProto(agentID uuid.UUID, hostID
 	}).Info("Docker instance auto-discovered/updated successfully")
 }
 
-
 // processTaskResults handles task results received from agent
 func (m *AgentManager) processTaskResults(uuid string, results []*proto.TaskResult) error {
 	conn, ok := m.connections.Load(uuid)
@@ -784,7 +783,6 @@ func (m *AgentManager) QueueTaskAndWait(ctx context.Context, uuid string, task *
 		return nil, fmt.Errorf("context cancelled while waiting for task result: task_id=%s", task.TaskId)
 	}
 }
-
 
 // ArchiveDockerInstancesByHostID archives all Docker instances for a host when it's deleted
 // T032: Docker实例生命周期管理

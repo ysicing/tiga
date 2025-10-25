@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/gorm"
+
+	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
 const (

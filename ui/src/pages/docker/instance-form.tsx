@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -50,11 +49,8 @@ export function DockerInstanceForm() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const isEditMode = Boolean(id)
-  const [showTLS, setShowTLS] = useState(false)
 
-  const { data: instanceData } = useDockerInstance(id!, {
-    enabled: isEditMode,
-  })
+  const { data: instanceData } = useDockerInstance(id!)
   const createMutation = useCreateDockerInstance()
   const updateMutation = useUpdateDockerInstance()
 
@@ -246,10 +242,7 @@ export function DockerInstanceForm() {
                       <FormControl>
                         <Checkbox
                           checked={field.value}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked)
-                            setShowTLS(checked as boolean)
-                          }}
+                          onCheckedChange={field.onChange}
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">

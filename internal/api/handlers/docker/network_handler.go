@@ -6,8 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
+
 	"github.com/ysicing/tiga/internal/services/docker"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
@@ -57,7 +59,10 @@ func (h *NetworkHandler) GetNetworks(c *gin.Context) {
 		return
 	}
 
-	basehandlers.RespondSuccess(c, resp)
+	// Return data in the format expected by frontend: { networks: [...] }
+	basehandlers.RespondSuccess(c, map[string]interface{}{
+		"networks": resp.Networks,
+	})
 }
 
 // GetNetwork gets details of a specific Docker network

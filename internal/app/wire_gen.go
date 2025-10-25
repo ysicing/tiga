@@ -60,7 +60,7 @@ func InitializeApplication(ctx context.Context, cfg *config.Config, configPath s
 	stateCollector := provideStateCollector(hostMonitoringComponents)
 	agentManager := provideAgentManager(hostMonitoringComponents)
 	terminalManager := host.NewTerminalManager()
-	dockerStreamManager := host.NewDockerStreamManager()
+	dockerStreamManager := host.NewDockerStreamManager(agentManager, gormDB)
 	hostService := provideHostService(hostRepository, agentManager, stateCollector, cfg)
 	serviceRepository := repository.NewServiceRepository(gormDB)
 	monitorAlertRepository := repository.NewMonitorAlertRepository(gormDB)

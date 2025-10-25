@@ -512,7 +512,8 @@ export const useDockerInstances = (filters?: {
     queryKey: ['docker', 'instances', filters],
     queryFn: async () => {
       const response = await apiClient.get<{
-        data: { instances: DockerInstance[]; total: number; page: number; page_size: number }
+        data: DockerInstance[]
+        pagination: { total: number; page: number; page_size: number; total_pages: number }
       }>(`/docker/instances?${queryParams.toString()}`)
       return response
     },
@@ -633,6 +634,7 @@ export const useStartContainer = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'container', variables.containerId],
@@ -653,6 +655,7 @@ export const useStopContainer = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'container', variables.containerId],
@@ -673,6 +676,7 @@ export const useRestartContainer = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
     },
   })
@@ -690,6 +694,7 @@ export const usePauseContainer = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
     },
   })
@@ -707,6 +712,7 @@ export const useUnpauseContainer = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
     },
   })
@@ -729,6 +735,7 @@ export const useDeleteContainer = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
     },
   })
@@ -899,6 +906,7 @@ export const useCreateVolume = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'volumes'],
+        exact: false, // Match all queries regardless of filters
       })
     },
   })
@@ -920,6 +928,7 @@ export const useDeleteVolume = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'volumes'],
+        exact: false, // Match all queries regardless of filters
       })
     },
   })
@@ -940,6 +949,7 @@ export const usePruneVolumes = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'volumes'],
+        exact: false, // Match all queries regardless of filters
       })
     },
   })
@@ -996,6 +1006,7 @@ export const useCreateNetwork = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'networks'],
+        exact: false, // Match all queries regardless of filters
       })
     },
   })
@@ -1016,6 +1027,7 @@ export const useDeleteNetwork = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'networks'],
+        exact: false, // Match all queries regardless of filters
       })
     },
   })
@@ -1042,9 +1054,11 @@ export const useConnectNetwork = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'networks'],
+        exact: false, // Match all queries regardless of filters
       })
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
     },
   })
@@ -1067,9 +1081,11 @@ export const useDisconnectNetwork = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'networks'],
+        exact: false, // Match all queries regardless of filters
       })
       queryClient.invalidateQueries({
         queryKey: ['docker', 'instance', variables.instanceId, 'containers'],
+        exact: false, // Match all queries with filters
       })
     },
   })
@@ -1150,5 +1166,107 @@ export const useDockerAuditLogs = (filters: DockerAuditLogFilters) => {
           page_size: number
         }
       }>(`/docker/audit-logs?${queryParams.toString()}`),
+  })
+}
+
+// Terminal Recording Types
+export interface TerminalRecording {
+  id: string
+  session_id: string
+  instance_id: string
+  container_id: string
+  user_id: string
+  username: string
+  started_at: string
+  ended_at?: string
+  duration: number
+  storage_path: string
+  file_size: number
+  format: string
+  rows: number
+  cols: number
+  shell: string
+  client_ip: string
+  description?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TerminalRecordingStatistics {
+  total_recordings: number
+  total_duration: number
+  total_size: number
+  avg_duration: number
+  avg_size: number
+  recordings_today: number
+}
+
+export interface TerminalRecordingFilters {
+  user_id?: string
+  instance_id?: string
+  container_id?: string
+  start_date?: string
+  end_date?: string
+  page?: number
+  page_size?: number
+}
+
+// Terminal Recording Hooks
+export const useTerminalRecordings = (filters?: TerminalRecordingFilters) => {
+  const queryParams = new URLSearchParams()
+  if (filters) {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        queryParams.append(key, String(value))
+      }
+    })
+  }
+
+  return useQuery({
+    queryKey: ['docker', 'recordings', filters],
+    queryFn: () =>
+      apiClient.get<{
+        data: {
+          recordings: TerminalRecording[]
+          pagination: {
+            total: number
+            page: number
+            page_size: number
+          }
+        }
+      }>(`/docker/recordings?${queryParams.toString()}`),
+  })
+}
+
+export const useTerminalRecording = (id: string) => {
+  return useQuery({
+    queryKey: ['docker', 'recording', id],
+    queryFn: () =>
+      apiClient.get<{
+        data: TerminalRecording
+      }>(`/docker/recordings/${id}`),
+    enabled: !!id,
+  })
+}
+
+export const useTerminalRecordingStatistics = () => {
+  return useQuery({
+    queryKey: ['docker', 'recordings', 'statistics'],
+    queryFn: () =>
+      apiClient.get<{
+        data: TerminalRecordingStatistics
+      }>('/docker/recordings/statistics'),
+  })
+}
+
+export const useDeleteTerminalRecording = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient.delete(`/docker/recordings/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['docker', 'recordings'] })
+    },
   })
 }

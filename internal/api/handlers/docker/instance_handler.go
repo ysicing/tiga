@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"context"
 	"strconv"
 	"time"
 
@@ -10,10 +9,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
 	"github.com/ysicing/tiga/internal/services/docker"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 )
 
 // InstanceHandler handles Docker instance API requests
@@ -35,36 +35,36 @@ func NewInstanceHandler(
 
 // DockerInstanceResponse represents the API response for a Docker instance with Agent info
 type DockerInstanceResponse struct {
-	ID          string   `json:"id"`
-	AgentID     string   `json:"agent_id"`
-	AgentName   string   `json:"agent_name"`
-	Name        string   `json:"name"`
-	Host        string   `json:"host"`        // Agent IP address
-	Port        int      `json:"port"`        // gRPC port (default: 50051)
-	Description string   `json:"description"`
-	Status      string   `json:"status"`      // online, offline, unknown, archived
+	ID          string `json:"id"`
+	AgentID     string `json:"agent_id"`
+	AgentName   string `json:"agent_name"`
+	Name        string `json:"name"`
+	Host        string `json:"host"` // Agent IP address
+	Port        int    `json:"port"` // gRPC port (default: 50051)
+	Description string `json:"description"`
+	Status      string `json:"status"` // online, offline, unknown, archived
 
 	// Docker daemon info
-	Version          string `json:"version,omitempty"`
-	APIVersion       string `json:"api_version,omitempty"`
-	OS               string `json:"os,omitempty"`
-	Architecture     string `json:"architecture,omitempty"`
-	KernelVersion    string `json:"kernel_version,omitempty"`
-	OperatingSystem  string `json:"operating_system,omitempty"`
+	Version         string `json:"version,omitempty"`
+	APIVersion      string `json:"api_version,omitempty"`
+	OS              string `json:"os,omitempty"`
+	Architecture    string `json:"architecture,omitempty"`
+	KernelVersion   string `json:"kernel_version,omitempty"`
+	OperatingSystem string `json:"operating_system,omitempty"`
 
 	// Resource counts
-	TotalContainers   int    `json:"total_containers,omitempty"`
-	RunningContainers int    `json:"running_containers,omitempty"`
-	TotalImages       int    `json:"total_images,omitempty"`
+	TotalContainers   int `json:"total_containers,omitempty"`
+	RunningContainers int `json:"running_containers,omitempty"`
+	TotalImages       int `json:"total_images,omitempty"`
 
 	// Timestamps
-	LastSeenAt string    `json:"last_seen_at,omitempty"`
-	CreatedAt  string    `json:"created_at"`
-	UpdatedAt  string    `json:"updated_at"`
+	LastSeenAt string `json:"last_seen_at,omitempty"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
 
 	// Metadata
-	Labels      map[string]string `json:"labels,omitempty"`
-	Tags        []string          `json:"tags,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
+	Tags   []string          `json:"tags,omitempty"`
 }
 
 // GetInstances godoc
@@ -126,7 +126,7 @@ func (h *InstanceHandler) GetInstances(c *gin.Context) {
 	// Convert to response DTOs with Agent information
 	responses := make([]DockerInstanceResponse, len(instances))
 	for i, instance := range instances {
-		responses[i] = h.toResponse(c.Request.Context(), instance)
+		responses[i] = h.toResponse(c, instance)
 	}
 
 	basehandlers.RespondPaginated(c, responses, page, pageSize, total)
@@ -158,32 +158,32 @@ func (h *InstanceHandler) GetInstance(c *gin.Context) {
 		return
 	}
 
-	response := h.toResponse(c.Request.Context(), instance)
+	response := h.toResponse(c, instance)
 	basehandlers.RespondSuccess(c, response)
 }
 
 // toResponse converts a DockerInstance model to DockerInstanceResponse with Agent information
-func (h *InstanceHandler) toResponse(ctx context.Context, instance *models.DockerInstance) DockerInstanceResponse {
-	db := ctx.Value("db").(*gorm.DB)
+func (h *InstanceHandler) toResponse(c *gin.Context, instance *models.DockerInstance) DockerInstanceResponse {
+	db := c.MustGet("db").(*gorm.DB)
 
 	response := DockerInstanceResponse{
-		ID:                instance.ID.String(),
-		AgentID:           instance.AgentID.String(),
-		Name:              instance.Name,
-		Description:       instance.Description,
-		Status:            instance.HealthStatus,
-		Version:           instance.DockerVersion,
-		APIVersion:        instance.APIVersion,
-		OS:                instance.OperatingSystem,
-		Architecture:      instance.Architecture,
-		KernelVersion:     instance.KernelVersion,
-		OperatingSystem:   instance.OperatingSystem,
-		TotalContainers:   instance.ContainerCount,
-		TotalImages:       instance.ImageCount,
-		Port:              50051, // Default gRPC port
-		Tags:              instance.Tags,
-		CreatedAt:         instance.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:         instance.UpdatedAt.Format(time.RFC3339),
+		ID:              instance.ID.String(),
+		AgentID:         instance.AgentID.String(),
+		Name:            instance.Name,
+		Description:     instance.Description,
+		Status:          instance.HealthStatus,
+		Version:         instance.DockerVersion,
+		APIVersion:      instance.APIVersion,
+		OS:              instance.OperatingSystem,
+		Architecture:    instance.Architecture,
+		KernelVersion:   instance.KernelVersion,
+		OperatingSystem: instance.OperatingSystem,
+		TotalContainers: instance.ContainerCount,
+		TotalImages:     instance.ImageCount,
+		Port:            50051, // Default gRPC port
+		Tags:            instance.Tags,
+		CreatedAt:       instance.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       instance.UpdatedAt.Format(time.RFC3339),
 	}
 
 	if !instance.LastConnectedAt.IsZero() {
@@ -424,9 +424,9 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 
 	// Build info map
 	infoMap := map[string]interface{}{
-		"version":            dockerInfo.Info.Driver,           // Using driver as version
-		"api_version":        "",                               // Not available in SystemInfo
-		"min_api_version":    "",                               // Not available in SystemInfo
+		"version":            dockerInfo.Info.Driver, // Using driver as version
+		"api_version":        "",                     // Not available in SystemInfo
+		"min_api_version":    "",                     // Not available in SystemInfo
 		"storage_driver":     dockerInfo.Info.Driver,
 		"operating_system":   dockerInfo.Info.OperatingSystem,
 		"architecture":       dockerInfo.Info.Architecture,
@@ -448,7 +448,7 @@ func (h *InstanceHandler) TestConnection(c *gin.Context) {
 
 	logrus.WithFields(logrus.Fields{
 		"agent_id":       agentID,
-		"docker_version": dockerInfo.Info.Driver,  // Using driver as version
+		"docker_version": dockerInfo.Info.Driver, // Using driver as version
 	}).Info("Docker connection test successful")
 
 	basehandlers.RespondSuccess(c, response)

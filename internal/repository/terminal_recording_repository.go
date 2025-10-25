@@ -229,10 +229,10 @@ func (r *TerminalRecordingRepository) GetStatistics(ctx context.Context) (*Termi
 	// Get total count, duration, and size
 	err := r.db.WithContext(ctx).
 		Model(&models.TerminalRecording{}).
-		Select("COUNT(*) as total_recordings, "+
-			"COALESCE(SUM(duration), 0) as total_duration, "+
-			"COALESCE(SUM(file_size), 0) as total_size, "+
-			"COALESCE(AVG(duration), 0) as avg_duration, "+
+		Select("COUNT(*) as total_recordings, " +
+			"COALESCE(SUM(duration), 0) as total_duration, " +
+			"COALESCE(SUM(file_size), 0) as total_size, " +
+			"COALESCE(AVG(duration), 0) as avg_duration, " +
 			"COALESCE(AVG(file_size), 0) as avg_size").
 		Scan(&stats).Error
 	if err != nil {

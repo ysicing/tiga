@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   Video,
@@ -19,43 +18,7 @@ import {
 import * as AsciinemaPlayer from 'asciinema-player';
 import 'asciinema-player/dist/bundle/asciinema-player.css';
 
-interface RecordingMetadata {
-  id: string;
-  session_id: string;
-  instance_id: string;
-  container_id: string;
-  username: string;
-  started_at: string;
-  ended_at?: string;
-  duration: number;
-  file_size: number;
-  format: string;
-  rows: number;
-  cols: number;
-  shell: string;
-  client_ip: string;
-  description?: string;
-}
-
-interface RecordingResponse {
-  success: boolean;
-  data: RecordingMetadata;
-}
-
-// API functions
-const fetchRecording = async (id: string): Promise<RecordingResponse> => {
-  const response = await fetch(`/api/v1/docker/recordings/${id}`, {
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch recording');
-  }
-
-  return response.json();
-};
+import { useTerminalRecording } from '@/services/docker-api';
 
 // Utility functions
 const formatDuration = (seconds: number): string => {
@@ -80,18 +43,13 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export default function TerminalRecordingPlayerPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { recordingId } = useParams<{ recordingId: string }>();
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const [playerLoaded, setPlayerLoaded] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
 
-  // Fetch recording metadata
-  const { data: recordingData, isLoading, error, refetch } = useQuery({
-    queryKey: ['terminal-recording', id],
-    queryFn: () => fetchRecording(id!),
-    enabled: !!id,
-  });
+  // Fetch recording metadata using React Query hook
+  const { data: recordingData, isLoading, error, refetch } = useTerminalRecording(recordingId!);
 
   const recording = recordingData?.data;
 
@@ -105,7 +63,7 @@ export default function TerminalRecordingPlayerPage() {
     playerContainerRef.current.innerHTML = '';
 
     try {
-      const playbackUrl = `/api/v1/docker/recordings/${id}/playback`;
+      const playbackUrl = `/api/v1/docker/recordings/${recordingId}/playback`;
 
       AsciinemaPlayer.create(playbackUrl, playerContainerRef.current, {
         speed: 1.0,
@@ -124,16 +82,16 @@ export default function TerminalRecordingPlayerPage() {
       console.error('Failed to initialize asciinema player:', err);
       setPlayerError('Failed to load terminal recording player');
     }
-  }, [recording, id, playerLoaded]);
+  }, [recording, recordingId, playerLoaded]);
 
   // Handle download
   const handleDownload = () => {
-    if (!id) return;
+    if (!recordingId) return;
 
-    const downloadUrl = `/api/v1/docker/recordings/${id}/playback`;
+    const downloadUrl = `/api/v1/docker/recordings/${recordingId}/playback`;
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `recording-${id}.cast`;
+    link.download = `recording-${recordingId}.cast`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -144,11 +102,11 @@ export default function TerminalRecordingPlayerPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <Link
-            to="/docker/recordings"
+            to="/docker"
             className="flex items-center text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            返回录制列表
+            返回
           </Link>
         </div>
         <div className="flex items-center justify-center py-20">
@@ -164,11 +122,11 @@ export default function TerminalRecordingPlayerPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <Link
-            to="/docker/recordings"
+            to="/docker"
             className="flex items-center text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            返回录制列表
+            返回
           </Link>
         </div>
         <div className="flex flex-col items-center justify-center py-20">
@@ -187,13 +145,15 @@ export default function TerminalRecordingPlayerPage() {
     );
   }
 
+  const backUrl = `/docker/instances/${recording.instance_id}/recordings`;
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link
-            to="/docker/recordings"
+            to={backUrl}
             className="flex items-center text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

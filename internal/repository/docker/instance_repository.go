@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/repository"
-	"gorm.io/gorm"
 )
 
 // DockerInstanceRepository implements DockerInstanceRepositoryInterface

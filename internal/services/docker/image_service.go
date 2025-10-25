@@ -9,15 +9,22 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/models"
+
 	pb "github.com/ysicing/tiga/pkg/grpc/proto/docker"
 )
 
+// DockerStreamManager interface to avoid import cycle
+type DockerStreamManager interface {
+	CreateSession(instanceID uuid.UUID, agentID string, operation string, containerID, imageName string, params map[string]string) (interface{}, error)
+}
+
 // ImageService handles Docker image operations
 type ImageService struct {
-	db              *gorm.DB
-	instanceService *DockerInstanceService
-	agentForwarder  *AgentForwarderV2
-	enableAuditLog  bool
+	db                  *gorm.DB
+	instanceService     *DockerInstanceService
+	agentForwarder      *AgentForwarderV2
+	dockerStreamManager DockerStreamManager
+	enableAuditLog      bool
 }
 
 // NewImageService creates a new ImageService
@@ -25,12 +32,14 @@ func NewImageService(
 	db *gorm.DB,
 	instanceService *DockerInstanceService,
 	agentForwarder *AgentForwarderV2,
+	dockerStreamManager DockerStreamManager,
 ) *ImageService {
 	return &ImageService{
-		db:              db,
-		instanceService: instanceService,
-		agentForwarder:  agentForwarder,
-		enableAuditLog:  true, // Enable audit logging by default
+		db:                  db,
+		instanceService:     instanceService,
+		agentForwarder:      agentForwarder,
+		dockerStreamManager: dockerStreamManager,
+		enableAuditLog:      true, // Enable audit logging by default
 	}
 }
 
@@ -136,14 +145,10 @@ func (s *ImageService) TagImage(ctx context.Context, instanceID uuid.UUID, sourc
 	return nil
 }
 
-// PullImage initiates an image pull (returns stream client for progress updates)
+// PullImage initiates an image pull (returns stream session for progress updates)
 // Note: Audit log is created when pull completes (in the caller that reads the stream)
-// TODO: PullImage is a streaming operation and cannot be implemented with task queue mode.
-// This needs to either use direct gRPC connection or be reimplemented as a non-streaming operation.
-func (s *ImageService) PullImage(ctx context.Context, instanceID uuid.UUID, image string, registryAuth string) (pb.DockerService_PullImageClient, error) {
-	return nil, fmt.Errorf("PullImage streaming operation is not supported in task queue mode - requires direct agent connection")
-
-	/* Original implementation - commented out until streaming is supported
+// Returns interface{} which is actually *host.DockerStreamSession to avoid import cycle
+func (s *ImageService) PullImage(ctx context.Context, instanceID uuid.UUID, image string, registryAuth string) (interface{}, error) {
 	// Pre-check: ensure instance is online
 	instance, err := s.instanceService.GetByID(ctx, instanceID)
 	if err != nil {
@@ -158,21 +163,29 @@ func (s *ImageService) PullImage(ctx context.Context, instanceID uuid.UUID, imag
 		"image":         image,
 		"instance_id":   instanceID,
 		"instance_name": instance.Name,
-	}).Info("Starting image pull")
+		"agent_id":      instance.AgentID.String(),
+	}).Info("Starting image pull via DockerStream")
 
-	// Forward request to agent
-	req := &pb.PullImageRequest{
-		Image:        image,
-		RegistryAuth: registryAuth,
+	// Create parameters for pull operation
+	params := make(map[string]string)
+	if registryAuth != "" {
+		params["registry_auth"] = registryAuth
 	}
 
-	stream, err := s.agentForwarder.PullImage(instance.AgentID, req)
+	// Create Docker stream session for pull operation
+	session, err := s.dockerStreamManager.CreateSession(
+		instanceID,
+		instance.AgentID.String(), // Convert UUID to string
+		"pull_image",
+		"",    // container_id not needed for pull
+		image, // image_name
+		params,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start image pull: %w", err)
+		return nil, fmt.Errorf("failed to create docker stream session: %w", err)
 	}
 
-	return stream, nil
-	*/
+	return session, nil
 }
 
 // CreatePullAuditLog creates an audit log for image pull operation

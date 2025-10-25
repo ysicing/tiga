@@ -6,7 +6,6 @@ import {
   useTestDockerConnection,
 } from '@/services/docker-api'
 import {
-  IconAlertCircle,
   IconArchive,
   IconCheck,
   IconDotsVertical,
@@ -82,7 +81,7 @@ export function DockerInstanceList() {
   const deleteMutation = useDeleteDockerInstance()
   const testMutation = useTestDockerConnection()
 
-  const instances = data?.data?.instances || []
+  const instances = data?.data || []
   const filteredInstances = instances.filter(
     (instance) =>
       instance.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

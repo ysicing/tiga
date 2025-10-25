@@ -124,9 +124,9 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 
 	// Also update Docker daemon information
 	dockerInfo := map[string]interface{}{
-		"docker_version":   info.Info.Driver,           // Using driver as version field
-		"api_version":      "",                         // Not available in SystemInfo
-		"min_api_version":  "",                         // Not available in SystemInfo
+		"docker_version":   info.Info.Driver, // Using driver as version field
+		"api_version":      "",               // Not available in SystemInfo
+		"min_api_version":  "",               // Not available in SystemInfo
 		"storage_driver":   info.Info.Driver,
 		"operating_system": info.Info.OperatingSystem,
 		"architecture":     info.Info.Architecture,
@@ -145,7 +145,7 @@ func (s *DockerHealthService) CheckInstance(ctx context.Context, instanceID uuid
 		"instance_name":  instance.Name,
 		"containers":     containerCount,
 		"images":         imageCount,
-		"docker_version": info.Info.Driver,  // Using driver as version
+		"docker_version": info.Info.Driver, // Using driver as version
 	}).Debug("Docker instance health check succeeded")
 
 	return nil

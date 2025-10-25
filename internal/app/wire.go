@@ -18,7 +18,6 @@ import (
 	"github.com/ysicing/tiga/internal/services"
 	"github.com/ysicing/tiga/internal/services/alert"
 	"github.com/ysicing/tiga/internal/services/auth"
-	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 	"github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/internal/services/managers"
@@ -29,6 +28,7 @@ import (
 	"github.com/ysicing/tiga/pkg/kube"
 
 	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
+	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 )
 
 // DatabaseSet provides database-related dependencies
@@ -103,7 +103,7 @@ var HostServiceSet = wire.NewSet(
 // DockerServiceSet provides Docker management services
 // T032: Docker services needed for AgentManager integration
 var DockerServiceSet = wire.NewSet(
-	provideAgentForwarderV2,  // Use task-queue based forwarder
+	provideAgentForwarderV2, // Use task-queue based forwarder
 	dockerservices.NewDockerInstanceService,
 )
 

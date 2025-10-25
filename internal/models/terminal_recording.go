@@ -17,19 +17,19 @@ type TerminalRecording struct {
 	Username    string    `gorm:"type:varchar(255);not null" json:"username"`
 
 	// Recording metadata
-	StartedAt   time.Time `gorm:"not null" json:"started_at"`
-	EndedAt     *time.Time `json:"ended_at,omitempty"`
-	Duration    int       `gorm:"default:0" json:"duration"` // Duration in seconds
+	StartedAt time.Time  `gorm:"not null" json:"started_at"`
+	EndedAt   *time.Time `json:"ended_at,omitempty"`
+	Duration  int        `gorm:"default:0" json:"duration"` // Duration in seconds
 
 	// Storage information
-	StoragePath string `gorm:"type:text;not null" json:"storage_path"` // Path in MinIO or local filesystem
-	FileSize    int64  `gorm:"default:0" json:"file_size"`             // File size in bytes
+	StoragePath string `gorm:"type:text;not null" json:"storage_path"`             // Path in MinIO or local filesystem
+	FileSize    int64  `gorm:"default:0" json:"file_size"`                         // File size in bytes
 	Format      string `gorm:"type:varchar(50);default:'asciinema'" json:"format"` // Recording format
 
 	// Terminal configuration
-	Rows        int    `gorm:"default:30" json:"rows"`
-	Cols        int    `gorm:"default:120" json:"cols"`
-	Shell       string `gorm:"type:varchar(255)" json:"shell"`
+	Rows  int    `gorm:"default:30" json:"rows"`
+	Cols  int    `gorm:"default:120" json:"cols"`
+	Shell string `gorm:"type:varchar(255)" json:"shell"`
 
 	// Additional metadata
 	ClientIP    string `gorm:"type:varchar(255)" json:"client_ip"`

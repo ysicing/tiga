@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useDockerInstance, useSystemInfo, useDockerVersion } from '@/services/docker-api'
 import { useParams, useNavigate } from 'react-router-dom'
 import { IconArrowLeft, IconRefresh } from '@tabler/icons-react'
-import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {

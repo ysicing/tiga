@@ -50,6 +50,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -121,6 +122,7 @@ export function ContainerList({ instanceId }: ContainerListProps) {
   const { data, isLoading, error, refetch } = useContainers(instanceId, {
     all: true,
   })
+
   const startMutation = useStartContainer()
   const stopMutation = useStopContainer()
   const restartMutation = useRestartContainer()
@@ -193,13 +195,57 @@ export function ContainerList({ instanceId }: ContainerListProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>容器列表</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>容器列表</CardTitle>
+              <CardDescription className="mt-1 flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                正在加载容器列表...
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16" />
-            ))}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[200px]">名称</TableHead>
+                  <TableHead>镜像</TableHead>
+                  <TableHead className="w-[100px]">状态</TableHead>
+                  <TableHead>端口</TableHead>
+                  <TableHead className="text-right w-[200px]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-40" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        {[1, 2, 3, 4, 5].map((j) => (
+                          <Skeleton key={j} className="h-8 w-8 rounded-md" />
+                        ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
@@ -242,8 +288,13 @@ export function ContainerList({ instanceId }: ContainerListProps) {
                   className="pl-9 w-64"
                 />
               </div>
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <IconRefresh className="w-4 h-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                <IconRefresh className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </div>
@@ -395,6 +446,9 @@ export function ContainerList({ instanceId }: ContainerListProps) {
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>容器日志</DialogTitle>
+            <DialogDescription>
+              查看容器 {logsTarget?.name} 的实时日志输出
+            </DialogDescription>
           </DialogHeader>
           {logsTarget && (
             <ContainerLogsViewer
@@ -412,6 +466,12 @@ export function ContainerList({ instanceId }: ContainerListProps) {
         onOpenChange={() => setTerminalTarget(null)}
       >
         <DialogContent className="max-w-7xl max-h-[95vh] p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>容器终端</DialogTitle>
+            <DialogDescription>
+              连接到容器 {terminalTarget?.name} 的交互式终端
+            </DialogDescription>
+          </DialogHeader>
           {terminalTarget && (
             <ContainerTerminal
               instanceId={instanceId}

@@ -123,7 +123,7 @@ export function DockerSidebar() {
           </SidebarMenu>
         </SidebarGroup>
 
-        {/* Docker 概览 */}
+        {/* Docker 实例 */}
         <SidebarGroup>
           <SidebarGroupLabel>
             {t('docker.title', 'Docker 管理')}
@@ -137,7 +137,7 @@ export function DockerSidebar() {
                 >
                   <Link to="/docker" onClick={handleMenuItemClick}>
                     <IconContainer className="h-4 w-4" />
-                    <span>{t('docker.overview', 'Docker 概览')}</span>
+                    <span>{t('docker.instances', '实例列表')}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

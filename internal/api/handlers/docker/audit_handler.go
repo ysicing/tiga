@@ -7,8 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
-	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/services/docker"
+
+	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
 )
 
 // AuditLogHandler handles Docker audit log API requests

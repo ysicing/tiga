@@ -19,6 +19,8 @@ import (
 
 	"github.com/ysicing/tiga/cmd/tiga-agent/collector"
 	"github.com/ysicing/tiga/proto"
+
+	dockerclient "github.com/docker/docker/client"
 )
 
 var (
@@ -346,19 +348,27 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 	// Initialize Docker task handler if Docker is available
 	var dockerHandler *DockerTaskHandler
 	var dockerStreamHandler *DockerStreamHandler
+
 	if dockerInfo := col.CollectDockerInfo(); dockerInfo.Installed {
 		var err error
 		dockerHandler, err = NewDockerTaskHandler()
 		if err != nil {
-			logrus.WithError(err).Warn("Failed to initialize Docker task handler, Docker operations will be unavailable")
+			logrus.WithError(err).Warn("Failed to initialize Docker task handler at startup, will retry on first Docker task")
 		} else {
 			defer dockerHandler.Close()
-			logrus.Info("Docker task handler initialized successfully")
+			logrus.WithFields(logrus.Fields{
+				"docker_version": dockerInfo.Version,
+				"api_version":    dockerInfo.APIVersion,
+				"containers":     dockerInfo.Containers,
+				"images":         dockerInfo.Images,
+			}).Info("Docker task handler initialized successfully")
 
 			// Create Docker stream handler using the same Docker client
 			dockerStreamHandler = NewDockerStreamHandler(dockerHandler.dockerClient)
 			logrus.Info("Docker stream handler initialized successfully")
 		}
+	} else {
+		logrus.Info("Docker daemon not detected (this is normal if Docker is not installed or not running)")
 	}
 
 	// Create the bidirectional stream
@@ -523,18 +533,35 @@ func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, 
 		probeHandler.HandleProbeTask(task, config)
 
 	case "docker":
-		// Handle Docker tasks
+		// Handle Docker tasks with lazy initialization
 		if dockerHandler == nil {
-			logrus.Warnf("[Task:Docker] Docker handler not available (Docker not installed or initialization failed)")
-			// Send error result
-			taskResults <- &proto.TaskResult{
-				TaskId:    task.TaskId,
-				Success:   false,
-				Error:     "Docker handler not available",
-				Timestamp: time.Now().UnixMilli(),
+			// Try to initialize Docker handler on-demand
+			logrus.Info("[Task:Docker] Docker handler not initialized, attempting lazy initialization...")
+
+			handler, err := tryInitializeDockerHandler()
+			if err != nil {
+				// Provide diagnostic information for Docker unavailability
+				diagMsg := diagnoseDockerIssue()
+				errMsg := fmt.Sprintf("Docker handler initialization failed: %v. Diagnosis: %s", err, diagMsg)
+
+				logrus.Warnf("[Task:Docker] %s", errMsg)
+
+				// Send error result with diagnostic information
+				taskResults <- &proto.TaskResult{
+					TaskId:    task.TaskId,
+					Success:   false,
+					Error:     errMsg,
+					Timestamp: time.Now().UnixMilli(),
+				}
+				return
 			}
-			return
+
+			// Successfully initialized, update the handler
+			dockerHandler = handler
+			dockerStreamHandler = NewDockerStreamHandler(dockerHandler.dockerClient)
+			logrus.Info("[Task:Docker] Docker handler lazy initialization successful")
 		}
+
 		logrus.Infof("[Task:Docker] Processing Docker task: %s", task.Params["operation"])
 		result := dockerHandler.HandleDockerTask(task)
 		taskResults <- result
@@ -552,7 +579,7 @@ func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, 
 		}
 		logrus.Infof("[Task:DockerStream] Starting Docker stream session")
 		// Initiate DockerStream connection
-		go handleDockerStreamSession(client, dockerStreamHandler)
+		go handleDockerStreamSession(client, dockerStreamHandler, task)
 
 	case "command":
 		// TODO: Handle command execution tasks
@@ -564,8 +591,15 @@ func handleTask(client proto.HostMonitorClient, probeHandler *ProbeTaskHandler, 
 }
 
 // handleDockerStreamSession initiates and handles a Docker stream connection
-func handleDockerStreamSession(client proto.HostMonitorClient, dockerStreamHandler *DockerStreamHandler) {
+func handleDockerStreamSession(client proto.HostMonitorClient, dockerStreamHandler *DockerStreamHandler, task *proto.AgentTask) {
 	logrus.Info("[DockerStream] Initiating DockerStream connection to server")
+
+	// Extract session_id from task params
+	sessionID := task.Params["session_id"]
+	if sessionID == "" {
+		logrus.Error("[DockerStream] Missing session_id in task params")
+		return
+	}
 
 	// Create Docker stream
 	stream, err := client.DockerStream(context.Background())
@@ -574,7 +608,23 @@ func handleDockerStreamSession(client proto.HostMonitorClient, dockerStreamHandl
 		return
 	}
 
-	logrus.Info("[DockerStream] DockerStream connection established")
+	logrus.Infof("[DockerStream] DockerStream connection established, session_id: %s", sessionID)
+
+	// Send initial message to server with session_id
+	initMsg := &proto.DockerStreamMessage{
+		Message: &proto.DockerStreamMessage_Init{
+			Init: &proto.DockerStreamInit{
+				SessionId: sessionID,
+			},
+		},
+	}
+
+	if err := stream.Send(initMsg); err != nil {
+		logrus.WithError(err).Error("[DockerStream] Failed to send init message")
+		return
+	}
+
+	logrus.Info("[DockerStream] Sent init message to server")
 
 	// Handle the stream (this is a blocking call)
 	if err := dockerStreamHandler.HandleDockerStream(stream); err != nil {
@@ -582,4 +632,58 @@ func handleDockerStreamSession(client proto.HostMonitorClient, dockerStreamHandl
 	}
 
 	logrus.Info("[DockerStream] DockerStream connection closed")
+}
+
+// tryInitializeDockerHandler attempts to initialize Docker handler
+// This is used for lazy initialization when a Docker task is received
+func tryInitializeDockerHandler() (*DockerTaskHandler, error) {
+	handler, err := NewDockerTaskHandler()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Docker handler: %w", err)
+	}
+	return handler, nil
+}
+
+// diagnoseDockerIssue provides diagnostic information when Docker is unavailable
+func diagnoseDockerIssue() string {
+	// Try to create a Docker client to get specific error
+	cli, err := dockerclient.NewClientWithOpts(
+		dockerclient.FromEnv,
+		dockerclient.WithAPIVersionNegotiation(),
+	)
+	if err != nil {
+		return fmt.Sprintf("Docker client creation failed: %v. Ensure Docker is installed and DOCKER_HOST is correctly configured", err)
+	}
+	defer cli.Close()
+
+	// Try to ping Docker daemon
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err = cli.Ping(ctx)
+	if err != nil {
+		if strings.Contains(err.Error(), "permission denied") {
+			return "Docker daemon connection failed: Permission denied. Ensure the agent user is in the 'docker' group or has access to /var/run/docker.sock"
+		}
+		if strings.Contains(err.Error(), "connection refused") {
+			return "Docker daemon connection failed: Connection refused. Ensure Docker daemon is running"
+		}
+		if strings.Contains(err.Error(), "no such file") {
+			return "Docker socket not found at /var/run/docker.sock. Docker may not be installed"
+		}
+		return fmt.Sprintf("Docker daemon ping failed: %v", err)
+	}
+
+	// If we can ping, try to get version to check API compatibility
+	version, err := cli.ServerVersion(ctx)
+	if err != nil {
+		return fmt.Sprintf("Docker version check failed: %v", err)
+	}
+
+	// Check if API version is too old
+	if version.APIVersion < "1.41" {
+		return fmt.Sprintf("Docker API version %s is too old (minimum required: 1.41 / Docker 20.10+). Please upgrade Docker", version.APIVersion)
+	}
+
+	return "Docker appears to be available now. Please retry the operation"
 }

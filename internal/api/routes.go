@@ -150,13 +150,14 @@ func SetupRoutes(
 	)
 
 	// Docker management services
-	dockerAgentForwarder := dockerservices.NewAgentForwarderV2(agentManager, db)  // Use task-queue based forwarder
+	dockerAgentForwarder := dockerservices.NewAgentForwarderV2(agentManager, db) // Use task-queue based forwarder
 	dockerInstanceService := dockerservices.NewDockerInstanceService(db)
 	dockerContainerService := dockerservices.NewContainerService(db, dockerInstanceService, dockerAgentForwarder)
-	dockerImageService := dockerservices.NewImageService(db, dockerInstanceService, dockerAgentForwarder)
+	dockerImageService := dockerservices.NewImageService(db, dockerInstanceService, dockerAgentForwarder, dockerStreamManager)
 	dockerAuditService := dockerservices.NewAuditLogService(auditRepo)
+	// Docker health check service
+	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder, db)
 	// Unused services for future phases
-	_ = dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder, db)
 	_ = dockerservices.NewDockerCacheService()
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
@@ -216,6 +217,19 @@ func SetupRoutes(
 		logrus.Errorf("Failed to register terminal_recording_cleanup task: %v", err)
 	} else {
 		logrus.Info("terminal_recording_cleanup task registered successfully")
+	}
+
+	// 4. Docker instance health check task (every minute)
+	// Checks health of all Docker instances via agent connections
+	dockerHealthCheckTask := schedulerservices.NewDockerHealthCheckTask(dockerHealthService)
+	if err := schedulerService.AddCron(
+		"docker_health_check",
+		"*/1 * * * *", // Every minute
+		dockerHealthCheckTask,
+	); err != nil {
+		logrus.Errorf("Failed to register docker_health_check task: %v", err)
+	} else {
+		logrus.Info("docker_health_check task registered successfully")
 	}
 
 	// Initialize handlers
@@ -636,10 +650,10 @@ func SetupRoutes(
 					recordingsGroup.DELETE("/:id", dockerRecordingHandler.DeleteRecording)
 					recordingsGroup.GET("/statistics", dockerRecordingHandler.GetRecordingStatistics)
 				}
-			}
 
-			// Docker terminal WebSocket (T041 - outside protected group for token query param)
-			router.GET("/api/v1/docker/terminal/:session_id", dockerTerminalHandler.HandleWebSocketTerminal)
+				// Docker terminal WebSocket (T041 - now protected by JWT middleware)
+				dockerGroup.GET("/terminal/:session_id", dockerTerminalHandler.HandleWebSocketTerminal)
+			}
 
 			// ==================== MinIO Subsystem ====================
 			minioGroup := protected.Group("/minio/instances/:id")
