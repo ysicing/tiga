@@ -222,6 +222,33 @@ func (r *TerminalRecordingRepository) DeleteOlderThan(ctx context.Context, befor
 	return result.RowsAffected, nil
 }
 
+// FindExpired finds recordings that have exceeded the retention period
+// Used by TerminalRecordingCleanupTask to identify recordings older than retention days
+func (r *TerminalRecordingRepository) FindExpired(ctx context.Context, retentionDays int, limit int) ([]*models.TerminalRecording, error) {
+	var recordings []*models.TerminalRecording
+	cutoffTime := time.Now().AddDate(0, 0, -retentionDays)
+
+	err := r.db.WithContext(ctx).
+		Where("ended_at IS NOT NULL AND ended_at < ?", cutoffTime).
+		Limit(limit).
+		Find(&recordings).Error
+
+	return recordings, err
+}
+
+// FindInvalid finds recordings with zero file size or zero duration
+// Used by TerminalRecordingCleanupTask to identify and remove invalid recordings
+func (r *TerminalRecordingRepository) FindInvalid(ctx context.Context, limit int) ([]*models.TerminalRecording, error) {
+	var recordings []*models.TerminalRecording
+
+	err := r.db.WithContext(ctx).
+		Where("ended_at IS NOT NULL AND (file_size = 0 OR duration = 0)").
+		Limit(limit).
+		Find(&recordings).Error
+
+	return recordings, err
+}
+
 // GetStatistics retrieves statistics about terminal recordings
 func (r *TerminalRecordingRepository) GetStatistics(ctx context.Context) (*TerminalRecordingStatistics, error) {
 	var stats TerminalRecordingStatistics

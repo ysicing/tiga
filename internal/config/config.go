@@ -26,6 +26,7 @@ type Config struct {
 	Log                LogConfig
 	Scheduler          SchedulerConfig // T028: Scheduler configuration
 	Audit              AuditConfig     // T028: Audit configuration
+	Recording          RecordingConfig // T002: Terminal recording configuration
 }
 
 // ServerConfig holds HTTP server configuration
@@ -141,6 +142,33 @@ type SchedulerConfig struct {
 type AuditConfig struct {
 	RetentionDays  int // Audit log retention in days (default: 90)
 	MaxObjectBytes int // Maximum object size in bytes (default: 64KB)
+}
+
+// RecordingConfig holds terminal recording system configuration (T002)
+type RecordingConfig struct {
+	// Storage configuration
+	StorageType string // Storage backend: "local" or "minio" (default: "local")
+	BasePath    string // Base path for local storage or MinIO bucket name (default: "./data/recordings")
+
+	// Cleanup policy
+	RetentionDays    int    // Recording retention in days (default: 90)
+	CleanupSchedule  string // Cron schedule for cleanup task (default: "0 4 * * *")
+	CleanupBatchSize int    // Batch size for cleanup operations (default: 1000)
+
+	// Performance configuration
+	MaxRecordingSize int64 // Maximum recording file size in bytes (default: 524288000 = 500MB)
+
+	// MinIO configuration (optional)
+	MinIO MinIORecordingConfig
+}
+
+// MinIORecordingConfig holds MinIO-specific configuration for recording storage
+type MinIORecordingConfig struct {
+	Endpoint  string // MinIO endpoint (e.g., "localhost:9000")
+	Bucket    string // MinIO bucket name (default: "terminal-recordings")
+	AccessKey string // MinIO access key
+	SecretKey string // MinIO secret key
+	UseSSL    bool   // Enable SSL/TLS (default: true)
 }
 
 // Load loads configuration from environment variables
@@ -259,6 +287,22 @@ func LoadFromFile(filename string) (*Config, error) {
 			RetentionDays:  getIntOrDefault(configFile.Audit.RetentionDays, getEnvAsInt("AUDIT_RETENTION_DAYS", 90)),
 			MaxObjectBytes: getIntOrDefault(configFile.Audit.MaxObjectBytes, getEnvAsInt("AUDIT_MAX_OBJECT_BYTES", 64*1024)),
 		},
+		// T002: Terminal recording configuration
+		Recording: RecordingConfig{
+			StorageType:      getOrDefault(configFile.Recording.StorageType, getEnv("RECORDING_STORAGE_TYPE", "local")),
+			BasePath:         getOrDefault(configFile.Recording.BasePath, getEnv("RECORDING_BASE_PATH", "./data/recordings")),
+			RetentionDays:    getIntOrDefault(configFile.Recording.RetentionDays, getEnvAsInt("RECORDING_RETENTION_DAYS", 90)),
+			CleanupSchedule:  getOrDefault(configFile.Recording.CleanupSchedule, getEnv("RECORDING_CLEANUP_SCHEDULE", "0 4 * * *")),
+			CleanupBatchSize: getIntOrDefault(configFile.Recording.CleanupBatchSize, getEnvAsInt("RECORDING_CLEANUP_BATCH_SIZE", 1000)),
+			MaxRecordingSize: getInt64OrDefault(configFile.Recording.MaxRecordingSize, getEnvAsInt64("RECORDING_MAX_SIZE", 524288000)),
+			MinIO: MinIORecordingConfig{
+				Endpoint:  getOrDefault(configFile.Recording.MinIO.Endpoint, getEnv("RECORDING_MINIO_ENDPOINT", "")),
+				Bucket:    getOrDefault(configFile.Recording.MinIO.Bucket, getEnv("RECORDING_MINIO_BUCKET", "terminal-recordings")),
+				AccessKey: getOrDefault(configFile.Recording.MinIO.AccessKey, getEnv("RECORDING_MINIO_ACCESS_KEY", "")),
+				SecretKey: getOrDefault(configFile.Recording.MinIO.SecretKey, getEnv("RECORDING_MINIO_SECRET_KEY", "")),
+				UseSSL:    getBoolOrDefault(configFile.Recording.MinIO.UseSSL, getEnvAsBool("RECORDING_MINIO_USE_SSL", true)),
+			},
+		},
 	}
 
 	return config, nil
@@ -330,6 +374,23 @@ type ConfigFile struct {
 		RetentionDays  int `yaml:"retention_days"`
 		MaxObjectBytes int `yaml:"max_object_bytes"`
 	} `yaml:"audit"`
+
+	// T002: Terminal recording configuration
+	Recording struct {
+		StorageType      string `yaml:"storage_type"`
+		BasePath         string `yaml:"base_path"`
+		RetentionDays    int    `yaml:"retention_days"`
+		CleanupSchedule  string `yaml:"cleanup_schedule"`
+		CleanupBatchSize int    `yaml:"cleanup_batch_size"`
+		MaxRecordingSize int64  `yaml:"max_recording_size"`
+		MinIO            struct {
+			Endpoint  string `yaml:"endpoint"`
+			Bucket    string `yaml:"bucket"`
+			AccessKey string `yaml:"access_key"`
+			SecretKey string `yaml:"secret_key"`
+			UseSSL    bool   `yaml:"use_ssl"`
+		} `yaml:"minio"`
+	} `yaml:"recording"`
 }
 
 // LoadFromEnv loads configuration from environment variables
@@ -413,6 +474,22 @@ func LoadFromEnv() *Config {
 			Level:  getEnv("LOG_LEVEL", "debug"),
 			Format: getEnv("LOG_FORMAT", "json"),
 		},
+		// T002: Terminal recording configuration
+		Recording: RecordingConfig{
+			StorageType:      getEnv("RECORDING_STORAGE_TYPE", "local"),
+			BasePath:         getEnv("RECORDING_BASE_PATH", "./data/recordings"),
+			RetentionDays:    getEnvAsInt("RECORDING_RETENTION_DAYS", 90),
+			CleanupSchedule:  getEnv("RECORDING_CLEANUP_SCHEDULE", "0 4 * * *"),
+			CleanupBatchSize: getEnvAsInt("RECORDING_CLEANUP_BATCH_SIZE", 1000),
+			MaxRecordingSize: getEnvAsInt64("RECORDING_MAX_SIZE", 524288000),
+			MinIO: MinIORecordingConfig{
+				Endpoint:  getEnv("RECORDING_MINIO_ENDPOINT", ""),
+				Bucket:    getEnv("RECORDING_MINIO_BUCKET", "terminal-recordings"),
+				AccessKey: getEnv("RECORDING_MINIO_ACCESS_KEY", ""),
+				SecretKey: getEnv("RECORDING_MINIO_SECRET_KEY", ""),
+				UseSSL:    getEnvAsBool("RECORDING_MINIO_USE_SSL", true),
+			},
+		},
 	}
 
 	return config
@@ -487,6 +564,14 @@ func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
+func getEnvAsInt64(key string, defaultValue int64) int64 {
+	valueStr := os.Getenv(key)
+	if value, err := strconv.ParseInt(valueStr, 10, 64); err == nil {
+		return value
+	}
+	return defaultValue
+}
+
 // getOrDefault returns the value if not empty, otherwise returns the default
 func getOrDefault(value, defaultValue string) string {
 	if value != "" {
@@ -497,6 +582,14 @@ func getOrDefault(value, defaultValue string) string {
 
 // getIntOrDefault returns the value if not zero, otherwise returns the default
 func getIntOrDefault(value, defaultValue int) int {
+	if value != 0 {
+		return value
+	}
+	return defaultValue
+}
+
+// getInt64OrDefault returns the value if not zero, otherwise returns the default
+func getInt64OrDefault(value, defaultValue int64) int64 {
 	if value != 0 {
 		return value
 	}

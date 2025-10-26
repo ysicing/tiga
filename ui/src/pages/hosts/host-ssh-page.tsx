@@ -35,8 +35,14 @@ export function HostSSHPage() {
 
     setIsCreating(true)
     try {
+      // Default terminal dimensions (will be updated via resize events)
+      const defaultCols = 120
+      const defaultRows = 30
+
       const response = (await devopsAPI.vms.webssh.createSession({
         host_id: host.id,
+        width: defaultCols,
+        height: defaultRows,
       })) as any
 
       if (response.code !== 0) {

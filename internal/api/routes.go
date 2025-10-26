@@ -23,6 +23,7 @@ import (
 	clusterhandlers "github.com/ysicing/tiga/internal/api/handlers/cluster"
 	databasehandlers "github.com/ysicing/tiga/internal/api/handlers/database"
 	dockerhandlers "github.com/ysicing/tiga/internal/api/handlers/docker"
+	recordinghandlers "github.com/ysicing/tiga/internal/api/handlers/recording"
 	schedulerhandlers "github.com/ysicing/tiga/internal/api/handlers/scheduler"
 	installhandlers "github.com/ysicing/tiga/internal/install/handlers"
 	dbrepo "github.com/ysicing/tiga/internal/repository/database"
@@ -33,6 +34,7 @@ import (
 	dockerservices "github.com/ysicing/tiga/internal/services/docker"
 	hostservices "github.com/ysicing/tiga/internal/services/host"
 	monitorservices "github.com/ysicing/tiga/internal/services/monitor"
+	recordingservices "github.com/ysicing/tiga/internal/services/recording"
 	schedulerservices "github.com/ysicing/tiga/internal/services/scheduler"
 	websshservices "github.com/ysicing/tiga/internal/services/webssh"
 	pkghandlers "github.com/ysicing/tiga/pkg/handlers"
@@ -116,6 +118,9 @@ func SetupRoutes(
 	dockerInstanceRepo := repository.NewDockerInstanceRepository(db)
 	terminalRecordingRepo := repository.NewTerminalRecordingRepository(db)
 
+	// Unified recording repository
+	recordingRepo := repository.NewRecordingRepository(db)
+
 	// Scheduler repositories (T013, T019)
 	schedulerTaskRepo := schedulerrepo.NewTaskRepository(db)
 	schedulerExecutionRepo := schedulerrepo.NewExecutionRepository(db)
@@ -160,6 +165,11 @@ func SetupRoutes(
 	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder, db)
 	// Unused services for future phases
 	_ = dockerservices.NewDockerCacheService()
+
+	// Terminal recording services (unified system)
+	recordingStorageService := recordingservices.NewLocalStorageService(cfg)
+	recordingCleanupService := recordingservices.NewCleanupService(recordingRepo, recordingStorageService, cfg)
+	recordingManagerService := recordingservices.NewManagerService(recordingRepo, recordingStorageService)
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
 	// stateCollector, hostService, terminalManager, and probeScheduler are passed as parameters
@@ -275,6 +285,11 @@ func SetupRoutes(
 	// Terminal handlers (using terminalRecordingRepo created earlier)
 	dockerTerminalHandler := dockerhandlers.NewTerminalHandler(db, dockerStreamManager, agentManager, dockerInstanceService, jwtManager, terminalRecordingRepo)
 	dockerRecordingHandler := dockerhandlers.NewRecordingHandler(db, terminalRecordingRepo)
+
+	// Unified terminal recording handlers
+	recordingHandler := recordinghandlers.NewRecordingHandler(recordingManagerService)
+	playbackHandler := recordinghandlers.NewPlaybackHandler(recordingManagerService)
+	cleanupHandler := recordinghandlers.NewCleanupHandler(recordingCleanupService)
 
 	// Host monitoring handlers
 	hostHandler := handlers.NewHostHandler(hostService)
@@ -757,6 +772,28 @@ func SetupRoutes(
 				// Audit configuration
 				auditGroup.GET("/config", auditConfigHandler.GetConfig)
 				auditGroup.PUT("/config", auditConfigHandler.UpdateConfig)
+			}
+
+			// ==================== Terminal Recording Subsystem (Unified) ====================
+			recordingsGroup := protected.Group("/recordings")
+			{
+				// Recording management
+				recordingsGroup.GET("", recordingHandler.ListRecordings)
+				recordingsGroup.GET("/search", recordingHandler.SearchRecordings)
+				recordingsGroup.GET("/statistics", recordingHandler.GetStatistics)
+				recordingsGroup.GET("/:id", recordingHandler.GetRecording)
+				recordingsGroup.DELETE("/:id", recordingHandler.DeleteRecording)
+
+				// Playback and download
+				recordingsGroup.GET("/:id/playback", playbackHandler.GetPlaybackContent)
+				recordingsGroup.GET("/:id/download", playbackHandler.DownloadRecording)
+
+				// Cleanup management
+				cleanupGroup := recordingsGroup.Group("/cleanup")
+				{
+					cleanupGroup.POST("/trigger", cleanupHandler.TriggerCleanup)
+					cleanupGroup.GET("/status", cleanupHandler.GetCleanupStatus)
+				}
 			}
 
 			// ==================== User Management Subsystem ====================

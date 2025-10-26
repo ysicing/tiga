@@ -5,6 +5,7 @@ import {
   IconUsers,
   IconClock,
   IconFileText,
+  IconPlayerRecord,
 } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
@@ -25,21 +26,31 @@ import {
 const menuItems = [
   {
     title: 'system.scheduler',
+    defaultTitle: '定时任务',
     icon: IconClock,
     path: '/system/scheduler',
   },
   {
     title: 'system.audit',
+    defaultTitle: '审计日志',
     icon: IconFileText,
     path: '/system/audit',
   },
   {
+    title: 'system.recordings',
+    defaultTitle: '终端录制',
+    icon: IconPlayerRecord,
+    path: '/system/recordings',
+  },
+  {
     title: 'system.users',
+    defaultTitle: '用户管理',
     icon: IconUsers,
     path: '/system/users',
   },
   {
     title: 'system.settings',
+    defaultTitle: '系统设置',
     icon: IconSettings,
     path: '/system/settings',
   },
@@ -100,11 +111,11 @@ export function SystemSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive(item.path)}
-                      tooltip={t(item.title)}
+                      tooltip={t(item.title, item.defaultTitle)}
                     >
                       <Link to={item.path} onClick={handleMenuItemClick}>
                         <IconComponent className="h-4 w-4" />
-                        <span>{t(item.title)}</span>
+                        <span>{t(item.title, item.defaultTitle)}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

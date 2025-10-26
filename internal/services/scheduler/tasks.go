@@ -295,6 +295,10 @@ func (t *DockerAuditCleanupTask) GetResult() string {
 }
 
 // TerminalRecordingCleanupTask cleans up old terminal recordings
+// It performs three types of cleanup:
+// 1. Deletes recordings older than retention period (90 days by default)
+// 2. Deletes invalid recordings (zero file size or zero duration)
+// 3. Returns detailed statistics about cleanup operation
 type TerminalRecordingCleanupTask struct {
 	recordingRepo repository.TerminalRecordingRepositoryInterface
 	retentionDays int
@@ -321,20 +325,63 @@ func (t *TerminalRecordingCleanupTask) Run(ctx context.Context) error {
 		"cutoff_date":    cutoffDate.Format("2006-01-02"),
 	}).Info("Starting terminal recording cleanup")
 
-	// Delete recordings older than retention period
-	deleted, err := t.recordingRepo.DeleteOlderThan(ctx, cutoffDate)
+	// Step 1: Delete recordings older than retention period
+	deletedExpired, err := t.recordingRepo.DeleteOlderThan(ctx, cutoffDate)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to cleanup terminal recordings")
-		t.lastResult = fmt.Sprintf("Failed to cleanup recordings: %v", err)
+		logrus.WithError(err).Error("Failed to cleanup expired terminal recordings")
+		t.lastResult = fmt.Sprintf("Failed to cleanup expired recordings: %v", err)
 		return err
 	}
 
-	// Store result for ResultProvider interface
-	t.lastResult = fmt.Sprintf("Successfully cleaned up %d terminal recordings older than %d days (cutoff date: %s)",
-		deleted, t.retentionDays, cutoffDate.Format("2006-01-02"))
+	logrus.WithField("deleted_expired_count", deletedExpired).Info("Cleaned up expired terminal recordings")
 
-	logrus.WithField("deleted_count", deleted).Info("Terminal recording cleanup completed")
+	// Step 2: Clean up invalid recordings (zero file size or zero duration)
+	cleanedInvalid, err := t.cleanupInvalidRecordings(ctx)
+	if err != nil {
+		// Log error but don't fail the entire task
+		logrus.WithError(err).Warn("Failed to cleanup invalid recordings")
+		cleanedInvalid = 0
+	}
+
+	logrus.WithField("cleaned_invalid_count", cleanedInvalid).Info("Cleaned up invalid terminal recordings")
+
+	// Store result for ResultProvider interface
+	t.lastResult = fmt.Sprintf("Successfully cleaned up %d expired terminal recordings and %d invalid recordings (older than %d days)",
+		deletedExpired, cleanedInvalid, t.retentionDays)
+
+	logrus.WithFields(logrus.Fields{
+		"deleted_expired": deletedExpired,
+		"cleaned_invalid": cleanedInvalid,
+		"retention_days":  t.retentionDays,
+		"cutoff_date":     cutoffDate.Format("2006-01-02"),
+	}).Info("Terminal recording cleanup completed")
+
 	return nil
+}
+
+// cleanupInvalidRecordings cleans up recordings with zero file size or zero duration
+func (t *TerminalRecordingCleanupTask) cleanupInvalidRecordings(ctx context.Context) (int, error) {
+	// Use FindInvalid method from repository to get invalid recordings
+	invalidRecordings, err := t.recordingRepo.FindInvalid(ctx, 1000)
+	if err != nil {
+		return 0, fmt.Errorf("failed to find invalid recordings: %w", err)
+	}
+
+	// Delete invalid recordings
+	deletedCount := 0
+	for _, recording := range invalidRecordings {
+		if err := t.recordingRepo.Delete(ctx, recording.ID); err != nil {
+			logrus.WithFields(logrus.Fields{
+				"recording_id": recording.ID,
+				"file_size":    recording.FileSize,
+				"duration":     recording.Duration,
+			}).Warn("Failed to delete invalid recording")
+			continue
+		}
+		deletedCount++
+	}
+
+	return deletedCount, nil
 }
 
 // Name returns the task name

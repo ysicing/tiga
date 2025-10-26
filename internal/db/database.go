@@ -203,6 +203,10 @@ func (d *Database) AutoMigrate() error {
 		logrus.Warnf("Failed to create resource history indexes: %v", err)
 	}
 
+	if err := (&models.TerminalRecording{}).AfterMigrate(d.DB); err != nil {
+		logrus.Warnf("Failed to create terminal recording indexes: %v", err)
+	}
+
 	logrus.Info("Database migrations completed successfully")
 	return nil
 }
