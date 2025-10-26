@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/docker"
 	"github.com/ysicing/tiga/internal/services/host"
 
@@ -20,16 +20,19 @@ import (
 type ImageHandler struct {
 	imageService   *docker.ImageService
 	agentForwarder *docker.AgentForwarderV2
+	auditHelper    *docker.AuditHelper
 }
 
 // NewImageHandler creates a new ImageHandler
 func NewImageHandler(
 	imageService *docker.ImageService,
 	agentForwarder *docker.AgentForwarderV2,
+	auditHelper *docker.AuditHelper,
 ) *ImageHandler {
 	return &ImageHandler{
 		imageService:   imageService,
 		agentForwarder: agentForwarder,
+		auditHelper:    auditHelper,
 	}
 }
 
@@ -67,6 +70,24 @@ func (h *ImageHandler) GetImages(c *gin.Context) {
 
 	// Get images from agent
 	resp, err := h.agentForwarder.ListImages(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		count := 0
+		if resp != nil {
+			count = len(resp.Images)
+		}
+		h.auditHelper.LogListOperation(
+			c,
+			"list_images",
+			"image",
+			instanceID,
+			"images",
+			count,
+			err,
+		)
+	}()
+
 	if err != nil {
 		logrus.WithError(err).WithField("instance_id", instanceID).Error("Failed to list images")
 		basehandlers.RespondInternalError(c, err)
@@ -114,6 +135,21 @@ func (h *ImageHandler) GetImage(c *gin.Context) {
 
 	// Get image details from agent
 	resp, err := h.agentForwarder.GetImage(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogGetOperation(
+			c,
+			"get_image",
+			"image",
+			instanceID,
+			imageID,
+			instanceID,
+			"",
+			err,
+		)
+	}()
+
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id": instanceID,
@@ -159,24 +195,12 @@ func (h *ImageHandler) DeleteImage(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Delete image through service layer (with audit logging)
-	resp, err := h.imageService.DeleteImage(c.Request.Context(), instanceID, req.ImageID, req.Force, req.NoPrune, userIDPtr, username, clientIP)
+	// Delete image through service layer (with unified audit logging)
+	resp, err := h.imageService.DeleteImage(c, instanceID, req.ImageID, req.Force, req.NoPrune)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id": instanceID,
 			"image_id":    req.ImageID,
-			"user":        username,
 		}).Error("Failed to delete image")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -220,25 +244,13 @@ func (h *ImageHandler) TagImage(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Tag image through service layer (with audit logging)
-	err = h.imageService.TagImage(c.Request.Context(), instanceID, req.Source, req.Target, userIDPtr, username, clientIP)
+	// Tag image through service layer (with unified audit logging)
+	err = h.imageService.TagImage(c, instanceID, req.Source, req.Target)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id": instanceID,
 			"source":      req.Source,
 			"target":      req.Target,
-			"user":        username,
 		}).Error("Failed to tag image")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -272,6 +284,7 @@ type PullImageRequest struct {
 // @Router /api/v1/docker/instances/{id}/images/pull [post]
 // @Security BearerAuth
 func (h *ImageHandler) PullImage(c *gin.Context) {
+	startTime := time.Now()
 	instanceID, err := basehandlers.ParseUUID(c.Param("id"))
 	if err != nil {
 		basehandlers.RespondBadRequest(c, err)
@@ -283,24 +296,12 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
 	// Start pull image stream
 	sessionInterface, err := h.imageService.PullImage(c.Request.Context(), instanceID, req.Image, req.RegistryAuth)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id": instanceID,
 			"image":       req.Image,
-			"user":        username,
 		}).Error("Failed to start image pull")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -332,7 +333,6 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 		"instance_id": instanceID,
 		"image":       req.Image,
 		"session_id":  session.SessionID,
-		"user":        username,
 	}).Info("Starting image pull stream")
 
 	// Wait for Agent to connect and be ready (30 second timeout)
@@ -348,7 +348,31 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 	}
 
 	pullSuccess := false
-	pullError := ""
+	pullErrorMsg := ""
+
+	// Helper function to log pull audit
+	logPullAudit := func() {
+		duration := time.Since(startTime).Milliseconds()
+		var auditErr error
+		if !pullSuccess && pullErrorMsg != "" {
+			auditErr = fmt.Errorf("%s", pullErrorMsg)
+		}
+
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionPullImage,
+			ResourceType: models.DockerResourceTypeImage,
+			ResourceID:   instanceID,
+			ResourceName: req.Image,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData: map[string]interface{}{
+				"image":         req.Image,
+				"registry_auth": req.RegistryAuth != "",
+			},
+			Error:    auditErr,
+			Duration: duration,
+		})
+	}
 
 	// Stream pull progress to client
 	for {
@@ -361,7 +385,7 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 			}).Info("Client disconnected from pull stream")
 
 			// Create audit log for the pull operation
-			_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
+			logPullAudit()
 			return
 
 		case data, ok := <-session.DataChan:
@@ -389,16 +413,16 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 
 			// Stream error from Agent
 			pullSuccess = false
-			pullError = streamErr.Error
+			pullErrorMsg = streamErr.Error
 			logrus.WithFields(logrus.Fields{
 				"instance_id": instanceID,
 				"image":       req.Image,
-				"error":       pullError,
+				"error":       pullErrorMsg,
 			}).Error("Error during image pull")
 
 			// Send error event
 			errorData := map[string]interface{}{
-				"error":   pullError,
+				"error":   pullErrorMsg,
 				"message": "Failed to pull image",
 			}
 			errorJSON, _ := json.Marshal(errorData)
@@ -406,7 +430,7 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 			flusher.Flush()
 
 			// Create audit log
-			_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
+			logPullAudit()
 			return
 
 		case closeMsg, ok := <-session.CloseChan:
@@ -432,7 +456,7 @@ func (h *ImageHandler) PullImage(c *gin.Context) {
 			flusher.Flush()
 
 			// Create audit log
-			_ = h.imageService.CreatePullAuditLog(c.Request.Context(), instanceID, req.Image, pullSuccess, pullError, userIDPtr, username, clientIP)
+			logPullAudit()
 			return
 		}
 	}

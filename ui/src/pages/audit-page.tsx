@@ -84,12 +84,16 @@ export function AuditPage() {
       http: 'bg-blue-100 text-blue-800',
       kubernetes: 'bg-purple-100 text-purple-800',
       database: 'bg-green-100 text-green-800',
-      minio: 'bg-orange-100 text-orange-800',
+      docker: 'bg-cyan-100 text-cyan-800',
+      host: 'bg-orange-100 text-orange-800',
+      webssh: 'bg-indigo-100 text-indigo-800',
       scheduler: 'bg-pink-100 text-pink-800',
-      auth: 'bg-red-100 text-red-800',
-      docker_container: 'bg-cyan-100 text-cyan-800',
-      docker_image: 'bg-indigo-100 text-indigo-800',
-      docker_instance: 'bg-teal-100 text-teal-800',
+      alert: 'bg-red-100 text-red-800',
+      auth: 'bg-yellow-100 text-yellow-800',
+      minio: 'bg-teal-100 text-teal-800',
+      middleware: 'bg-violet-100 text-violet-800',
+      storage: 'bg-lime-100 text-lime-800',
+      webserver: 'bg-amber-100 text-amber-800',
     }
     return colors[subsystem] || 'bg-gray-100 text-gray-800'
   }
@@ -359,10 +363,19 @@ export function AuditPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {event.action}
-                    </Badge>
+                    {/* Infer status from data field since AuditEvent doesn't have explicit status */}
+                    {(() => {
+                      const hasError = event.data && (event.data.error || event.data.error_message)
+                      return (
+                        <Badge
+                          variant={hasError ? "destructive" : "default"}
+                          className="gap-1"
+                        >
+                          <CheckCircle2 className="h-3 w-3" />
+                          {hasError ? t('audit.failure', 'Failure') : t('audit.success', 'Success')}
+                        </Badge>
+                      )
+                    })()}
                   </TableCell>
                   <TableCell>
                     <Button

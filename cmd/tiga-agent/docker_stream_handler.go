@@ -234,7 +234,7 @@ func (h *DockerStreamHandler) handleExecContainer(ctx context.Context, stream pr
 	// Goroutine: Read output from Docker exec and send to Server with buffering
 	go func() {
 		readBuf := make([]byte, 8192)
-		sendBuf := make([]byte, 0, 16384)       // Accumulated buffer
+		sendBuf := make([]byte, 0, 16384)               // Accumulated buffer
 		ticker := time.NewTicker(50 * time.Millisecond) // Flush every 50ms
 		defer ticker.Stop()
 

@@ -475,19 +475,9 @@ export interface EventActor {
   attributes?: Record<string, string>
 }
 
-export interface DockerAuditLog {
-  id: number
-  resource_type: string // docker_container, docker_image, docker_instance
-  resource_id: string // Resource UUID/ID
-  action: string // container_start, image_pull, etc.
-  user_id?: number
-  username?: string
-  client_ip: string
-  status: 'success' | 'failure'
-  error_message?: string
-  changes?: string // JSON string of DockerOperationDetails
-  created_at: string
-}
+// T036-T037: Docker audit logs have been migrated to the unified audit system.
+// Use auditService.getEvents({ subsystem: 'docker' }) from @/services/audit-service instead.
+// Old DockerAuditLog interface and useDockerAuditLogs hook have been removed.
 
 // API Query Hooks
 
@@ -1134,40 +1124,9 @@ export const usePingDocker = () => {
   })
 }
 
-// Audit Logs
-export interface DockerAuditLogFilters {
-  instance_id?: string
-  user?: string
-  action?: string
-  resource_type?: string
-  start_time?: string
-  end_time?: string
-  success?: boolean
-  page?: number
-  page_size?: number
-}
-
-export const useDockerAuditLogs = (filters: DockerAuditLogFilters) => {
-  const queryParams = new URLSearchParams()
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') {
-      queryParams.append(key, String(value))
-    }
-  })
-
-  return useQuery({
-    queryKey: ['docker', 'audit-logs', filters],
-    queryFn: () =>
-      apiClient.get<{
-        data: {
-          logs: DockerAuditLog[]
-          total: number
-          page: number
-          page_size: number
-        }
-      }>(`/docker/audit-logs?${queryParams.toString()}`),
-  })
-}
+// T036-T037: Docker audit logs removed - use unified audit API
+// Query Docker audit events using: auditService.getEvents({ subsystem: 'docker' })
+// See ui/src/services/audit-service.ts and ui/src/pages/audit-page.tsx
 
 // Terminal Recording Types
 export interface TerminalRecording {

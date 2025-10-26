@@ -65,26 +65,72 @@ func (al *AuditLog) IsSuccess() bool {
 
 // Docker-specific operation types (Action field values)
 const (
-	DockerActionContainerStart   = "container_start"
-	DockerActionContainerStop    = "container_stop"
-	DockerActionContainerRestart = "container_restart"
-	DockerActionContainerPause   = "container_pause"
-	DockerActionContainerUnpause = "container_unpause"
-	DockerActionContainerDelete  = "container_delete"
-	DockerActionContainerExec    = "container_exec"
-	DockerActionImageDelete      = "image_delete"
-	DockerActionImagePull        = "image_pull"
-	DockerActionImageTag         = "image_tag"
-	DockerActionInstanceCreate   = "instance_create"
-	DockerActionInstanceUpdate   = "instance_update"
-	DockerActionInstanceDelete   = "instance_delete"
+	// Instance operations
+	DockerActionListInstances  = "list_instances"
+	DockerActionGetInstance    = "get_instance"
+	DockerActionCreateInstance = "create_instance"
+	DockerActionUpdateInstance = "update_instance"
+	DockerActionDeleteInstance = "delete_instance"
+	DockerActionTestConnection = "test_connection"
+
+	// Container operations
+	DockerActionListContainers    = "list_containers"
+	DockerActionGetContainer      = "get_container"
+	DockerActionStartContainer    = "start_container"
+	DockerActionStopContainer     = "stop_container"
+	DockerActionRestartContainer  = "restart_container"
+	DockerActionPauseContainer    = "pause_container"
+	DockerActionUnpauseContainer  = "unpause_container"
+	DockerActionDeleteContainer   = "delete_container"
+	DockerActionExecContainer     = "exec_container"
+	DockerActionGetContainerLogs  = "get_container_logs"
+	DockerActionGetContainerStats = "get_container_stats"
+
+	// Image operations
+	DockerActionListImages  = "list_images"
+	DockerActionGetImage    = "get_image"
+	DockerActionPullImage   = "pull_image"
+	DockerActionDeleteImage = "delete_image"
+	DockerActionTagImage    = "tag_image"
+
+	// Network operations
+	DockerActionListNetworks      = "list_networks"
+	DockerActionGetNetwork        = "get_network"
+	DockerActionCreateNetwork     = "create_network"
+	DockerActionDeleteNetwork     = "delete_network"
+	DockerActionConnectNetwork    = "connect_network"
+	DockerActionDisconnectNetwork = "disconnect_network"
+
+	// Volume operations
+	DockerActionListVolumes  = "list_volumes"
+	DockerActionGetVolume    = "get_volume"
+	DockerActionCreateVolume = "create_volume"
+	DockerActionDeleteVolume = "delete_volume"
+	DockerActionPruneVolumes = "prune_volumes"
+
+	// System operations
+	DockerActionGetSystemInfo = "get_system_info"
+	DockerActionGetVersion    = "get_version"
+	DockerActionGetDiskUsage  = "get_disk_usage"
+	DockerActionPing          = "ping"
+	DockerActionGetEvents     = "get_events"
+
+	// Terminal recording operations
+	DockerActionListRecordings  = "list_recordings"
+	DockerActionGetRecording    = "get_recording"
+	DockerActionDeleteRecording = "delete_recording"
+	DockerActionPlayRecording   = "play_recording"
 )
 
 // Docker-specific resource types (ResourceType field values)
 const (
+	DockerResourceTypeInstance  = "docker_instance"
 	DockerResourceTypeContainer = "docker_container"
 	DockerResourceTypeImage     = "docker_image"
-	DockerResourceTypeInstance  = "docker_instance"
+	DockerResourceTypeNetwork   = "docker_network"
+	DockerResourceTypeVolume    = "docker_volume"
+	DockerResourceTypeSystem    = "docker_system"
+	DockerResourceTypeRecording = "docker_recording"
 )
 
 // DockerOperationDetails contains Docker-specific operation details stored in Changes field
