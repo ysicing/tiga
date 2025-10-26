@@ -1,6 +1,620 @@
 basePath: /api/v1
 definitions:
-  github_com_ysicing_tiga_internal_api_handlers.ErrorResponse:
+  audit.AuditConfig:
+    properties:
+      retention_days:
+        description: Audit log retention days (1-3650)
+        type: integer
+    type: object
+  audit.UpdateConfigRequest:
+    properties:
+      retention_days:
+        maximum: 3650
+        minimum: 1
+        type: integer
+    required:
+    - retention_days
+    type: object
+  cluster.CreateClusterRequest:
+    properties:
+      config:
+        description: Kubeconfig content
+        type: string
+      description:
+        type: string
+      in_cluster:
+        type: boolean
+      is_default:
+        type: boolean
+      name:
+        type: string
+      prometheus_url:
+        type: string
+    required:
+    - config
+    - name
+    type: object
+  cluster.TestConnectionRequest:
+    properties:
+      config:
+        description: Kubeconfig content
+        type: string
+    required:
+    - config
+    type: object
+  cluster.UpdateClusterRequest:
+    properties:
+      config:
+        description: Kubeconfig content
+        type: string
+      description:
+        type: string
+      enable:
+        type: boolean
+      in_cluster:
+        type: boolean
+      is_default:
+        type: boolean
+      name:
+        type: string
+      prometheus_url:
+        type: string
+    type: object
+  common.SearchResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      resourceType:
+        type: string
+    type: object
+  docker.CreateInstanceRequest:
+    properties:
+      agent_id:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    required:
+    - agent_id
+    - name
+    type: object
+  docker.CreateTerminalSessionRequest:
+    properties:
+      cols:
+        description: 'Default: 120'
+        type: integer
+      env:
+        additionalProperties:
+          type: string
+        description: Environment variables
+        type: object
+      rows:
+        description: 'Default: 30'
+        type: integer
+      shell:
+        description: 'Default: /bin/sh'
+        type: string
+    type: object
+  docker.DockerInstanceResponse:
+    properties:
+      agent_id:
+        type: string
+      agent_name:
+        type: string
+      api_version:
+        type: string
+      architecture:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      host:
+        description: Agent IP address
+        type: string
+      id:
+        type: string
+      kernel_version:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        description: Metadata
+        type: object
+      last_seen_at:
+        description: Timestamps
+        type: string
+      name:
+        type: string
+      operating_system:
+        type: string
+      os:
+        type: string
+      port:
+        description: 'gRPC port (default: 50051)'
+        type: integer
+      running_containers:
+        type: integer
+      status:
+        description: online, offline, unknown, archived
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      total_containers:
+        description: Resource counts
+        type: integer
+      total_images:
+        type: integer
+      updated_at:
+        type: string
+      version:
+        description: Docker daemon info
+        type: string
+    type: object
+  docker.EndpointConfigInput:
+    properties:
+      aliases:
+        items:
+          type: string
+        type: array
+      ipam_config:
+        additionalProperties:
+          type: string
+        type: object
+      links:
+        items:
+          type: string
+        type: array
+    type: object
+  docker.TestConnectionRequest:
+    properties:
+      agent_id:
+        type: string
+    required:
+    - agent_id
+    type: object
+  docker.TestConnectionResponse:
+    properties:
+      docker_info:
+        additionalProperties: true
+        type: object
+      error_message:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  docker.UpdateInstanceRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.ConnectNetworkRequest:
+    properties:
+      container_id:
+        type: string
+      endpoint_config:
+        $ref: '#/definitions/docker.EndpointConfigInput'
+      network_id:
+        type: string
+    required:
+    - container_id
+    - network_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.CreateNetworkRequest:
+    properties:
+      attachable:
+        type: boolean
+      check_duplicate:
+        type: boolean
+      driver:
+        type: string
+      enable_ipv6:
+        type: boolean
+      ingress:
+        type: boolean
+      internal:
+        type: boolean
+      ipam:
+        $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.IPAMConfig'
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      options:
+        additionalProperties:
+          type: string
+        type: object
+    required:
+    - name
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.CreateVolumeRequest:
+    properties:
+      driver:
+        type: string
+      driver_opts:
+        additionalProperties:
+          type: string
+        type: object
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.DeleteContainerRequest:
+    properties:
+      container_id:
+        type: string
+      force:
+        description: Force removal of running container
+        type: boolean
+      remove_volumes:
+        description: Remove associated volumes
+        type: boolean
+    required:
+    - container_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.DeleteImageRequest:
+    properties:
+      force:
+        description: Force removal even if in use
+        type: boolean
+      image_id:
+        type: string
+      no_prune:
+        description: Do not delete untagged parents
+        type: boolean
+    required:
+    - image_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.DeleteNetworkRequest:
+    properties:
+      network_id:
+        type: string
+    required:
+    - network_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.DeleteVolumeRequest:
+    properties:
+      force:
+        type: boolean
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.DisconnectNetworkRequest:
+    properties:
+      container_id:
+        type: string
+      force:
+        type: boolean
+      network_id:
+        type: string
+    required:
+    - container_id
+    - network_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.IPAMConfig:
+    properties:
+      config:
+        items:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.IPAMPool'
+        type: array
+      driver:
+        type: string
+      options:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.IPAMPool:
+    properties:
+      aux_addresses:
+        additionalProperties:
+          type: string
+        type: object
+      gateway:
+        type: string
+      ip_range:
+        type: string
+      subnet:
+        type: string
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.PauseContainerRequest:
+    properties:
+      container_id:
+        type: string
+    required:
+    - container_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.PruneVolumesRequest:
+    properties:
+      filters:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.PullImageRequest:
+    properties:
+      image:
+        description: Image name (e.g., nginx:1.21)
+        type: string
+      registry_auth:
+        description: Base64 encoded registry auth (optional)
+        type: string
+    required:
+    - image
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.RestartContainerRequest:
+    properties:
+      container_id:
+        type: string
+      timeout:
+        description: Optional timeout in seconds
+        type: integer
+    required:
+    - container_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.StartContainerRequest:
+    properties:
+      container_id:
+        type: string
+    required:
+    - container_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.StopContainerRequest:
+    properties:
+      container_id:
+        type: string
+      timeout:
+        description: Optional timeout in seconds
+        type: integer
+    required:
+    - container_id
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.TagImageRequest:
+    properties:
+      source:
+        description: Source image (e.g., nginx:1.21)
+        type: string
+      target:
+        description: Target tag (e.g., myregistry.com/nginx:latest)
+        type: string
+    required:
+    - source
+    - target
+    type: object
+  github_com_ysicing_tiga_internal_api_handlers_docker.UnpauseContainerRequest:
+    properties:
+      container_id:
+        type: string
+    required:
+    - container_id
+    type: object
+  github_com_ysicing_tiga_internal_version.Info:
+    properties:
+      build_time:
+        type: string
+      commit_id:
+        type: string
+      version:
+        type: string
+    type: object
+  handlers.AcknowledgeAlertEventRequest:
+    properties:
+      eventID:
+        type: string
+      note:
+        type: string
+    required:
+    - eventID
+    type: object
+  handlers.AssignRoleRequest:
+    properties:
+      role_id:
+        type: string
+      userID:
+        type: string
+    required:
+    - role_id
+    - userID
+    type: object
+  handlers.CRDStatus:
+    properties:
+      installed:
+        type: boolean
+      version:
+        type: string
+      workloads:
+        items:
+          $ref: '#/definitions/handlers.CRDWorkload'
+        type: array
+    type: object
+  handlers.CRDWorkload:
+    properties:
+      apiVersion:
+        type: string
+      available:
+        type: boolean
+      count:
+        type: integer
+      description:
+        type: string
+      kind:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.ChangePasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
+  handlers.CreateAlertRuleRequest:
+    properties:
+      description:
+        type: string
+      enabled:
+        type: boolean
+      instance_id:
+        type: string
+      name:
+        type: string
+      notification_channels:
+        items:
+          type: string
+        type: array
+      notification_config:
+        additionalProperties: true
+        type: object
+      rule_config:
+        additionalProperties: true
+        type: object
+      rule_type:
+        enum:
+        - threshold
+        - anomaly
+        - rate
+        type: string
+      severity:
+        enum:
+        - critical
+        - warning
+        - info
+        type: string
+    required:
+    - name
+    - rule_config
+    - rule_type
+    - severity
+    type: object
+  handlers.CreateInstanceRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      environment:
+        enum:
+        - dev
+        - test
+        - staging
+        - production
+        type: string
+      host:
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      service_type:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - host
+    - name
+    - port
+    - service_type
+    type: object
+  handlers.CreateMetricRequest:
+    properties:
+      instance_id:
+        type: string
+      labels:
+        additionalProperties: true
+        type: object
+      metric_name:
+        type: string
+      metric_type:
+        type: string
+      timestamp:
+        description: RFC3339 format, defaults to now
+        type: string
+      value:
+        type: number
+    required:
+    - instance_id
+    - metric_name
+    - metric_type
+    - value
+    type: object
+  handlers.CreateMetricsBatchRequest:
+    properties:
+      metrics:
+        items:
+          $ref: '#/definitions/handlers.CreateMetricRequest'
+        maxItems: 1000
+        minItems: 1
+        type: array
+    required:
+    - metrics
+    type: object
+  handlers.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      status:
+        enum:
+        - active
+        - suspended
+        type: string
+      username:
+        maxLength: 32
+        minLength: 3
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    - username
+    type: object
+  handlers.ErrorResponse:
     properties:
       details: {}
       error:
@@ -10,7 +624,89 @@ definitions:
       success:
         type: boolean
     type: object
-  github_com_ysicing_tiga_internal_api_handlers.SuccessResponse:
+  handlers.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handlers.ManageTagsRequest:
+    properties:
+      instanceID:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    required:
+    - instanceID
+    - tags
+    type: object
+  handlers.OAuthLoginRequest:
+    properties:
+      code:
+        type: string
+      provider:
+        description: google, github, oidc
+        type: string
+      state:
+        type: string
+    required:
+    - code
+    - provider
+    - state
+    type: object
+  handlers.PaginatedResponse:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/handlers.Pagination'
+      success:
+        type: boolean
+    type: object
+  handlers.Pagination:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  handlers.PublicConfigResponse:
+    properties:
+      app_name:
+        type: string
+      app_subtitle:
+        type: string
+      enable_analytics:
+        type: boolean
+      language:
+        type: string
+    type: object
+  handlers.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  handlers.SearchResponse:
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/common.SearchResult'
+        type: array
+      total:
+        type: integer
+    type: object
+  handlers.SuccessResponse:
     properties:
       data: {}
       message:
@@ -18,7 +714,218 @@ definitions:
       success:
         type: boolean
     type: object
-  github_com_ysicing_tiga_internal_models.AlertSeverity:
+  handlers.ToggleAlertRuleRequest:
+    properties:
+      enabled:
+        type: boolean
+      ruleID:
+        type: string
+    required:
+    - enabled
+    - ruleID
+    type: object
+  handlers.UpdateAlertRuleRequest:
+    properties:
+      description:
+        type: string
+      enabled:
+        type: boolean
+      name:
+        type: string
+      notification_channels:
+        items:
+          type: string
+        type: array
+      notification_config:
+        additionalProperties: true
+        type: object
+      rule_config:
+        additionalProperties: true
+        type: object
+      ruleID:
+        type: string
+      severity:
+        enum:
+        - critical
+        - warning
+        - info
+        type: string
+    required:
+    - ruleID
+    type: object
+  handlers.UpdateInstanceHealthRequest:
+    properties:
+      health:
+        enum:
+        - healthy
+        - unhealthy
+        - degraded
+        - unknown
+        type: string
+      health_message:
+        type: string
+      instanceID:
+        type: string
+    required:
+    - health
+    - instanceID
+    type: object
+  handlers.UpdateInstanceRequest:
+    properties:
+      config:
+        additionalProperties: true
+        type: object
+      description:
+        type: string
+      environment:
+        enum:
+        - dev
+        - test
+        - staging
+        - production
+        type: string
+      host:
+        type: string
+      instanceID:
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      tags:
+        items:
+          type: string
+        type: array
+      version:
+        type: string
+    required:
+    - instanceID
+    type: object
+  handlers.UpdateInstanceStatusRequest:
+    properties:
+      instanceID:
+        type: string
+      status:
+        enum:
+        - pending
+        - running
+        - stopped
+        - failed
+        type: string
+    required:
+    - instanceID
+    - status
+    type: object
+  handlers.UpdateSystemConfigRequest:
+    properties:
+      app_name:
+        type: string
+      app_subtitle:
+        type: string
+      enable_analytics:
+        type: boolean
+      language:
+        type: string
+    type: object
+  handlers.UpdateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      status:
+        enum:
+        - active
+        - suspended
+        type: string
+      userID:
+        type: string
+    required:
+    - userID
+    type: object
+  instances.HealthStatusResponse:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      healthy:
+        type: boolean
+      last_check_time:
+        type: string
+      message:
+        type: string
+      response_time_ms:
+        type: integer
+    type: object
+  instances.ServiceMetricsResponse:
+    properties:
+      instance_id:
+        type: string
+      metrics:
+        additionalProperties: true
+        type: object
+      timestamp:
+        type: string
+    type: object
+  models.Action:
+    enum:
+    - created
+    - updated
+    - deleted
+    - read
+    - enabled
+    - disabled
+    - bypassed
+    - forcePush
+    - login
+    - logout
+    - granted
+    - revoked
+    - agent_connected
+    - agent_disconnected
+    - agent_reconnected
+    - terminal_created
+    - terminal_closed
+    - terminal_replay
+    - node_created
+    - node_updated
+    - node_deleted
+    - system_alert
+    - system_error
+    type: string
+    x-enum-comments:
+      ActionBypassed: 绕过检查
+      ActionForcePush: 强制推送
+      ActionRead: 敏感资源读取操作
+    x-enum-varnames:
+    - ActionCreated
+    - ActionUpdated
+    - ActionDeleted
+    - ActionRead
+    - ActionEnabled
+    - ActionDisabled
+    - ActionBypassed
+    - ActionForcePush
+    - ActionLogin
+    - ActionLogout
+    - ActionGranted
+    - ActionRevoked
+    - ActionAgentConnected
+    - ActionAgentDisconnected
+    - ActionAgentReconnected
+    - ActionTerminalCreated
+    - ActionTerminalClosed
+    - ActionTerminalReplay
+    - ActionNodeCreated
+    - ActionNodeUpdated
+    - ActionNodeDeleted
+    - ActionSystemAlert
+    - ActionSystemError
+  models.AlertSeverity:
     enum:
     - info
     - warning
@@ -28,7 +935,7 @@ definitions:
     - AlertSeverityInfo
     - AlertSeverityWarning
     - AlertSeverityCritical
-  github_com_ysicing_tiga_internal_models.AlertType:
+  models.AlertType:
     enum:
     - host
     - service
@@ -36,7 +943,153 @@ definitions:
     x-enum-varnames:
     - AlertTypeHost
     - AlertTypeService
-  github_com_ysicing_tiga_internal_models.HostInfo:
+  models.AuditEvent:
+    properties:
+      action:
+        allOf:
+        - $ref: '#/definitions/models.Action'
+        description: 操作信息
+      client_ip:
+        description: 客户端信息
+        type: string
+      created_at:
+        description: 时间戳（仅创建）
+        type: string
+      data:
+        additionalProperties:
+          type: string
+        description: 自定义数据
+        type: object
+      diff_object:
+        allOf:
+        - $ref: '#/definitions/models.DiffObject'
+        description: 差异对象（变更前后）
+      id:
+        description: 基础字段
+        type: string
+      request_id:
+        type: string
+      request_method:
+        description: GET, POST, etc.
+        type: string
+      resource:
+        allOf:
+        - $ref: '#/definitions/models.Resource'
+        description: JSON 序列化
+      resource_type:
+        $ref: '#/definitions/models.ResourceType'
+      space_path:
+        description: 空间路径（可选）
+        type: string
+      subsystem:
+        allOf:
+        - $ref: '#/definitions/models.SubsystemType'
+        description: 子系统标识
+      timestamp:
+        description: Unix 毫秒时间戳
+        type: integer
+      user:
+        allOf:
+        - $ref: '#/definitions/models.Principal'
+        description: 操作主体
+      user_agent:
+        type: string
+    type: object
+  models.DiffObject:
+    properties:
+      new_object:
+        description: JSON 字符串，最大 64KB
+        type: string
+      new_object_truncated:
+        type: boolean
+      old_object:
+        description: JSON 字符串，最大 64KB
+        type: string
+      old_object_truncated:
+        type: boolean
+      truncated_fields:
+        description: 被截断的字段列表
+        items:
+          type: string
+        type: array
+    type: object
+  models.DockerInstance:
+    properties:
+      agent_id:
+        type: string
+      api_version:
+        type: string
+      architecture:
+        type: string
+      container_count:
+        description: Resource statistics (updated by health checks)
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      docker_version:
+        description: Docker daemon information (fetched from Agent)
+        type: string
+      host_id:
+        description: 'Optional: associated host node'
+        type: string
+      id:
+        type: string
+      image_count:
+        type: integer
+      kernel_version:
+        type: string
+      last_connected_at:
+        type: string
+      last_health_check:
+        type: string
+      mem_total:
+        type: integer
+      min_api_version:
+        type: string
+      n_cpu:
+        type: integer
+      name:
+        type: string
+      network_count:
+        type: integer
+      operating_system:
+        type: string
+      status:
+        description: Health and connection status
+        type: string
+      storage_driver:
+        type: string
+      tags:
+        description: Metadata
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+      volume_count:
+        type: integer
+    type: object
+  models.ExecutionState:
+    enum:
+    - pending
+    - running
+    - success
+    - failure
+    - timeout
+    - cancelled
+    - interrupted
+    type: string
+    x-enum-varnames:
+    - ExecutionStatePending
+    - ExecutionStateRunning
+    - ExecutionStateSuccess
+    - ExecutionStateFailure
+    - ExecutionStateTimeout
+    - ExecutionStateCancelled
+    - ExecutionStateInterrupted
+  models.HostInfo:
     properties:
       agent_version:
         description: Agent information
@@ -87,7 +1140,7 @@ definitions:
         description: Virtualization type (kvm/docker/none)
         type: string
     type: object
-  github_com_ysicing_tiga_internal_models.HostNode:
+  models.HostNode:
     properties:
       auto_renew:
         description: 是否自动续费
@@ -109,7 +1162,7 @@ definitions:
         type: boolean
       host_info:
         allOf:
-        - $ref: '#/definitions/github_com_ysicing_tiga_internal_models.HostInfo'
+        - $ref: '#/definitions/models.HostInfo'
         description: Relationships
       id:
         type: string
@@ -142,7 +1195,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_ysicing_tiga_internal_models.MonitorAlertRule:
+  models.MonitorAlertRule:
     properties:
       condition:
         description: |-
@@ -175,7 +1228,7 @@ definitions:
           Example: {"email": ["admin@example.com"], "webhook": "https://hooks.example.com"}
         type: string
       severity:
-        $ref: '#/definitions/github_com_ysicing_tiga_internal_models.AlertSeverity'
+        $ref: '#/definitions/models.AlertSeverity'
       target_id:
         description: HostNode ID or ServiceMonitor ID
         type: string
@@ -183,419 +1236,260 @@ definitions:
         type: integer
       type:
         allOf:
-        - $ref: '#/definitions/github_com_ysicing_tiga_internal_models.AlertType'
+        - $ref: '#/definitions/models.AlertType'
         description: host/service
       updated_at:
         type: string
     type: object
-  github_com_ysicing_tiga_internal_services_managers.HealthStatus:
+  models.Principal:
     properties:
-      details:
-        additionalProperties: true
+      type:
+        $ref: '#/definitions/models.PrincipalType'
+      uid:
+        type: string
+      username:
+        type: string
+    type: object
+  models.PrincipalType:
+    enum:
+    - user
+    - service
+    - anonymous
+    - system
+    type: string
+    x-enum-varnames:
+    - PrincipalTypeUser
+    - PrincipalTypeService
+    - PrincipalTypeAnonymous
+    - PrincipalTypeSystem
+  models.Resource:
+    properties:
+      data:
+        additionalProperties:
+          type: string
+        description: 资源元数据（如 resourceName、clusterName）
         type: object
-      healthy:
-        type: boolean
-      last_check_time:
+      identifier:
+        description: 资源 ID
         type: string
-      message:
-        type: string
-      response_time_ms:
+      type:
+        $ref: '#/definitions/models.ResourceType'
+    type: object
+  models.ResourceType:
+    enum:
+    - cluster
+    - pod
+    - deployment
+    - service
+    - configMap
+    - secret
+    - database
+    - databaseInstance
+    - databaseUser
+    - minio
+    - redis
+    - mysql
+    - postgresql
+    - user
+    - role
+    - instance
+    - scheduledTask
+    - host
+    - docker_instance
+    - docker_container
+    - docker_image
+    - docker_network
+    - docker_volume
+    - docker_system
+    - docker_recording
+    type: string
+    x-enum-varnames:
+    - ResourceTypeCluster
+    - ResourceTypePod
+    - ResourceTypeDeployment
+    - ResourceTypeService
+    - ResourceTypeConfigMap
+    - ResourceTypeSecret
+    - ResourceTypeDatabase
+    - ResourceTypeDatabaseInstance
+    - ResourceTypeDatabaseUser
+    - ResourceTypeMinIO
+    - ResourceTypeRedis
+    - ResourceTypeMySQL
+    - ResourceTypePostgreSQL
+    - ResourceTypeUser
+    - ResourceTypeRole
+    - ResourceTypeInstance
+    - ResourceTypeScheduledTask
+    - ResourceTypeHost
+    - ResourceTypeDockerInstance
+    - ResourceTypeDockerContainer
+    - ResourceTypeDockerImage
+    - ResourceTypeDockerNetwork
+    - ResourceTypeDockerVolume
+    - ResourceTypeDockerSystem
+    - ResourceTypeDockerRecording
+  models.ScheduledTask:
+    properties:
+      consecutive_failures:
         type: integer
-    type: object
-  github_com_ysicing_tiga_internal_services_managers.ServiceMetrics:
-    properties:
-      instance_id:
+      created_at:
+        description: Timestamps
         type: string
-      metrics:
-        additionalProperties: true
-        type: object
-      timestamp:
+      cron_expr:
+        description: For recurring tasks
         type: string
-    type: object
-  internal_api_handlers.AcknowledgeAlertEventRequest:
-    properties:
-      eventID:
+      data:
+        description: Task input data (JSON string)
         type: string
-      note:
-        type: string
-    required:
-    - eventID
-    type: object
-  internal_api_handlers.AssignRoleRequest:
-    properties:
-      role_id:
-        type: string
-      userID:
-        type: string
-    required:
-    - role_id
-    - userID
-    type: object
-  internal_api_handlers.ChangePasswordRequest:
-    properties:
-      new_password:
-        minLength: 8
-        type: string
-      old_password:
-        type: string
-    required:
-    - new_password
-    - old_password
-    type: object
-  internal_api_handlers.CreateAlertRuleRequest:
-    properties:
       description:
         type: string
       enabled:
+        description: Control flags
         type: boolean
-      instance_id:
-        type: string
-      name:
-        type: string
-      notification_channels:
-        items:
-          type: string
-        type: array
-      notification_config:
-        additionalProperties: true
-        type: object
-      rule_config:
-        additionalProperties: true
-        type: object
-      rule_type:
-        enum:
-        - threshold
-        - anomaly
-        - rate
-        type: string
-      severity:
-        enum:
-        - critical
-        - warning
-        - info
-        type: string
-    required:
-    - name
-    - rule_config
-    - rule_type
-    - severity
-    type: object
-  internal_api_handlers.CreateInstanceRequest:
-    properties:
-      config:
-        additionalProperties: true
-        type: object
-      description:
-        type: string
-      environment:
-        enum:
-        - dev
-        - test
-        - staging
-        - production
-        type: string
-      host:
-        type: string
-      name:
-        type: string
-      port:
-        maximum: 65535
-        minimum: 1
+      failure_executions:
         type: integer
-      service_type:
-        type: string
-      tags:
-        items:
-          type: string
-        type: array
-      version:
-        type: string
-    required:
-    - host
-    - name
-    - port
-    - service_type
-    type: object
-  internal_api_handlers.CreateMetricRequest:
-    properties:
-      instance_id:
-        type: string
-      labels:
-        additionalProperties: true
-        type: object
-      metric_name:
-        type: string
-      metric_type:
-        type: string
-      timestamp:
-        description: RFC3339 format, defaults to now
-        type: string
-      value:
-        type: number
-    required:
-    - instance_id
-    - metric_name
-    - metric_type
-    - value
-    type: object
-  internal_api_handlers.CreateMetricsBatchRequest:
-    properties:
-      metrics:
-        items:
-          $ref: '#/definitions/internal_api_handlers.CreateMetricRequest'
-        maxItems: 1000
-        minItems: 1
-        type: array
-    required:
-    - metrics
-    type: object
-  internal_api_handlers.CreateUserRequest:
-    properties:
-      email:
-        type: string
-      full_name:
-        type: string
-      password:
-        minLength: 8
-        type: string
-      status:
-        enum:
-        - active
-        - suspended
-        type: string
-      username:
-        maxLength: 32
-        minLength: 3
-        type: string
-    required:
-    - email
-    - full_name
-    - password
-    - username
-    type: object
-  internal_api_handlers.ErrorResponse:
-    properties:
-      details: {}
-      error:
-        type: string
-      message:
-        type: string
-      success:
+      interval:
+        description: Interval in seconds (for non-cron tasks)
+        type: integer
+      is_recurring:
+        description: Scheduling configuration
         type: boolean
-    type: object
-  internal_api_handlers.LoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  internal_api_handlers.ManageTagsRequest:
-    properties:
-      instanceID:
-        type: string
-      tags:
-        items:
+      labels:
+        additionalProperties:
           type: string
-        type: array
-    required:
-    - instanceID
-    - tags
-    type: object
-  internal_api_handlers.OAuthLoginRequest:
-    properties:
-      code:
+        description: Metadata
+        type: object
+      last_executed_at:
         type: string
-      provider:
-        description: google, github, oidc
+      last_failure_error:
+        type: string
+      max_concurrent:
+        description: Maximum concurrent executions
+        type: integer
+      max_duration_seconds:
+        description: Execution constraints
+        type: integer
+      max_retries:
+        description: Maximum retry count
+        type: integer
+      name:
+        type: string
+      next_run:
+        type: string
+      priority:
+        description: Task priority
+        type: integer
+      success_executions:
+        type: integer
+      timeout_grace_period:
+        description: Grace period in seconds
+        type: integer
+      total_executions:
+        description: Statistics (computed fields)
+        type: integer
+      type:
+        type: string
+      uid:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.SubsystemType:
+    enum:
+    - http
+    - minio
+    - database
+    - middleware
+    - kubernetes
+    - docker
+    - host
+    - webssh
+    - scheduler
+    - alert
+    - auth
+    - storage
+    - webserver
+    type: string
+    x-enum-varnames:
+    - SubsystemHTTP
+    - SubsystemMinIO
+    - SubsystemDatabase
+    - SubsystemMiddleware
+    - SubsystemKubernetes
+    - SubsystemDocker
+    - SubsystemHost
+    - SubsystemWebSSH
+    - SubsystemScheduler
+    - SubsystemAlert
+    - SubsystemAuth
+    - SubsystemStorage
+    - SubsystemWebServer
+  models.TaskExecution:
+    properties:
+      created_at:
+        description: 时间戳
+        type: string
+      duration_ms:
+        description: 执行指标
+        type: integer
+      error_message:
+        description: 错误信息
+        type: string
+      error_stack:
+        description: 错误堆栈
+        type: string
+      execution_uid:
+        description: 执行上下文
+        type: string
+      finished_at:
+        description: 实际结束时间
+        type: string
+      id:
+        description: 基础字段
+        type: integer
+      progress:
+        description: 进度（0-100）
+        type: integer
+      result:
+        description: 执行结果数据
+        type: string
+      retry_count:
+        description: 重试次数
+        type: integer
+      run_by:
+        description: 实例 ID
+        type: string
+      scheduled_at:
+        description: 计划执行时间
+        type: string
+      started_at:
+        description: 实际开始时间
         type: string
       state:
+        allOf:
+        - $ref: '#/definitions/models.ExecutionState'
+        description: 执行结果
+      task_name:
         type: string
-    required:
-    - code
-    - provider
-    - state
-    type: object
-  internal_api_handlers.PaginatedResponse:
-    properties:
-      data: {}
-      pagination:
-        $ref: '#/definitions/internal_api_handlers.Pagination'
-      success:
-        type: boolean
-    type: object
-  internal_api_handlers.Pagination:
-    properties:
-      page:
-        type: integer
-      page_size:
-        type: integer
-      total:
-        type: integer
-      total_pages:
-        type: integer
-    type: object
-  internal_api_handlers.PublicConfigResponse:
-    properties:
-      app_name:
+      task_type:
         type: string
-      app_subtitle:
+      task_uid:
         type: string
-      enable_analytics:
-        type: boolean
-      language:
+      trigger_by:
+        description: 手动触发的用户 ID
+        type: string
+      trigger_type:
+        description: 触发方式
+        type: string
+      updated_at:
         type: string
     type: object
-  internal_api_handlers.RefreshTokenRequest:
+  scheduler.TriggerTaskRequest:
     properties:
-      refresh_token:
+      override_data:
+        description: JSON string to override task input data
         type: string
-    required:
-    - refresh_token
-    type: object
-  internal_api_handlers.SuccessResponse:
-    properties:
-      data: {}
-      message:
-        type: string
-      success:
-        type: boolean
-    type: object
-  internal_api_handlers.ToggleAlertRuleRequest:
-    properties:
-      enabled:
-        type: boolean
-      ruleID:
-        type: string
-    required:
-    - enabled
-    - ruleID
-    type: object
-  internal_api_handlers.UpdateAlertRuleRequest:
-    properties:
-      description:
-        type: string
-      enabled:
-        type: boolean
-      name:
-        type: string
-      notification_channels:
-        items:
-          type: string
-        type: array
-      notification_config:
-        additionalProperties: true
-        type: object
-      rule_config:
-        additionalProperties: true
-        type: object
-      ruleID:
-        type: string
-      severity:
-        enum:
-        - critical
-        - warning
-        - info
-        type: string
-    required:
-    - ruleID
-    type: object
-  internal_api_handlers.UpdateInstanceHealthRequest:
-    properties:
-      health:
-        enum:
-        - healthy
-        - unhealthy
-        - degraded
-        - unknown
-        type: string
-      health_message:
-        type: string
-      instanceID:
-        type: string
-    required:
-    - health
-    - instanceID
-    type: object
-  internal_api_handlers.UpdateInstanceRequest:
-    properties:
-      config:
-        additionalProperties: true
-        type: object
-      description:
-        type: string
-      environment:
-        enum:
-        - dev
-        - test
-        - staging
-        - production
-        type: string
-      host:
-        type: string
-      instanceID:
-        type: string
-      name:
-        type: string
-      port:
-        maximum: 65535
-        minimum: 1
-        type: integer
-      tags:
-        items:
-          type: string
-        type: array
-      version:
-        type: string
-    required:
-    - instanceID
-    type: object
-  internal_api_handlers.UpdateInstanceStatusRequest:
-    properties:
-      instanceID:
-        type: string
-      status:
-        enum:
-        - pending
-        - running
-        - stopped
-        - failed
-        type: string
-    required:
-    - instanceID
-    - status
-    type: object
-  internal_api_handlers.UpdateSystemConfigRequest:
-    properties:
-      app_name:
-        type: string
-      app_subtitle:
-        type: string
-      enable_analytics:
-        type: boolean
-      language:
-        type: string
-    type: object
-  internal_api_handlers.UpdateUserRequest:
-    properties:
-      avatar_url:
-        type: string
-      email:
-        type: string
-      full_name:
-        type: string
-      status:
-        enum:
-        - active
-        - suspended
-        type: string
-      userID:
-        type: string
-    required:
-    - userID
     type: object
 host: localhost:8080
 info:
@@ -631,24 +1525,24 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.LoginRequest'
+          $ref: '#/definitions/handlers.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "204":
           description: No Content - Login successful (cookie set)
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       summary: User login
       tags:
       - auth
@@ -663,11 +1557,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: User logout
@@ -698,22 +1592,22 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/internal_api_handlers.RefreshTokenRequest'
+          $ref: '#/definitions/handlers.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       summary: Refresh access token
       tags:
       - auth
@@ -731,7 +1625,7 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get current user
@@ -748,7 +1642,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.PublicConfigResponse'
+            $ref: '#/definitions/handlers.PublicConfigResponse'
       summary: Get public system configuration
       tags:
       - system
@@ -762,7 +1656,7 @@ paths:
         name: config
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.UpdateSystemConfigRequest'
+          $ref: '#/definitions/handlers.UpdateSystemConfigRequest'
       produces:
       - application/json
       responses:
@@ -774,19 +1668,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - Bearer: []
       summary: Update system configuration (admin only)
@@ -808,15 +1702,15 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - Bearer: []
       summary: Get full system configuration (admin only)
@@ -1002,7 +1896,7 @@ paths:
         name: rule
         required: true
         schema:
-          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.MonitorAlertRule'
+          $ref: '#/definitions/models.MonitorAlertRule'
       produces:
       - application/json
       responses:
@@ -1093,7 +1987,7 @@ paths:
         name: rule
         required: true
         schema:
-          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.MonitorAlertRule'
+          $ref: '#/definitions/models.MonitorAlertRule'
       produces:
       - application/json
       responses:
@@ -1164,11 +2058,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
+            $ref: '#/definitions/handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List alert events
@@ -1189,15 +2083,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get alert event
@@ -1219,22 +2113,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.AcknowledgeAlertEventRequest'
+          $ref: '#/definitions/handlers.AcknowledgeAlertEventRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Acknowledge alert event
@@ -1255,11 +2149,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Resolve alert event
@@ -1274,11 +2168,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get active alert events
@@ -1320,11 +2214,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
+            $ref: '#/definitions/handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List alert rules
@@ -1340,18 +2234,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.CreateAlertRuleRequest'
+          $ref: '#/definitions/handlers.CreateAlertRuleRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create alert rule
@@ -1374,11 +2268,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete alert rule
@@ -1398,15 +2292,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get alert rule
@@ -1427,22 +2321,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.UpdateAlertRuleRequest'
+          $ref: '#/definitions/handlers.UpdateAlertRuleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update alert rule
@@ -1464,18 +2358,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.ToggleAlertRuleRequest'
+          $ref: '#/definitions/handlers.ToggleAlertRuleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Toggle alert rule
@@ -1490,11 +2384,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get alert statistics
@@ -1556,11 +2450,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
+            $ref: '#/definitions/handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List audit logs
@@ -1581,15 +2475,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get audit log
@@ -1604,11 +2498,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get distinct actions
@@ -1629,11 +2523,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List failed actions
@@ -1654,11 +2548,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List recent audit logs
@@ -1673,11 +2567,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get distinct resource types
@@ -1703,11 +2597,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List resource audit logs
@@ -1733,11 +2627,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Search audit logs
@@ -1752,11 +2646,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get audit statistics
@@ -1787,11 +2681,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get activity timeline
@@ -1808,22 +2702,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.ChangePasswordRequest'
+          $ref: '#/definitions/handlers.ChangePasswordRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Change password
@@ -1840,22 +2734,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.OAuthLoginRequest'
+          $ref: '#/definitions/handlers.OAuthLoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       summary: OAuth login
       tags:
       - auth
@@ -1874,11 +2768,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       summary: Get OAuth authorization URL
       tags:
       - auth
@@ -1891,11 +2785,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user profile
@@ -1910,11 +2804,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get active sessions
@@ -1935,15 +2829,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Invalidate session
@@ -1989,11 +2883,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
+            $ref: '#/definitions/handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List database instances
@@ -2009,22 +2903,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.CreateInstanceRequest'
+          $ref: '#/definitions/handlers.CreateInstanceRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create database instance
@@ -2047,11 +2941,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete database instance
@@ -2071,15 +2965,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance
@@ -2100,22 +2994,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.UpdateInstanceRequest'
+          $ref: '#/definitions/handlers.UpdateInstanceRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update database instance
@@ -2137,23 +3031,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.SuccessResponse'
+            - $ref: '#/definitions/handlers.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_ysicing_tiga_internal_services_managers.HealthStatus'
+                  $ref: '#/definitions/instances.HealthStatusResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance health
@@ -2174,18 +3068,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.UpdateInstanceHealthRequest'
+          $ref: '#/definitions/handlers.UpdateInstanceHealthRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update database instance health
@@ -2207,23 +3101,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.SuccessResponse'
+            - $ref: '#/definitions/handlers.SuccessResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_ysicing_tiga_internal_services_managers.ServiceMetrics'
+                  $ref: '#/definitions/instances.ServiceMetricsResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance metrics
@@ -2244,11 +3138,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get all latest metrics
@@ -2269,11 +3163,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get metric names
@@ -2295,18 +3189,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.UpdateInstanceStatusRequest'
+          $ref: '#/definitions/handlers.UpdateInstanceStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update database instance status
@@ -2328,18 +3222,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.ManageTagsRequest'
+          $ref: '#/definitions/handlers.ManageTagsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Remove tags
@@ -2360,18 +3254,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.ManageTagsRequest'
+          $ref: '#/definitions/handlers.ManageTagsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Add tags
@@ -2386,16 +3280,1883 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get database instance statistics
       tags:
       - dbs
+  /api/v1/docker/instances:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of Docker instances with pagination and filtering
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by health status (online, offline, archived, unknown)
+        in: query
+        name: status
+        type: string
+      - description: Filter by Agent ID (UUID)
+        in: query
+        name: agent_id
+        type: string
+      - description: Search by name or description
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/docker.DockerInstanceResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List Docker instances
+      tags:
+      - docker-instances
+    post:
+      consumes:
+      - application/json
+      description: 'Manually register a Docker instance (Note: Auto-discovery is preferred
+        via Agent)'
+      parameters:
+      - description: Instance creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/docker.CreateInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DockerInstance'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Docker instance
+      tags:
+      - docker-instances
+  /api/v1/docker/instances/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Archive a Docker instance (soft delete)
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Docker instance
+      tags:
+      - docker-instances
+    get:
+      consumes:
+      - application/json
+      description: Get a Docker instance by ID
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/docker.DockerInstanceResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Docker instance
+      tags:
+      - docker-instances
+    put:
+      consumes:
+      - application/json
+      description: Update Docker instance metadata (name, description, labels)
+      parameters:
+      - description: Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Instance update request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/docker.UpdateInstanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.DockerInstance'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Docker instance
+      tags:
+      - docker-instances
+  /api/v1/docker/instances/{id}/containers:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of Docker containers for a specific instance with pagination
+        and filtering
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      - description: 'Show all containers (default: false, only running)'
+        in: query
+        name: all
+        type: boolean
+      - description: Filter by container name
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List containers
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/{container_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Container ID or name
+        in: path
+        name: container_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get container details
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/{container_id}/logs:
+    get:
+      consumes:
+      - application/json
+      description: Get historical logs from a Docker container (non-streaming)
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Container ID or name
+        in: path
+        name: container_id
+        required: true
+        type: string
+      - description: 'Number of lines to show from the end (default: 100)'
+        in: query
+        name: tail
+        type: string
+      - description: Show logs since timestamp (e.g. 2013-01-02T13:23:37Z) or relative
+          (e.g. 42m for 42 minutes)
+        in: query
+        name: since
+        type: string
+      - description: 'Show timestamps (default: false)'
+        in: query
+        name: timestamps
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get container logs (historical)
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/{container_id}/logs/stream:
+    get:
+      consumes:
+      - application/json
+      description: Stream real-time logs from a Docker container using Server-Sent
+        Events (SSE)
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Container ID or name
+        in: path
+        name: container_id
+        required: true
+        type: string
+      - description: 'Number of lines to show from the end (default: 100)'
+        in: query
+        name: tail
+        type: string
+      - description: Show logs since timestamp or relative
+        in: query
+        name: since
+        type: string
+      - description: 'Show timestamps (default: false)'
+        in: query
+        name: timestamps
+        type: boolean
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of container logs
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get container logs (streaming)
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/{container_id}/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get current resource usage statistics for a Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Container ID or name
+        in: path
+        name: container_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get container stats (single query)
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/{container_id}/stats/stream:
+    get:
+      consumes:
+      - application/json
+      description: Stream real-time resource usage statistics for a Docker container
+        using Server-Sent Events (SSE)
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Container ID or name
+        in: path
+        name: container_id
+        required: true
+        type: string
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of container stats
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get container stats (streaming)
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/{container_id}/terminal:
+    post:
+      consumes:
+      - application/json
+      description: Create a WebSocket terminal session for a Docker container
+      parameters:
+      - description: Docker Instance ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Container ID
+        in: path
+        name: container_id
+        required: true
+        type: string
+      - description: Terminal options
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/docker.CreateTerminalSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create Docker container terminal session
+      tags:
+      - docker-terminal
+  /api/v1/docker/instances/{id}/containers/delete:
+    post:
+      consumes:
+      - application/json
+      description: Delete a Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Delete container request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.DeleteContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete container
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/pause:
+    post:
+      consumes:
+      - application/json
+      description: Pause a running Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Pause container request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.PauseContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pause container
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/restart:
+    post:
+      consumes:
+      - application/json
+      description: Restart a Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Restart container request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.RestartContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Restart container
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/start:
+    post:
+      consumes:
+      - application/json
+      description: Start a Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Start container request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.StartContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Start container
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/stop:
+    post:
+      consumes:
+      - application/json
+      description: Stop a running Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stop container request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.StopContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Stop container
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/containers/unpause:
+    post:
+      consumes:
+      - application/json
+      description: Unpause a paused Docker container
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Unpause container request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.UnpauseContainerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Unpause container
+      tags:
+      - docker-containers
+  /api/v1/docker/instances/{id}/images:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of Docker images for a specific instance with filtering
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Show all images (default: false, only show non-dangling images)'
+        in: query
+        name: all
+        type: boolean
+      - description: Filter images (e.g., 'reference=nginx:*')
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List Docker images
+      tags:
+      - docker-images
+  /api/v1/docker/instances/{id}/images/{image_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific Docker image
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Image ID or name:tag
+        in: path
+        name: image_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get image details
+      tags:
+      - docker-images
+  /api/v1/docker/instances/{id}/images/delete:
+    post:
+      consumes:
+      - application/json
+      description: Delete a Docker image
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Delete image request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.DeleteImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Docker image
+      tags:
+      - docker-images
+  /api/v1/docker/instances/{id}/images/pull:
+    post:
+      consumes:
+      - application/json
+      description: Pull a Docker image with real-time progress updates using Server-Sent
+        Events (SSE)
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Pull image request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.PullImageRequest'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of pull progress
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pull Docker image (streaming)
+      tags:
+      - docker-images
+  /api/v1/docker/instances/{id}/images/tag:
+    post:
+      consumes:
+      - application/json
+      description: Create a tag for a Docker image
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tag image request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.TagImageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Tag Docker image
+      tags:
+      - docker-images
+  /api/v1/docker/instances/{id}/networks:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all networks on the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Docker filters in JSON format
+        in: query
+        name: filters
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Network list response
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List Docker networks
+      tags:
+      - Docker Networks
+    post:
+      consumes:
+      - application/json
+      description: Create a new network on the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network creation parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.CreateNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Created network details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create Docker network
+      tags:
+      - Docker Networks
+  /api/v1/docker/instances/{id}/networks/{network_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific network
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network ID or name
+        in: path
+        name: network_id
+        required: true
+        type: string
+      - description: Verbose mode
+        in: query
+        name: verbose
+        type: boolean
+      - description: Network scope
+        in: query
+        name: scope
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Network details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Network not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Docker network details
+      tags:
+      - Docker Networks
+  /api/v1/docker/instances/{id}/networks/connect:
+    post:
+      consumes:
+      - application/json
+      description: Connect a container to a Docker network
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network connection parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.ConnectNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Connection result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Connect container to network
+      tags:
+      - Docker Networks
+  /api/v1/docker/instances/{id}/networks/delete:
+    post:
+      consumes:
+      - application/json
+      description: Delete a network from the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network deletion parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.DeleteNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete Docker network
+      tags:
+      - Docker Networks
+  /api/v1/docker/instances/{id}/networks/disconnect:
+    post:
+      consumes:
+      - application/json
+      description: Disconnect a container from a Docker network
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network disconnection parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.DisconnectNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Disconnection result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Disconnect container from network
+      tags:
+      - Docker Networks
+  /api/v1/docker/instances/{id}/system/disk-usage:
+    get:
+      consumes:
+      - application/json
+      description: Get disk usage information for images, containers, volumes, and
+        build cache
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Disk usage information
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Docker disk usage
+      tags:
+      - Docker System
+  /api/v1/docker/instances/{id}/system/events/stream:
+    get:
+      consumes:
+      - application/json
+      description: Stream Docker events in real-time using Server-Sent Events (SSE)
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Show events since timestamp or relative (e.g., '10m')
+        in: query
+        name: since
+        type: string
+      - description: Show events until timestamp or relative
+        in: query
+        name: until
+        type: string
+      - description: Event filters in JSON format
+        in: query
+        name: filters
+        type: string
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: SSE stream of Docker events
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Stream Docker events
+      tags:
+      - Docker System
+  /api/v1/docker/instances/{id}/system/info:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed system information from the Docker daemon
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: System information
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Docker system information
+      tags:
+      - Docker System
+  /api/v1/docker/instances/{id}/system/ping:
+    get:
+      consumes:
+      - application/json
+      description: Check if Docker daemon is responsive
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Ping response
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Ping Docker daemon
+      tags:
+      - Docker System
+  /api/v1/docker/instances/{id}/system/version:
+    get:
+      consumes:
+      - application/json
+      description: Get Docker version and build information
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Version information
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Docker version
+      tags:
+      - Docker System
+  /api/v1/docker/instances/{id}/volumes:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all volumes on the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Volume list response
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid instance ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List Docker volumes
+      tags:
+      - Docker Volumes
+    post:
+      consumes:
+      - application/json
+      description: Create a new volume on the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Volume creation parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.CreateVolumeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Created volume details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create Docker volume
+      tags:
+      - Docker Volumes
+  /api/v1/docker/instances/{id}/volumes/{volume_name}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific volume
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Volume name
+        in: path
+        name: volume_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Volume details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Volume not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Docker volume details
+      tags:
+      - Docker Volumes
+  /api/v1/docker/instances/{id}/volumes/delete:
+    post:
+      consumes:
+      - application/json
+      description: Delete a volume from the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Volume deletion parameters
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.DeleteVolumeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion result
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete Docker volume
+      tags:
+      - Docker Volumes
+  /api/v1/docker/instances/{id}/volumes/prune:
+    post:
+      consumes:
+      - application/json
+      description: Remove all unused volumes from the Docker instance
+      parameters:
+      - description: Docker Instance ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Prune filters (optional)
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_ysicing_tiga_internal_api_handlers_docker.PruneVolumesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prune result with space reclaimed
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Prune unused Docker volumes
+      tags:
+      - Docker Volumes
+  /api/v1/docker/instances/test-connection:
+    post:
+      consumes:
+      - application/json
+      description: Test connection to Docker daemon via Agent
+      parameters:
+      - description: Connection test request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/docker.TestConnectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.SuccessResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/docker.TestConnectionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test Docker connection
+      tags:
+      - docker-instances
+  /api/v1/docker/recordings:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of terminal recordings with filtering and pagination
+      parameters:
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: string
+      - description: Filter by Docker instance ID
+        in: query
+        name: instance_id
+        type: string
+      - description: Filter by container ID
+        in: query
+        name: container_id
+        type: string
+      - description: Filter by start date (RFC3339)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter by end date (RFC3339)
+        in: query
+        name: end_date
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - default: started_at
+        description: Sort field
+        in: query
+        name: sort_by
+        type: string
+      - default: DESC
+        description: Sort order (ASC/DESC)
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get terminal recordings list
+      tags:
+      - docker-recordings
+  /api/v1/docker/recordings/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a terminal recording and its file
+      parameters:
+      - description: Recording ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a terminal recording
+      tags:
+      - docker-recordings
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific terminal recording
+      parameters:
+      - description: Recording ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get terminal recording details
+      tags:
+      - docker-recordings
+  /api/v1/docker/recordings/{id}/playback:
+    get:
+      consumes:
+      - application/json
+      description: Stream the asciinema recording file for browser playback
+      parameters:
+      - description: Recording ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/x-asciicast
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Stream recording file for playback
+      tags:
+      - docker-recordings
+  /api/v1/docker/recordings/statistics:
+    get:
+      consumes:
+      - application/json
+      description: Get statistics about terminal recordings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get recording statistics
+      tags:
+      - docker-recordings
+  /api/v1/docker/terminal/{session_id}:
+    get:
+      description: Establish WebSocket connection for Docker container terminal
+      parameters:
+      - description: Session ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: WebSocket Docker container terminal
+      tags:
+      - docker-terminal
   /api/v1/hosts:
     get:
       parameters:
@@ -2439,7 +5200,7 @@ paths:
         name: host
         required: true
         schema:
-          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.HostNode'
+          $ref: '#/definitions/models.HostNode'
       produces:
       - application/json
       responses:
@@ -2502,7 +5263,7 @@ paths:
         name: host
         required: true
         schema:
-          $ref: '#/definitions/github_com_ysicing_tiga_internal_models.HostNode'
+          $ref: '#/definitions/models.HostNode'
       produces:
       - application/json
       responses:
@@ -2570,6 +5331,1249 @@ paths:
       summary: Get historical states
       tags:
       - hosts
+  /api/v1/k8s/clusters:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all Kubernetes clusters
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={clusters:[], total:int}
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List all clusters
+      tags:
+      - k8s-clusters
+    post:
+      consumes:
+      - application/json
+      description: Create a new Kubernetes cluster
+      parameters:
+      - description: Cluster data
+        in: body
+        name: cluster
+        required: true
+        schema:
+          $ref: '#/definitions/cluster.CreateClusterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: code=201, data=cluster
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: code=409, message=Cluster name already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Create a new cluster
+      tags:
+      - k8s-clusters
+  /api/v1/k8s/clusters/:cluster_id/search:
+    get:
+      consumes:
+      - application/json
+      description: Search across multiple Kubernetes resource types (Pods, Deployments,
+        Services, etc.)
+      parameters:
+      - description: Search query (minimum 2 characters)
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Maximum number of results (default 50, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Search results
+          schema:
+            $ref: '#/definitions/handlers.SearchResponse'
+        "400":
+          description: error=Query must be at least 2 characters long
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: error=Failed to perform search
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Global search across resources
+      tags:
+      - k8s-search
+  /api/v1/k8s/clusters/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft delete a Kubernetes cluster
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Delete a cluster
+      tags:
+      - k8s-clusters
+    get:
+      consumes:
+      - application/json
+      description: Get a single Kubernetes cluster by ID
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data=cluster
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get cluster by ID
+      tags:
+      - k8s-clusters
+    put:
+      consumes:
+      - application/json
+      description: Update an existing Kubernetes cluster (partial update supported)
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Cluster update data
+        in: body
+        name: cluster
+        required: true
+        schema:
+          $ref: '#/definitions/cluster.UpdateClusterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data=cluster
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Validation error
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: code=409, message=Cluster name already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Update a cluster
+      tags:
+      - k8s-clusters
+  /api/v1/k8s/clusters/{id}/clonesets:
+    get:
+      consumes:
+      - application/json
+      description: List all OpenKruise CloneSets in a namespace
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Namespace (default: all namespaces)'
+        in: query
+        name: namespace
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={items:[], total:int}
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=CRD not installed
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List CloneSets
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/clonesets/{name}/restart:
+    post:
+      consumes:
+      - application/json
+      description: Trigger a rolling restart of an OpenKruise CloneSet
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: CloneSet name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=CloneSet not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Restart CloneSet
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/clonesets/{name}/scale:
+    put:
+      consumes:
+      - application/json
+      description: Scale an OpenKruise CloneSet to a specified replica count
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: CloneSet name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: 'Scale request {replicas: int}'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=CloneSet not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Scale CloneSet
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/crd-resources:
+    get:
+      consumes:
+      - application/json
+      description: List resources of a specific CRD type
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: API group (e.g., apps.kruise.io)
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: API version (e.g., v1alpha1)
+        in: query
+        name: version
+        required: true
+        type: string
+      - description: Resource type (e.g., clonesets)
+        in: query
+        name: resource
+        required: true
+        type: string
+      - description: 'Namespace (default: all namespaces)'
+        in: query
+        name: namespace
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={items:[], total:int}
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Missing required parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=CRD not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List CRD resources
+      tags:
+      - k8s-crd
+    post:
+      consumes:
+      - application/json
+      description: Create a new CRD resource
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resource definition
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: code=201, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Create a CRD resource
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/crd-resources/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific CRD resource
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: API group
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: API version
+        in: query
+        name: version
+        required: true
+        type: string
+      - description: Resource type
+        in: query
+        name: resource
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: Resource name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Resource not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Delete a CRD resource
+      tags:
+      - k8s-crd
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific CRD resource
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: API group
+        in: query
+        name: group
+        required: true
+        type: string
+      - description: API version
+        in: query
+        name: version
+        required: true
+        type: string
+      - description: Resource type
+        in: query
+        name: resource
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: Resource name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={resource}
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Resource not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get a CRD resource
+      tags:
+      - k8s-crd
+    put:
+      consumes:
+      - application/json
+      description: Update an existing CRD resource
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resource name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Updated resource definition
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Resource not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Update a CRD resource
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/crd-resources/apply:
+    post:
+      consumes:
+      - text/plain
+      description: Create or update a CRD resource from YAML definition
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: YAML definition
+        in: body
+        name: body
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success, data={action:'created'|'updated'}
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid YAML
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Apply CRD resource from YAML
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/crds:
+    get:
+      consumes:
+      - application/json
+      description: Detect installed Custom Resource Definitions in the cluster
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={kruise:{installed:bool, crds:[]}, ...}
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Detect installed CRDs
+      tags:
+      - k8s-clusters
+  /api/v1/k8s/clusters/{id}/daemonsets:
+    get:
+      consumes:
+      - application/json
+      description: List all OpenKruise Advanced DaemonSets in a namespace
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Namespace (default: all namespaces)'
+        in: query
+        name: namespace
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={items:[], total:int}
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=CRD not installed
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List Advanced DaemonSets
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/daemonsets/{name}/restart:
+    post:
+      consumes:
+      - application/json
+      description: Trigger a rolling restart of an OpenKruise Advanced DaemonSet
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: DaemonSet name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=DaemonSet not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Restart Advanced DaemonSet
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/prometheus/rediscover:
+    post:
+      consumes:
+      - application/json
+      description: Manually trigger Prometheus service discovery for a cluster (async
+        operation)
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: code=202, message=Task started, data={cluster_id, task_started_at}
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: code=409, message=Discovery task already running
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Trigger Prometheus rediscovery
+      tags:
+      - k8s-clusters
+  /api/v1/k8s/clusters/{id}/resource-history:
+    get:
+      consumes:
+      - application/json
+      description: List resource operation history for a cluster with optional filters
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resource type (e.g., Pod, CloneSet)
+        in: query
+        name: resource_type
+        type: string
+      - description: Resource name
+        in: query
+        name: resource_name
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        type: string
+      - description: API group (for CRDs)
+        in: query
+        name: api_group
+        type: string
+      - description: API version
+        in: query
+        name: api_version
+        type: string
+      - description: Operation type (create, update, delete, apply, scale, restart)
+        in: query
+        name: operation_type
+        type: string
+      - description: Filter by success status
+        in: query
+        name: success
+        type: boolean
+      - description: Start time (RFC3339 format)
+        in: query
+        name: start_time
+        type: string
+      - description: End time (RFC3339 format)
+        in: query
+        name: end_time
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={items:[], total:int, page:int, page_size:int}
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid parameters
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List resource operation history
+      tags:
+      - k8s-resource-history
+  /api/v1/k8s/clusters/{id}/resource-history/{history_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific resource operation history record
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: History ID (UUID)
+        in: path
+        name: history_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=History not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Delete resource operation history
+      tags:
+      - k8s-resource-history
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific resource operation
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: History ID (UUID)
+        in: path
+        name: history_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={history}
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=History not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Get resource operation history detail
+      tags:
+      - k8s-resource-history
+  /api/v1/k8s/clusters/{id}/set-default:
+    post:
+      consumes:
+      - application/json
+      description: Set a specific cluster as the default cluster
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Set cluster as default
+      tags:
+      - k8s-clusters
+  /api/v1/k8s/clusters/{id}/statefulsets:
+    get:
+      consumes:
+      - application/json
+      description: List all OpenKruise Advanced StatefulSets in a namespace
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Namespace (default: all namespaces)'
+        in: query
+        name: namespace
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={items:[], total:int}
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=CRD not installed
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: code=500, message=error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: List Advanced StatefulSets
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/statefulsets/{name}/restart:
+    post:
+      consumes:
+      - application/json
+      description: Trigger a rolling restart of an OpenKruise Advanced StatefulSet
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: StatefulSet name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=StatefulSet not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Restart Advanced StatefulSet
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/statefulsets/{name}/scale:
+    put:
+      consumes:
+      - application/json
+      description: Scale an OpenKruise Advanced StatefulSet to a specified replica
+        count
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: StatefulSet name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: 'Scale request {replicas: int}'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, message=success
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=StatefulSet not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Scale Advanced StatefulSet
+      tags:
+      - k8s-crd
+  /api/v1/k8s/clusters/{id}/terminal:
+    get:
+      description: WebSocket connection for pod terminal access
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Pod namespace
+        in: query
+        name: namespace
+        required: true
+        type: string
+      - description: Pod name
+        in: query
+        name: pod
+        required: true
+        type: string
+      - description: 'Container name (default: first container)'
+        in: query
+        name: container
+        type: string
+      responses: {}
+      security:
+      - Bearer: []
+      summary: Pod WebSocket terminal
+      tags:
+      - k8s-terminal
+  /api/v1/k8s/clusters/{id}/test-connection:
+    post:
+      consumes:
+      - application/json
+      description: Test connection to a Kubernetes cluster using provided kubeconfig
+      parameters:
+      - description: Cluster ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Kubeconfig for testing (optional, uses stored config if not provided)
+        in: body
+        name: config
+        schema:
+          $ref: '#/definitions/cluster.TestConnectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code=200, data={connected:true, server_version:string}
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: code=400, message=Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: code=404, message=Cluster not found
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: code=503, message=Connection failed
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Test cluster connection
+      tags:
+      - k8s-clusters
+  /api/v1/k8s/crd-status/{type}:
+    get:
+      description: Get the installation status and available workloads of a CRD operator
+        (openkruise, tailscale, traefik, systemupgrade)
+      parameters:
+      - description: CRD type (openkruise|tailscale|traefik|systemupgrade)
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CRDStatus'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get CRD operator status
+      tags:
+      - kubernetes
   /api/v1/metrics:
     get:
       description: Query metrics with time range and filters
@@ -2610,11 +6614,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Query metrics
@@ -2630,18 +6634,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.CreateMetricRequest'
+          $ref: '#/definitions/handlers.CreateMetricRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create metric
@@ -2682,11 +6686,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Aggregate metrics
@@ -2722,11 +6726,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Calculate average
@@ -2743,18 +6747,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.CreateMetricsBatchRequest'
+          $ref: '#/definitions/handlers.CreateMetricsBatchRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create metrics batch
@@ -2780,15 +6784,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get latest metric
@@ -2829,11 +6833,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Calculate percentile
@@ -2848,11 +6852,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get metrics statistics
@@ -2893,11 +6897,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get time series data
@@ -2935,11 +6939,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.PaginatedResponse'
+            $ref: '#/definitions/handlers.PaginatedResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users
@@ -2955,22 +6959,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.CreateUserRequest'
+          $ref: '#/definitions/handlers.CreateUserRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create user
@@ -2993,11 +6997,11 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete user
@@ -3017,15 +7021,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user
@@ -3046,22 +7050,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.UpdateUserRequest'
+          $ref: '#/definitions/handlers.UpdateUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update user
@@ -3087,11 +7091,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List user audit logs
@@ -3112,15 +7116,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get user roles
@@ -3141,18 +7145,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_api_handlers.AssignRoleRequest'
+          $ref: '#/definitions/handlers.AssignRoleRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Assign role
@@ -3178,16 +7182,31 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_api_handlers.SuccessResponse'
+            $ref: '#/definitions/handlers.SuccessResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_api_handlers.ErrorResponse'
+            $ref: '#/definitions/handlers.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Revoke role
       tags:
       - users
+  /api/v1/version:
+    get:
+      consumes:
+      - application/json
+      description: 返回服务端的版本号、构建时间和 commit ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 版本信息
+          schema:
+            $ref: '#/definitions/github_com_ysicing_tiga_internal_version.Info'
+      summary: 获取服务端版本信息
+      tags:
+      - system
   /api/v1/vms/host-groups:
     get:
       description: Get a list of all unique group names used by host nodes
@@ -3247,6 +7266,557 @@ paths:
       summary: Regenerate host secret key
       tags:
       - hosts
+  /audit/config:
+    get:
+      consumes:
+      - application/json
+      description: Get current audit system configuration (retention period, write
+        policy, etc.)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/audit.AuditConfig'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get audit configuration
+      tags:
+      - audit
+    put:
+      consumes:
+      - application/json
+      description: Update audit system configuration. Changes take effect immediately.
+        Retention period changes apply on next cleanup task execution. Modifying retention
+        period may cause historical data to be cleaned up.
+      parameters:
+      - description: Audit configuration to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/audit.UpdateConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/audit.AuditConfig'
+              message:
+                type: string
+            type: object
+        "400":
+          description: Invalid parameters (retention_days must be between 1 and 3650)
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update audit configuration
+      tags:
+      - audit
+  /audit/events:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated audit logs with multi-dimensional filtering by user,
+        resource type, action, time range, client IP, and request ID
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: 'Page size (default: 20)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      - description: Filter by user UID
+        in: query
+        name: user_uid
+        type: string
+      - description: Filter by resource type
+        enum:
+        - cluster
+        - pod
+        - deployment
+        - service
+        - database
+        - databaseInstance
+        - user
+        - role
+        - scheduledTask
+        in: query
+        name: resource_type
+        type: string
+      - description: Filter by action type
+        enum:
+        - created
+        - updated
+        - deleted
+        - read
+        - enabled
+        - disabled
+        - login
+        - logout
+        - granted
+        - revoked
+        in: query
+        name: action
+        type: string
+      - description: Start time (Unix milliseconds)
+        in: query
+        name: start_time
+        type: integer
+      - description: End time (Unix milliseconds)
+        in: query
+        name: end_time
+        type: integer
+      - description: Filter by client IP
+        in: query
+        name: client_ip
+        type: string
+      - description: Filter by request ID
+        in: query
+        name: request_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                items:
+                  $ref: '#/definitions/models.AuditEvent'
+                type: array
+              pagination:
+                $ref: '#/definitions/handlers.Pagination'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get audit logs list
+      tags:
+      - audit
+  /audit/events/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get complete details of a single audit event including full object
+        diff data
+      parameters:
+      - description: Audit event ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/models.AuditEvent'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get audit event details
+      tags:
+      - audit
+  /scheduler/executions:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of task execution history with filtering by
+        task name, state, and time range
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: 'Page size (default: 20)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      - description: Filter by task name
+        in: query
+        name: task_name
+        type: string
+      - description: Filter by execution state
+        enum:
+        - pending
+        - running
+        - success
+        - failure
+        - timeout
+        - cancelled
+        - interrupted
+        in: query
+        name: state
+        type: string
+      - description: Start time (Unix milliseconds)
+        in: query
+        name: start_time
+        type: integer
+      - description: End time (Unix milliseconds)
+        in: query
+        name: end_time
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                items:
+                  $ref: '#/definitions/models.TaskExecution'
+                type: array
+              pagination:
+                $ref: '#/definitions/handlers.Pagination'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get execution history
+      tags:
+      - scheduler
+  /scheduler/executions/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific task execution by ID
+      parameters:
+      - description: Execution ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/models.TaskExecution'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get execution details
+      tags:
+      - scheduler
+  /scheduler/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get statistics for all tasks including success rate, average execution
+        time, and failure counts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                properties:
+                  average_duration_ms:
+                    type: integer
+                  enabled_tasks:
+                    type: integer
+                  success_rate:
+                    type: number
+                  task_stats:
+                    items:
+                      type: object
+                    type: array
+                  total_executions:
+                    type: integer
+                  total_tasks:
+                    type: integer
+                type: object
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get statistics
+      tags:
+      - scheduler
+  /scheduler/tasks:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of scheduled tasks with optional filtering
+      parameters:
+      - description: 'Page number (default: 1)'
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: 'Page size (default: 20)'
+        in: query
+        maximum: 100
+        minimum: 1
+        name: page_size
+        type: integer
+      - description: Filter by enabled status
+        in: query
+        name: enabled
+        type: boolean
+      - description: Filter by task type
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                items:
+                  $ref: '#/definitions/models.ScheduledTask'
+                type: array
+              pagination:
+                $ref: '#/definitions/handlers.Pagination'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task list
+      tags:
+      - scheduler
+  /scheduler/tasks/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific scheduled task by UID
+      parameters:
+      - description: Task UID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              data:
+                $ref: '#/definitions/models.ScheduledTask'
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get task details
+      tags:
+      - scheduler
+  /scheduler/tasks/{id}/disable:
+    post:
+      consumes:
+      - application/json
+      description: Disable a scheduled task. Takes effect immediately. Running tasks
+        are not affected
+      parameters:
+      - description: Task UID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Disable task
+      tags:
+      - scheduler
+  /scheduler/tasks/{id}/enable:
+    post:
+      consumes:
+      - application/json
+      description: Enable a scheduled task. Takes effect immediately without service
+        restart
+      parameters:
+      - description: Task UID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.SuccessResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Enable task
+      tags:
+      - scheduler
+  /scheduler/tasks/{id}/trigger:
+    post:
+      consumes:
+      - application/json
+      description: Immediately execute a task without waiting for the next scheduled
+        time. For debugging and emergency situations
+      parameters:
+      - description: Task UID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Trigger parameters (optional)
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/scheduler.TriggerTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Task queued successfully
+          schema:
+            properties:
+              execution_uid:
+                type: string
+              message:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+        "409":
+          description: Task already running
+          schema:
+            $ref: '#/definitions/handlers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Trigger task manually
+      tags:
+      - scheduler
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

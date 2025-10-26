@@ -72,13 +72,25 @@ tasks:
       - wire
     cmds:
       - go mod tidy
-      - go build -o bin/tiga cmd/tiga/main.go
+      - |
+        eval "$(bash scripts/version.sh)"
+        go build -ldflags "\
+          -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+          -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+          -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga cmd/tiga/main.go
 
   agent:
     desc: build agent
     cmds:
       - go mod tidy
-      - go build -o bin/tiga-agent ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        go build -ldflags "\
+          -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+          -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+          -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent ./cmd/tiga-agent
 
   all:
     desc: build all (backend + agent)
@@ -91,18 +103,74 @@ tasks:
     deps:
       - web
     cmds:
-      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-amd64 cmd/tiga/main.go
-      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-arm64 cmd/tiga/main.go
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-amd64 cmd/tiga/main.go
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-arm64 cmd/tiga/main.go
 
   agent-cross:
     desc: cross compile agent for multiple platforms
     cmds:
-      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-linux-amd64 ./cmd/tiga-agent
-      - GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-linux-arm64 ./cmd/tiga-agent
-      - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-darwin-amd64 ./cmd/tiga-agent
-      - GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-darwin-arm64 ./cmd/tiga-agent
-      - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-windows-amd64.exe ./cmd/tiga-agent
-      - GOOS=windows GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/tiga-agent-windows-arm64.exe ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent-linux-amd64 ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent-linux-arm64 ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent-darwin-amd64 ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent-darwin-arm64 ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent-windows-amd64.exe ./cmd/tiga-agent
+      - |
+        eval "$(bash scripts/version.sh)"
+        GOOS=windows GOARCH=arm64 CGO_ENABLED=0 go build -trimpath \
+          -ldflags="-s -w \
+            -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+            -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+            -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          -o bin/tiga-agent-windows-arm64.exe ./cmd/tiga-agent
 
   cross-all:
     desc: cross compile both server and agent
@@ -139,9 +207,15 @@ tasks:
       - echo "Coverage report generated at coverage.html"
 
   docker:
-    desc: build docker image
+    desc: build docker image with version injection
     cmds:
-      - docker buildx build --pull --push --platform linux/amd64 -t ttl.sh/ysicing/tiga .
+      - |
+        eval "$(bash scripts/version.sh)"
+        docker buildx build --pull --push --platform linux/amd64 \
+          --build-arg VERSION=${VERSION} \
+          --build-arg BUILD_TIME=${BUILD_TIME} \
+          --build-arg COMMIT_ID=${COMMIT_ID} \
+          -t ttl.sh/ysicing/tiga .
 
   dev:
     desc: run development server (all-in-one mode)
@@ -149,12 +223,24 @@ tasks:
       - web
       - wire
     cmds:
-      - go run cmd/tiga/main.go
+      - |
+        eval "$(bash scripts/version.sh)"
+        go run -ldflags "\
+          -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+          -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+          -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          cmd/tiga/main.go
 
   dev:backend:
     desc: run backend API server only
     cmds:
-      - go run cmd/tiga/main.go
+      - |
+        eval "$(bash scripts/version.sh)"
+        go run -ldflags "\
+          -X github.com/ysicing/tiga/internal/version.Version=${VERSION} \
+          -X github.com/ysicing/tiga/internal/version.BuildTime=${BUILD_TIME} \
+          -X github.com/ysicing/tiga/internal/version.CommitID=${COMMIT_ID}" \
+          cmd/tiga/main.go
 
   dev:web:
     desc: run frontend development server (Vite hot reload)

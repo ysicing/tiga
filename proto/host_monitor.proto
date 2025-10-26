@@ -90,6 +90,14 @@ message HostState {
   uint64 traffic_recv = 22;         // 总接收流量(字节)
   uint64 traffic_delta_sent = 23;   // 增量发送流量(字节)
   uint64 traffic_delta_recv = 24;   // 增量接收流量(字节)
+  VersionInfo version_info = 25;    // Agent版本信息(可选)
+}
+
+// Agent版本信息
+message VersionInfo {
+  string version = 1;               // 版本号(v1.2.3-a1b2c3d)
+  string build_time = 2;            // 构建时间(RFC3339格式)
+  string commit_id = 3;             // 提交哈希(7位短哈希)
 }
 
 // 温度传感器

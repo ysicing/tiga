@@ -10,6 +10,7 @@ import (
 	"github.com/ysicing/tiga/internal/api/handlers"
 	"github.com/ysicing/tiga/internal/api/handlers/instances"
 	"github.com/ysicing/tiga/internal/api/handlers/minio"
+	"github.com/ysicing/tiga/internal/api/handlers/version"
 	"github.com/ysicing/tiga/internal/api/middleware"
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/repository"
@@ -338,6 +339,9 @@ func SetupRoutes(
 
 		// App configuration endpoint (no auth required) - used by login page
 		v1.GET("/config", handlers.GetAppConfig(configPath))
+
+		// Version endpoint (no auth required) - used by frontend to display version info
+		v1.GET("/version", version.GetVersion)
 
 		adminAPI := v1.Group("/admin")
 		{

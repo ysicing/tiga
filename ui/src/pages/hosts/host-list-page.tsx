@@ -500,6 +500,9 @@ export function HostListPage() {
                 <th className="px-4 py-3 text-left text-sm font-medium">
                   系统
                 </th>
+                <th className="px-4 py-3 text-left text-sm font-medium">
+                  Agent 版本
+                </th>
                 <th className="px-4 py-3 text-right text-sm font-medium">
                   CPU
                 </th>
@@ -557,6 +560,11 @@ export function HostListPage() {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {info ? `${info.platform} ${info.arch}` : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="text-xs text-muted-foreground">
+                        {info?.agent_version || '-'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       {state ? (

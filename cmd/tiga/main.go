@@ -10,6 +10,7 @@ import (
 
 	"github.com/ysicing/tiga/internal/app"
 	"github.com/ysicing/tiga/internal/config"
+	"github.com/ysicing/tiga/internal/version"
 	"github.com/ysicing/tiga/static"
 
 	_ "github.com/ysicing/tiga/docs/swagger" // Swagger docs
@@ -70,9 +71,6 @@ import (
 
 var (
 	configFile string
-	version    = "dev"
-	commit     = "none"
-	buildTime  = "unknown"
 )
 
 func init() {
@@ -85,11 +83,21 @@ func init() {
 func main() {
 	flag.Parse()
 
-	// Print version information
-	logrus.Infof("Tiga DevOps Platform")
-	logrus.Infof("Version: %s", version)
-	logrus.Infof("Commit: %s", commit)
-	logrus.Infof("Build Time: %s", buildTime)
+	// Handle --version flag
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
+		fmt.Printf("Tiga Server\n")
+		fmt.Printf("Version:    %s\n", version.Version)
+		fmt.Printf("Build Time: %s\n", version.BuildTime)
+		fmt.Printf("Commit ID:  %s\n", version.CommitID)
+		os.Exit(0)
+	}
+
+	// Print version information in startup log
+	logrus.WithFields(logrus.Fields{
+		"version":    version.Version,
+		"build_time": version.BuildTime,
+		"commit_id":  version.CommitID,
+	}).Info("Starting Tiga Server")
 
 	// Check if system is installed
 	configService := config.NewInstallConfigService(configFile)

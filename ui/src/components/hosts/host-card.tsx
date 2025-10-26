@@ -7,6 +7,7 @@ import {
   HardDrive,
   Network,
   Server,
+  Info,
 } from 'lucide-react'
 
 import { formatBytes, formatUptime } from '@/lib/utils'
@@ -172,6 +173,14 @@ export function HostCard({ host, onClick, compact = false }: HostCardProps) {
             {!compact && state.uptime > 0 && (
               <div className="text-xs text-muted-foreground text-right">
                 运行时间: {formatUptime(state.uptime)}
+              </div>
+            )}
+
+            {/* Agent Version */}
+            {!compact && info?.agent_version && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2 border-t">
+                <Info className="h-3 w-3" />
+                <span>Agent: {info.agent_version}</span>
               </div>
             )}
           </div>

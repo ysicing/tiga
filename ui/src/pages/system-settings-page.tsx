@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ResponsiveTabs } from '@/components/ui/responsive-tabs'
 import { OAuthProviderManagement } from '@/components/settings/oauth-provider-management'
+import { VersionInfo } from '@/components/settings/version-info'
 
 export function SystemSettingsPage() {
   const { t } = useTranslation()
@@ -23,6 +24,11 @@ export function SystemSettingsPage() {
             value: 'oauth',
             label: t('system.settings.tabs.oauth', 'OAuth'),
             content: <OAuthProviderManagement />,
+          },
+          {
+            value: 'version',
+            label: t('system.settings.tabs.version', '版本'),
+            content: <VersionInfo />,
           },
         ]}
       />

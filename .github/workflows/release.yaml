@@ -70,11 +70,30 @@ jobs:
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
-      - name: Build
-        run: make cross-compile
+      - name: Build frontend
+        run: task web
+
+      - name: Cross compile server binaries
+        run: task cross-compile
+
+      - name: Cross compile agent binaries
+        run: task agent-cross
 
       - name: Package binaries
-        run: make package-binaries
+        run: |
+          TAG_NAME=${{ steps.check_version.outputs.tag_name }}
+          cd bin
+          # Package server binaries
+          tar czf tiga-linux-amd64-${TAG_NAME}.tar.gz tiga-amd64
+          tar czf tiga-linux-arm64-${TAG_NAME}.tar.gz tiga-arm64
+          # Package agent binaries
+          tar czf tiga-agent-linux-amd64-${TAG_NAME}.tar.gz tiga-agent-linux-amd64
+          tar czf tiga-agent-linux-arm64-${TAG_NAME}.tar.gz tiga-agent-linux-arm64
+          tar czf tiga-agent-darwin-amd64-${TAG_NAME}.tar.gz tiga-agent-darwin-amd64
+          tar czf tiga-agent-darwin-arm64-${TAG_NAME}.tar.gz tiga-agent-darwin-arm64
+          zip tiga-agent-windows-amd64-${TAG_NAME}.zip tiga-agent-windows-amd64.exe
+          zip tiga-agent-windows-arm64-${TAG_NAME}.zip tiga-agent-windows-arm64.exe
+          cd ..
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -96,12 +115,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.check_version.outputs.tag_name }}
-          name: ${{ steps.check_version.outputs.tag_name }}
+          name: Release ${{ steps.check_version.outputs.tag_name }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
-            bin/tiga-*-${{ steps.check_version.outputs.tag_name }}.tar.gz
-            tiga-*.tgz
+            bin/tiga-linux-amd64-${{ steps.check_version.outputs.tag_name }}.tar.gz
+            bin/tiga-linux-arm64-${{ steps.check_version.outputs.tag_name }}.tar.gz
+            bin/tiga-agent-linux-amd64-${{ steps.check_version.outputs.tag_name }}.tar.gz
+            bin/tiga-agent-linux-arm64-${{ steps.check_version.outputs.tag_name }}.tar.gz
+            bin/tiga-agent-darwin-amd64-${{ steps.check_version.outputs.tag_name }}.tar.gz
+            bin/tiga-agent-darwin-arm64-${{ steps.check_version.outputs.tag_name }}.tar.gz
+            bin/tiga-agent-windows-amd64-${{ steps.check_version.outputs.tag_name }}.zip
+            bin/tiga-agent-windows-arm64-${{ steps.check_version.outputs.tag_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
