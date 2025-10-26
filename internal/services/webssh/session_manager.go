@@ -2,11 +2,13 @@ package webssh
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/ysicing/tiga/internal/models"
@@ -189,6 +191,14 @@ func (m *SessionManager) CloseSession(ctx context.Context, sessionID, reason str
 		return err
 	}
 
+	// Save to unified terminal_recordings table if recording was enabled
+	if session.RecordingEnabled && session.RecordingPath != "" {
+		if err := m.saveToUnifiedRecordingTable(ctx, session); err != nil {
+			// Log error but don't fail session closure
+			fmt.Printf("Failed to save to unified recording table: %v\n", err)
+		}
+	}
+
 	// Remove from user sessions tracking
 	m.removeUserSession(session.UserID, sessionID)
 
@@ -355,4 +365,79 @@ func (m *SessionManager) SetSessionTimeout(timeout time.Duration) {
 	if timeout > 0 {
 		m.sessionTimeout = timeout
 	}
+}
+
+// saveToUnifiedRecordingTable saves a WebSSH recording to the unified terminal_recordings table
+func (m *SessionManager) saveToUnifiedRecordingTable(ctx context.Context, session *models.WebSSHSession) error {
+	// Parse session ID to UUID
+	sessionUUID, err := uuid.Parse(session.SessionID)
+	if err != nil {
+		return fmt.Errorf("invalid session ID format: %w", err)
+	}
+
+	// Fetch username from User table
+	var user models.User
+	if err := m.db.WithContext(ctx).Where("id = ?", session.UserID).First(&user).Error; err != nil {
+		return fmt.Errorf("failed to fetch user: %w", err)
+	}
+
+	// Fetch host information for TypeMetadata
+	var hostNode models.HostNode
+	if err := m.db.WithContext(ctx).Where("id = ?", session.HostNodeID).First(&hostNode).Error; err != nil {
+		return fmt.Errorf("failed to fetch host node: %w", err)
+	}
+
+	// Fetch host info
+	var hostInfo models.HostInfo
+	if err := m.db.WithContext(ctx).Where("host_node_id = ?", session.HostNodeID).First(&hostInfo).Error; err == nil {
+		// HostInfo found, will include in metadata
+	} else {
+		// HostInfo not found, create empty one
+		hostInfo = models.HostInfo{}
+	}
+
+	// Calculate duration
+	var duration int
+	if session.EndTime != nil && !session.StartTime.IsZero() {
+		duration = int(session.EndTime.Sub(session.StartTime).Seconds())
+	}
+
+	// Construct TypeMetadata JSONB
+	typeMetadataJSON := map[string]interface{}{
+		"session_id": session.SessionID,
+		"host_id":    session.HostNodeID.String(),
+		"host":       hostNode.Name,
+	}
+
+	// Convert to JSON string
+	typeMetadataStr, err := json.Marshal(typeMetadataJSON)
+	if err != nil {
+		return fmt.Errorf("failed to marshal type metadata: %w", err)
+	}
+
+	// Create TerminalRecording entry
+	recording := &models.TerminalRecording{
+		SessionID:     sessionUUID,
+		UserID:        session.UserID,
+		Username:      user.Username,
+		RecordingType: "webssh",
+		TypeMetadata:  datatypes.JSON(typeMetadataStr),
+		StorageType:   "local",
+		StoragePath:   session.RecordingPath,
+		FileSize:      session.RecordingSize,
+		Format:        "asciinema",
+		StartedAt:     session.StartTime,
+		EndedAt:       session.EndTime,
+		Duration:      duration,
+		Rows:          session.Rows,
+		Cols:          session.Cols,
+		Shell:         "/bin/bash",
+		ClientIP:      session.ClientIP,
+	}
+
+	if err := m.db.WithContext(ctx).Create(recording).Error; err != nil {
+		return fmt.Errorf("failed to create unified recording: %w", err)
+	}
+
+	return nil
 }

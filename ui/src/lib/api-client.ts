@@ -605,6 +605,9 @@ export const devopsAPI = {
         host_id: string
         username?: string
         password?: string
+        width?: number
+        height?: number
+        recording_enabled?: boolean
       }) => apiClient.post('/vms/webssh/sessions', data),
       listSessions: () => apiClient.get('/vms/webssh/sessions'),
       listAllSessions: (params?: Record<string, any>) =>

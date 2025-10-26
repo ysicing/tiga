@@ -710,21 +710,9 @@ func (a *Application) registerScheduledTasks(ctx context.Context) error {
 	}
 	logrus.Info("docker_audit_cleanup task registered successfully")
 
-	// Task 7: Terminal Recording Cleanup (runs daily at 3 AM)
-	// Clean up invalid terminal recordings (zero file size or duration)
-	recordingRepo := repository.NewTerminalRecordingRepository(a.db.DB)
-	recordingCleanupService := dockerservices.NewRecordingCleanupService(recordingRepo)
-	recordingCleanupTask := dockerservices.NewRecordingCleanupTask(recordingCleanupService)
+	// Note: Terminal Recording Cleanup task is now registered in routes.go
+	// It handles both expired and invalid recordings in a unified manner
 
-	if err := a.scheduler.AddCron(
-		recordingCleanupTask.Name(),
-		"0 3 * * *", // Daily at 3 AM
-		recordingCleanupTask,
-	); err != nil {
-		return fmt.Errorf("failed to register terminal_recording_cleanup task: %w", err)
-	}
-	logrus.Info("terminal_recording_cleanup task registered successfully")
-
-	logrus.Infof("Successfully registered %d scheduled tasks", 7)
+	logrus.Infof("Successfully registered %d scheduled tasks", 6)
 	return nil
 }

@@ -118,7 +118,9 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *gorm.DB, string) {
 		hostService,
 		stateCollector,
 		terminalManager,
+		nil, // dockerStreamManager - not needed for scheduler tests
 		probeScheduler,
+		nil, // agentManager - not needed for scheduler tests
 		cfg,
 	)
 

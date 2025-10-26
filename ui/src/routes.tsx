@@ -100,6 +100,10 @@ import UserFormPage from './pages/user-form'
 import UsersPage from './pages/users'
 // WebServer Pages
 import { WebServerOverview } from './pages/webserver-overview'
+// Recording Pages
+import { RecordingListPage } from './pages/recordings/recording-list-page'
+import { RecordingDetailPage } from './pages/recordings/recording-detail-page'
+import { RecordingPlayerPage } from './pages/recordings/recording-player-page'
 
 // Wrapper components for detail pages that need URL params
 const CloneSetDetailWrapper = () => {
@@ -281,6 +285,18 @@ export const router = createBrowserRouter([
       {
         path: 'settings',
         element: <SystemSettingsPage />,
+      },
+      {
+        path: 'recordings',
+        element: <RecordingListPage />,
+      },
+      {
+        path: 'recordings/:id',
+        element: <RecordingDetailPage />,
+      },
+      {
+        path: 'recordings/:id/player',
+        element: <RecordingPlayerPage />,
       },
     ],
   },

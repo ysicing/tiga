@@ -28,11 +28,6 @@ type WebSSHSession struct {
 	EndTime    *time.Time `json:"end_time,omitempty"`
 	LastActive time.Time  `gorm:"index" json:"last_active"`
 
-	// Audit information
-	SSHUser      string `json:"ssh_user"`
-	SSHPort      int    `json:"ssh_port"`
-	CommandCount int    `gorm:"default:0" json:"command_count"` // Number of commands executed
-
 	// Recording fields
 	RecordingEnabled bool   `gorm:"default:true" json:"recording_enabled"`       // Whether recording is enabled
 	RecordingPath    string `json:"recording_path,omitempty"`                    // Path to recording file

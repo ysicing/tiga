@@ -1014,3 +1014,148 @@ GET /api/v1/docker/instances/{id}/containers/{cid}/logs (SSE)
 3. **双模式互补**: 简单操作用任务队列，复杂流式用专用连接
 4. **可扩展**: 未来可添加更多流式操作（如 Attach Container）
 
+## 统一终端录制系统（开发中）
+
+**功能分支**：`009-3`
+**参考规格**：`.claude/specs/009-3/`
+**完成度**：20% (契约测试完成)
+
+### 核心目标
+- **问题**：3 个分散的终端录制实现（Docker、WebSSH、K8s），路径和清理策略不统一
+- **解决方案**：统一数据模型 + 统一存储服务 + 统一清理任务
+- **支持终端类型**：Docker 容器、WebSSH 主机、K8s 节点、K8s Pod
+- **注意**：这是新功能，无需向后兼容（项目未正式发布）
+
+### 数据模型
+
+```go
+// internal/models/terminal_recording.go
+type TerminalRecording struct {
+    BaseModel
+
+    // 统一字段
+    RecordingType string         // "docker" | "webssh" | "k8s_node" | "k8s_pod"
+    TypeMetadata  datatypes.JSON // JSONB 存储类型特定元数据
+
+    // 存储信息
+    StorageType string // "local" | "minio"
+    StoragePath string // 本地路径或 MinIO key
+    FileSize    int64
+    Format      string // "asciinema"
+
+    // 时间信息
+    StartedAt time.Time
+    EndedAt   *time.Time
+    Duration  int
+
+    // 终端配置
+    Rows, Cols int
+    Shell      string
+
+    // 元数据
+    ClientIP, Description, Tags string
+    UserID    uuid.UUID
+    SessionID uuid.UUID
+}
+```
+
+### 核心服务
+
+**位置**：`internal/services/recording/`
+
+1. **StorageService** - 存储抽象（本地/MinIO）
+2. **CleanupService** - 统一清理服务
+3. **ManagerService** - 录制管理（CRUD、搜索、统计）
+
+### API 端点
+
+- `GET /api/v1/recordings` - 录制列表（所有类型）
+- `GET /api/v1/recordings/:id` - 录制详情
+- `DELETE /api/v1/recordings/:id` - 删除录制
+- `GET /api/v1/recordings/search` - 搜索录制
+- `GET /api/v1/recordings/statistics` - 统计信息
+- `GET /api/v1/recordings/:id/playback` - 回放内容（Asciinema）
+- `GET /api/v1/recordings/:id/download` - 下载 .cast 文件
+- `POST /api/v1/recordings/cleanup/trigger` - 手动触发清理
+- `GET /api/v1/recordings/cleanup/status` - 清理状态
+
+### 配置
+
+```yaml
+recording:
+  storage_type: local
+  base_path: ./data/recordings
+  retention_days: 90
+  cleanup_schedule: "0 4 * * *"
+  cleanup_batch_size: 1000
+  max_recording_size: 524288000  # 500MB
+
+  # MinIO 可选（Phase 2）
+  minio:
+    endpoint: minio.example.com:9000
+    bucket: terminal-recordings
+    access_key: ""
+    secret_key: ""
+    use_ssl: true
+```
+
+### 已完成工作
+
+**阶段 3.1 - 设置**（4/4）✅
+- ✅ 录制服务目录结构（`internal/services/recording/`）
+- ✅ 配置结构扩展（`RecordingConfig`）
+- ✅ 数据库索引创建（`internal/db/migrations.go`）
+- ✅ Go lint 工具配置
+
+**阶段 3.2 - 契约测试**（9/19）✅
+- ✅ 9 个 API 端点契约测试（T005-T013）
+- ✅ 测试辅助工具（`tests/contract/test_helper.go`）
+- ✅ 完整的请求/响应 schema 验证
+- ✅ Asciinema v2 格式验证
+- ⏸️ 10 个集成测试待完成（T014-T023）
+
+### 关键文件
+
+```
+internal/
+├── config/config.go                   # [完成] 扩展配置
+├── db/migrations.go                   # [完成] 索引创建
+├── models/terminal_recording.go       # [待实现] 扩展模型
+├── repository/terminal_recording_repo.go  # [待实现] Repository
+├── services/recording/
+│   ├── storage_service.go            # [占位符] 存储抽象
+│   ├── cleanup_service.go            # [占位符] 统一清理
+│   └── manager_service.go            # [占位符] 录制管理
+└── api/handlers/recording/
+    ├── recording_handler.go          # [待实现] API 处理器
+    └── playback_handler.go           # [待实现] 回放处理器
+
+ui/src/pages/recordings/
+├── recording-list-page.tsx           # [待实现] 录制列表
+└── recording-player-page.tsx         # [待实现] 播放器
+
+tests/
+├── contract/                          # [完成] 9 个契约测试
+│   ├── test_helper.go
+│   ├── recording_list_test.go
+│   ├── recording_detail_test.go
+│   ├── recording_delete_test.go
+│   ├── recording_search_test.go
+│   ├── recording_statistics_test.go
+│   ├── recording_playback_test.go
+│   ├── recording_download_test.go
+│   ├── recording_cleanup_trigger_test.go
+│   └── recording_cleanup_status_test.go
+├── integration/                      # [待实现] 10 个集成测试
+└── unit/                             # [待实现] 单元测试
+```
+
+### 参考文档
+
+- 规格文档：`.claude/specs/009-3/spec.md`
+- 研究文档：`.claude/specs/009-3/research.md`
+- 数据模型：`.claude/specs/009-3/data-model.md`
+- API 契约：`.claude/specs/009-3/contracts/recording-api.yaml`
+- 快速启动：`.claude/specs/009-3/quickstart.md`
+
+

@@ -1,0 +1,592 @@
+openapi: 3.0.3
+info:
+  title: 统一终端录制系统 API
+  description: |
+    统一终端录制系统的 RESTful API 契约定义。
+    支持 Docker 容器、WebSSH、Kubernetes 节点/Pod 终端录制的统一管理。
+  version: 1.0.0
+  contact:
+    name: Tiga DevOps Platform
+    url: https://github.com/ysicing/tiga
+
+servers:
+  - url: http://localhost:12306/api/v1
+    description: 本地开发服务器
+  - url: https://tiga.example.com/api/v1
+    description: 生产环境
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: recordings
+    description: 终端录制管理
+  - name: playback
+    description: 录制回放
+  - name: cleanup
+    description: 清理管理
+
+paths:
+  /recordings:
+    get:
+      summary: 获取录制列表
+      description: 分页查询终端录制，支持按类型、用户、时间范围过滤
+      tags:
+        - recordings
+      operationId: listRecordings
+      parameters:
+        - name: page
+          in: query
+          description: 页码（从 1 开始）
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: 每页数量
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: recording_type
+          in: query
+          description: 录制类型过滤
+          schema:
+            type: string
+            enum: [docker, webssh, k8s_node, k8s_pod]
+        - name: user_id
+          in: query
+          description: 用户 ID 过滤
+          schema:
+            type: string
+            format: uuid
+        - name: start_time
+          in: query
+          description: 开始时间范围（ISO 8601 格式）
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: 结束时间范围（ISO 8601 格式）
+          schema:
+            type: string
+            format: date-time
+        - name: sort_by
+          in: query
+          description: 排序字段
+          schema:
+            type: string
+            enum: [started_at, duration, file_size]
+            default: started_at
+        - name: sort_order
+          in: query
+          description: 排序方向
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      recordings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/RecordingListItem'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /recordings/{id}:
+    get:
+      summary: 获取录制详情
+      description: 根据 ID 获取单个录制的详细信息
+      tags:
+        - recordings
+      operationId: getRecording
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 录制 ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RecordingDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      summary: 删除录制
+      description: 删除指定的终端录制（数据库记录 + 存储文件）
+      tags:
+        - recordings
+      operationId: deleteRecording
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 录制 ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "录制删除成功"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /recordings/search:
+    get:
+      summary: 搜索录制
+      description: 全文搜索录制（用户名、描述、标签）
+      tags:
+        - recordings
+      operationId: searchRecordings
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 搜索关键词
+          schema:
+            type: string
+            minLength: 1
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      recordings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/RecordingListItem'
+                      pagination:
+                        $ref: '#/components/schemas/Pagination'
+
+  /recordings/statistics:
+    get:
+      summary: 获取统计信息
+      description: 获取录制系统的整体统计信息
+      tags:
+        - recordings
+      operationId: getStatistics
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/RecordingStatistics'
+
+  /recordings/{id}/playback:
+    get:
+      summary: 获取录制回放内容
+      description: 获取 Asciinema v2 格式的录制内容（用于 Web 播放器）
+      tags:
+        - playback
+      operationId: getPlaybackContent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Asciinema v2 格式文件内容
+                example:
+                  header: '{"version":2,"width":120,"height":30,"timestamp":1698765432}'
+                  frames:
+                    - '[0.123456, "o", "$ ls\r\n"]'
+                    - '[1.234567, "i", "ls\r\n"]'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /recordings/{id}/download:
+    get:
+      summary: 下载录制文件
+      description: 下载原始 .cast 文件
+      tags:
+        - playback
+      operationId: downloadRecording
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'attachment; filename="recording-123.cast"'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /recordings/cleanup/trigger:
+    post:
+      summary: 手动触发清理任务
+      description: 管理员手动触发录制清理任务（异步执行）
+      tags:
+        - cleanup
+      operationId: triggerCleanup
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: 清理任务已启动
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                    example: "清理任务已启动"
+                  task_id:
+                    type: string
+                    format: uuid
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /recordings/cleanup/status:
+    get:
+      summary: 获取清理任务状态
+      description: 查询最近一次清理任务的执行状态
+      tags:
+        - cleanup
+      operationId: getCleanupStatus
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/CleanupStatus'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RecordingListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        recording_type:
+          type: string
+          enum: [docker, webssh, k8s_node, k8s_pod]
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        duration:
+          type: integer
+          description: 持续时间（秒）
+        file_size:
+          type: integer
+          format: int64
+          description: 文件大小（字节）
+        file_size_human:
+          type: string
+          description: 人类可读的文件大小
+          example: "12.5 MB"
+        client_ip:
+          type: string
+        tags:
+          type: string
+          nullable: true
+
+    RecordingDetail:
+      allOf:
+        - $ref: '#/components/schemas/RecordingListItem'
+        - type: object
+          properties:
+            type_metadata:
+              type: object
+              description: 类型特定元数据（JSONB）
+              additionalProperties: true
+            storage_type:
+              type: string
+              enum: [local, minio]
+            storage_path:
+              type: string
+            format:
+              type: string
+              enum: [asciinema]
+            rows:
+              type: integer
+            cols:
+              type: integer
+            shell:
+              type: string
+            description:
+              type: string
+              nullable: true
+
+    RecordingStatistics:
+      type: object
+      properties:
+        total_count:
+          type: integer
+          format: int64
+        total_size:
+          type: integer
+          format: int64
+          description: 总大小（字节）
+        total_size_human:
+          type: string
+          example: "120.5 GB"
+        by_type:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TypeStatistics'
+        top_users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserStatistics'
+        oldest_recording:
+          type: string
+          format: date-time
+          nullable: true
+        newest_recording:
+          type: string
+          format: date-time
+          nullable: true
+        invalid_count:
+          type: integer
+          format: int64
+        orphan_count:
+          type: integer
+          format: int64
+        error_rate:
+          type: number
+          format: float
+
+    TypeStatistics:
+      type: object
+      properties:
+        recording_type:
+          type: string
+        count:
+          type: integer
+          format: int64
+        total_size:
+          type: integer
+          format: int64
+        avg_duration:
+          type: integer
+
+    UserStatistics:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        count:
+          type: integer
+          format: int64
+
+    CleanupStatus:
+      type: object
+      properties:
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [idle, running, completed, failed]
+        invalid_cleaned:
+          type: integer
+        expired_cleaned:
+          type: integer
+        orphan_cleaned:
+          type: integer
+        total_space_freed:
+          type: integer
+          format: int64
+          description: 释放的空间（字节）
+        error_message:
+          type: string
+          nullable: true
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+        total_count:
+          type: integer
+          format: int64
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+  responses:
+    Unauthorized:
+      description: 未授权
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: UNAUTHORIZED
+              message: "未提供认证令牌或令牌无效"
+
+    Forbidden:
+      description: 禁止访问
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: FORBIDDEN
+              message: "权限不足"
+
+    NotFound:
+      description: 资源未找到
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: "录制不存在"
+
+    InternalError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INTERNAL_ERROR
+              message: "服务器内部错误"

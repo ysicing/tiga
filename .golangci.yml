@@ -29,6 +29,8 @@ linters:
     - ginkgolinter
     - gocritic
     - gocyclo
+    - gofmt        # T004: Enforce Go code formatting
+    - goimports    # T004: Enforce import grouping and formatting
     - goprintffuncname
     - govet
     - importas

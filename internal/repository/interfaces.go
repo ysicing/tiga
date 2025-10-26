@@ -219,6 +219,8 @@ type TerminalRecordingRepositoryInterface interface {
 	ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*models.TerminalRecording, int64, error)
 	ListByInstance(ctx context.Context, instanceID uuid.UUID, limit, offset int) ([]*models.TerminalRecording, int64, error)
 	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
+	FindExpired(ctx context.Context, retentionDays int, limit int) ([]*models.TerminalRecording, error)
+	FindInvalid(ctx context.Context, limit int) ([]*models.TerminalRecording, error)
 	GetStatistics(ctx context.Context) (*TerminalRecordingStatistics, error)
 }
 
