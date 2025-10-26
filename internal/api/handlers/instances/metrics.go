@@ -24,6 +24,13 @@ type GetInstanceMetricsRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
+// ServiceMetricsResponse represents service metrics response for Swagger
+type ServiceMetricsResponse struct {
+	InstanceID string                 `json:"instance_id"`
+	Metrics    map[string]interface{} `json:"metrics"`
+	Timestamp  string                 `json:"timestamp"`
+}
+
 // GetInstanceMetrics retrieves metrics for a database instance
 // @Summary Get database instance metrics
 // @Description Get metrics for a specific database instance
@@ -31,7 +38,7 @@ type GetInstanceMetricsRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
-// @Success 200 {object} handlers.SuccessResponse{data=github_com_ysicing_tiga_internal_services_managers.ServiceMetrics}
+// @Success 200 {object} handlers.SuccessResponse{data=ServiceMetricsResponse}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse

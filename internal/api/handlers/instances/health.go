@@ -24,6 +24,15 @@ type GetInstanceHealthRequest struct {
 	InstanceID string `uri:"instance_id" binding:"required,uuid"`
 }
 
+// HealthStatusResponse represents health status response for Swagger
+type HealthStatusResponse struct {
+	Healthy       bool                   `json:"healthy"`
+	Message       string                 `json:"message,omitempty"`
+	Details       map[string]interface{} `json:"details,omitempty"`
+	ResponseTime  int64                  `json:"response_time_ms"`
+	LastCheckTime string                 `json:"last_check_time"`
+}
+
 // GetInstanceHealth retrieves health status for a database instance
 // @Summary Get database instance health
 // @Description Get health status for a specific database instance
@@ -31,7 +40,7 @@ type GetInstanceHealthRequest struct {
 // @Produce json
 // @Security BearerAuth
 // @Param instance_id path string true "Instance ID (UUID)"
-// @Success 200 {object} handlers.SuccessResponse{data=github_com_ysicing_tiga_internal_services_managers.HealthStatus}
+// @Success 200 {object} handlers.SuccessResponse{data=HealthStatusResponse}
 // @Failure 400 {object} handlers.ErrorResponse
 // @Failure 404 {object} handlers.ErrorResponse
 // @Failure 500 {object} handlers.ErrorResponse

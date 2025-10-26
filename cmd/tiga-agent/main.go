@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -18,30 +19,41 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/ysicing/tiga/cmd/tiga-agent/collector"
+	"github.com/ysicing/tiga/internal/version"
 	"github.com/ysicing/tiga/proto"
 
 	dockerclient "github.com/docker/docker/client"
 )
 
-var (
-	version   = "dev"
-	buildTime = "unknown"
-)
-
 type Config struct {
-	ServerAddr     string
-	UUID           string
-	SecretKey      string
-	LogLevel       string
-	ReportInterval int  // Report interval in seconds
-	DisableWebSSH  bool // Disable WebSSH terminal functionality
+	ServerAddr          string
+	UUID                string
+	SecretKey           string
+	LogLevel            string
+	ReportInterval      int  // Report interval in seconds
+	DisableWebSSH       bool // Disable WebSSH terminal functionality
+	DisableDockerReport bool // Disable Docker instance reporting
 }
 
 func main() {
+	// Handle --version flag
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
+		fmt.Printf("Tiga Agent\n")
+		fmt.Printf("Version:    %s\n", version.Version)
+		fmt.Printf("Build Time: %s\n", version.BuildTime)
+		fmt.Printf("Commit ID:  %s\n", version.CommitID)
+		os.Exit(0)
+	}
+
 	config := parseFlags()
 	setupLogger(config.LogLevel)
 
-	logrus.Infof("Tiga Agent %s (built at %s)", version, buildTime)
+	// Print version information in startup log
+	logrus.WithFields(logrus.Fields{
+		"version":    version.Version,
+		"build_time": version.BuildTime,
+		"commit_id":  version.CommitID,
+	}).Info("Starting Tiga Agent")
 	logrus.Infof("Connecting to server: %s", config.ServerAddr)
 
 	// Create context with cancellation
@@ -104,7 +116,7 @@ func runAgentWithReconnect(ctx context.Context, config *Config) {
 		client := proto.NewHostMonitorClient(conn)
 
 		// Initialize collector
-		col := collector.NewCollector(version)
+		col := collector.NewCollector(version.Version)
 
 		// Register agent and get host info
 		if err := registerAgent(ctx, client, config, col); err != nil {
@@ -151,14 +163,20 @@ func parseFlags() *Config {
 	flag.StringVar(&config.UUID, "uuid", "", "Host UUID")
 	flag.StringVar(&config.SecretKey, "key", "", "Secret key for authentication")
 	flag.StringVar(&config.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
-	flag.IntVar(&config.ReportInterval, "interval", 10, "Report interval in seconds (default: 30)")
+	flag.IntVar(&config.ReportInterval, "interval", 10, "Report interval in seconds (default: 10)")
 	flag.BoolVar(&config.DisableWebSSH, "disable-webssh", false, "Disable WebSSH terminal functionality")
+
+	// Set platform-specific default for Docker reporting
+	// Windows: disabled by default (Docker Desktop runs in WSL2/VM, not accessible from Windows host)
+	// Linux/macOS: enabled by default (Docker daemon runs natively)
+	defaultDisableDockerReport := (runtime.GOOS == "windows")
+	flag.BoolVar(&config.DisableDockerReport, "disable-docker-report", defaultDisableDockerReport, "Disable Docker instance reporting (default: true on Windows, false on Linux/macOS)")
 
 	showVersion := flag.Bool("version", false, "Show version information")
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("Tiga Agent %s\nBuild time: %s\n", version, buildTime)
+		fmt.Printf("Tiga Agent %s\nBuild time: %s\n", version.Version, version.BuildTime)
 		os.Exit(0)
 	}
 
@@ -260,6 +278,11 @@ func shouldUseTLS(serverAddr string) bool {
 	return port == "443" || port == "8443"
 }
 
+// shouldReportDocker checks if Docker reporting is enabled
+func shouldReportDocker(config *Config) bool {
+	return !config.DisableDockerReport
+}
+
 // registerAgent registers the agent with the server and sends host info
 func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *Config, col *collector.Collector) error {
 	// Collect host info
@@ -269,37 +292,45 @@ func registerAgent(ctx context.Context, client proto.HostMonitorClient, config *
 	}
 
 	// Collect Docker info
-	dockerInfo := col.CollectDockerInfo()
-
-	// Convert Docker info to proto
 	var protoDockerInfo *proto.DockerInfo
-	if dockerInfo.Installed {
-		protoDockerInfo = &proto.DockerInfo{
-			Installed:         true,
-			Version:           dockerInfo.Version,
-			ApiVersion:        dockerInfo.APIVersion,
-			Os:                dockerInfo.OS,
-			Arch:              dockerInfo.Arch,
-			KernelVersion:     dockerInfo.KernelVersion,
-			StorageDriver:     dockerInfo.StorageDriver,
-			Containers:        dockerInfo.Containers,
-			ContainersRunning: dockerInfo.ContainersRunning,
-			ContainersPaused:  dockerInfo.ContainersPaused,
-			ContainersStopped: dockerInfo.ContainersStopped,
-			Images:            dockerInfo.Images,
-			MemTotal:          dockerInfo.MemTotal,
-			Ncpu:              dockerInfo.NCPU,
+
+	if shouldReportDocker(config) {
+		dockerInfo := col.CollectDockerInfo()
+
+		if dockerInfo.Installed {
+			protoDockerInfo = &proto.DockerInfo{
+				Installed:         true,
+				Version:           dockerInfo.Version,
+				ApiVersion:        dockerInfo.APIVersion,
+				Os:                dockerInfo.OS,
+				Arch:              dockerInfo.Arch,
+				KernelVersion:     dockerInfo.KernelVersion,
+				StorageDriver:     dockerInfo.StorageDriver,
+				Containers:        dockerInfo.Containers,
+				ContainersRunning: dockerInfo.ContainersRunning,
+				ContainersPaused:  dockerInfo.ContainersPaused,
+				ContainersStopped: dockerInfo.ContainersStopped,
+				Images:            dockerInfo.Images,
+				MemTotal:          dockerInfo.MemTotal,
+				Ncpu:              dockerInfo.NCPU,
+			}
+			logrus.WithFields(logrus.Fields{
+				"version":    dockerInfo.Version,
+				"containers": dockerInfo.Containers,
+				"images":     dockerInfo.Images,
+			}).Info("Docker detected and will be reported to server")
+		} else {
+			protoDockerInfo = &proto.DockerInfo{
+				Installed: false,
+			}
+			logrus.Debug("Docker not detected on this host")
 		}
-		logrus.WithFields(logrus.Fields{
-			"version":    dockerInfo.Version,
-			"containers": dockerInfo.Containers,
-			"images":     dockerInfo.Images,
-		}).Info("Docker detected and will be reported to server")
 	} else {
+		// Docker reporting disabled
 		protoDockerInfo = &proto.DockerInfo{
 			Installed: false,
 		}
-		logrus.Debug("Docker not detected on this host")
+		logrus.Info("Docker instance reporting disabled by configuration")
 	}
 
 	// Convert to proto
@@ -345,30 +376,34 @@ func runReportingLoop(ctx context.Context, client proto.HostMonitorClient, col *
 	probeHandler.Start()
 	defer probeHandler.Stop() // Ensure buffer is flushed on exit
 
-	// Initialize Docker task handler if Docker is available
+	// Initialize Docker task handler if Docker is available and reporting is enabled
 	var dockerHandler *DockerTaskHandler
 	var dockerStreamHandler *DockerStreamHandler
 
-	if dockerInfo := col.CollectDockerInfo(); dockerInfo.Installed {
-		var err error
-		dockerHandler, err = NewDockerTaskHandler()
-		if err != nil {
-			logrus.WithError(err).Warn("Failed to initialize Docker task handler at startup, will retry on first Docker task")
-		} else {
-			defer dockerHandler.Close()
-			logrus.WithFields(logrus.Fields{
-				"docker_version": dockerInfo.Version,
-				"api_version":    dockerInfo.APIVersion,
-				"containers":     dockerInfo.Containers,
-				"images":         dockerInfo.Images,
-			}).Info("Docker task handler initialized successfully")
+	if shouldReportDocker(config) {
+		if dockerInfo := col.CollectDockerInfo(); dockerInfo.Installed {
+			var err error
+			dockerHandler, err = NewDockerTaskHandler()
+			if err != nil {
+				logrus.WithError(err).Warn("Failed to initialize Docker task handler at startup, will retry on first Docker task")
+			} else {
+				defer dockerHandler.Close()
+				logrus.WithFields(logrus.Fields{
+					"docker_version": dockerInfo.Version,
+					"api_version":    dockerInfo.APIVersion,
+					"containers":     dockerInfo.Containers,
+					"images":         dockerInfo.Images,
+				}).Info("Docker task handler initialized successfully")
 
-			// Create Docker stream handler using the same Docker client
-			dockerStreamHandler = NewDockerStreamHandler(dockerHandler.dockerClient)
-			logrus.Info("Docker stream handler initialized successfully")
+				// Create Docker stream handler using the same Docker client
+				dockerStreamHandler = NewDockerStreamHandler(dockerHandler.dockerClient)
+				logrus.Info("Docker stream handler initialized successfully")
+			}
+		} else {
+			logrus.Info("Docker daemon not detected (this is normal if Docker is not installed or not running)")
 		}
 	} else {
-		logrus.Info("Docker daemon not detected (this is normal if Docker is not installed or not running)")
+		logrus.Info("Docker instance reporting disabled by configuration")
 	}
 
 	// Create the bidirectional stream
@@ -481,6 +516,11 @@ func reportState(stream proto.HostMonitor_ReportStateClient, col *collector.Coll
 		TrafficRecv:      state.TrafficRecv,
 		TrafficDeltaSent: state.TrafficDeltaSent,
 		TrafficDeltaRecv: state.TrafficDeltaRecv,
+		VersionInfo: &proto.VersionInfo{
+			Version:   version.Version,
+			BuildTime: version.BuildTime,
+			CommitId:  version.CommitID,
+		},
 	}
 
 	// Send to server with task results

@@ -260,6 +260,16 @@ func (m *AgentManager) HandleReportState(stream proto.HostMonitor_ReportStateSer
 
 // processStateReport saves the host state to database
 func (m *AgentManager) processStateReport(hostNodeID uuid.UUID, state *proto.HostState) error {
+	// Log agent version info if available (backward compatible)
+	if state.VersionInfo != nil {
+		logrus.WithFields(logrus.Fields{
+			"agent_version": state.VersionInfo.Version,
+			"build_time":    state.VersionInfo.BuildTime,
+			"commit_id":     state.VersionInfo.CommitId,
+			"host_id":       hostNodeID.String(),
+		}).Debug("Agent version info received")
+	}
+
 	hostState := &models.HostState{
 		HostNodeID:       hostNodeID,
 		Timestamp:        time.UnixMilli(state.Timestamp),
