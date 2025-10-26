@@ -20,16 +20,19 @@ import (
 type InstanceHandler struct {
 	instanceService *docker.DockerInstanceService
 	agentForwarder  *docker.AgentForwarderV2
+	auditHelper     *docker.AuditHelper
 }
 
 // NewInstanceHandler creates a new InstanceHandler
 func NewInstanceHandler(
 	instanceService *docker.DockerInstanceService,
 	agentForwarder *docker.AgentForwarderV2,
+	auditHelper *docker.AuditHelper,
 ) *InstanceHandler {
 	return &InstanceHandler{
 		instanceService: instanceService,
 		agentForwarder:  agentForwarder,
+		auditHelper:     auditHelper,
 	}
 }
 
@@ -117,6 +120,20 @@ func (h *InstanceHandler) GetInstances(c *gin.Context) {
 	}
 
 	instances, total, err := h.instanceService.ListInstances(c.Request.Context(), filter)
+
+	// Log audit regardless of result (success or failure)
+	defer func() {
+		h.auditHelper.LogListOperation(
+			c,
+			models.DockerActionListInstances,
+			models.DockerResourceTypeInstance,
+			uuid.Nil, // No specific instance for list operation
+			"all_instances",
+			len(instances),
+			err,
+		)
+	}()
+
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list Docker instances")
 		basehandlers.RespondInternalError(c, err)
@@ -152,6 +169,30 @@ func (h *InstanceHandler) GetInstance(c *gin.Context) {
 	}
 
 	instance, err := h.instanceService.GetByID(c.Request.Context(), id)
+
+	// Log audit regardless of result
+	defer func() {
+		resourceName := "unknown"
+		instanceID := uuid.Nil
+		instanceName := ""
+		if instance != nil {
+			resourceName = instance.Name
+			instanceID = instance.ID
+			instanceName = instance.Name
+		}
+
+		h.auditHelper.LogGetOperation(
+			c,
+			models.DockerActionGetInstance,
+			models.DockerResourceTypeInstance,
+			id,
+			resourceName,
+			instanceID,
+			instanceName,
+			err,
+		)
+	}()
+
 	if err != nil {
 		logrus.WithError(err).WithField("instance_id", id).Error("Failed to get Docker instance")
 		basehandlers.RespondNotFound(c, err)

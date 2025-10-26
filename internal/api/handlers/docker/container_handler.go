@@ -4,9 +4,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/docker"
 
 	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
@@ -17,16 +17,19 @@ import (
 type ContainerHandler struct {
 	containerService *docker.ContainerService
 	agentForwarder   *docker.AgentForwarderV2
+	auditHelper      *docker.AuditHelper
 }
 
 // NewContainerHandler creates a new ContainerHandler
 func NewContainerHandler(
 	containerService *docker.ContainerService,
 	agentForwarder *docker.AgentForwarderV2,
+	auditHelper *docker.AuditHelper,
 ) *ContainerHandler {
 	return &ContainerHandler{
 		containerService: containerService,
 		agentForwarder:   agentForwarder,
+		auditHelper:      auditHelper,
 	}
 }
 
@@ -87,6 +90,24 @@ func (h *ContainerHandler) GetContainers(c *gin.Context) {
 	}
 
 	resp, err := h.agentForwarder.ListContainers(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		count := 0
+		if resp != nil {
+			count = len(resp.Containers)
+		}
+		h.auditHelper.LogListOperation(
+			c,
+			models.DockerActionListContainers,
+			models.DockerResourceTypeContainer,
+			instanceID,
+			"containers",
+			count,
+			err,
+		)
+	}()
+
 	if err != nil {
 		logrus.WithError(err).WithField("instance_id", instanceID).Error("Failed to list containers")
 		basehandlers.RespondInternalError(c, err)
@@ -136,6 +157,21 @@ func (h *ContainerHandler) GetContainer(c *gin.Context) {
 		ContainerId: containerID,
 	}
 	resp, err := h.agentForwarder.GetContainer(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogGetOperation(
+			c,
+			models.DockerActionGetContainer,
+			models.DockerResourceTypeContainer,
+			instanceID,
+			containerID,
+			instanceID,
+			"",
+			err,
+		)
+	}()
+
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
@@ -179,24 +215,12 @@ func (h *ContainerHandler) StartContainer(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Start container through service layer (with audit logging)
-	err = h.containerService.StartContainer(c.Request.Context(), instanceID, req.ContainerID, userIDPtr, username, clientIP)
+	// Start container through service layer (with unified audit logging)
+	err = h.containerService.StartContainer(c, instanceID, req.ContainerID)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
 			"container_id": req.ContainerID,
-			"user":         username,
 		}).Error("Failed to start container")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -240,28 +264,16 @@ func (h *ContainerHandler) StopContainer(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Stop container through service layer (with audit logging)
 	timeout := int32(10) // default 10 seconds
 	if req.Timeout != nil {
 		timeout = *req.Timeout
 	}
-	err = h.containerService.StopContainer(c.Request.Context(), instanceID, req.ContainerID, timeout, userIDPtr, username, clientIP)
+
+	err = h.containerService.StopContainer(c, instanceID, req.ContainerID, timeout)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
 			"container_id": req.ContainerID,
-			"user":         username,
 		}).Error("Failed to stop container")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -305,28 +317,16 @@ func (h *ContainerHandler) RestartContainer(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Restart container through service layer (with audit logging)
 	timeout := int32(10) // default 10 seconds
 	if req.Timeout != nil {
 		timeout = *req.Timeout
 	}
-	err = h.containerService.RestartContainer(c.Request.Context(), instanceID, req.ContainerID, timeout, userIDPtr, username, clientIP)
+
+	err = h.containerService.RestartContainer(c, instanceID, req.ContainerID, timeout)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
 			"container_id": req.ContainerID,
-			"user":         username,
 		}).Error("Failed to restart container")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -369,24 +369,11 @@ func (h *ContainerHandler) PauseContainer(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Pause container through service layer (with audit logging)
-	err = h.containerService.PauseContainer(c.Request.Context(), instanceID, req.ContainerID, userIDPtr, username, clientIP)
+	err = h.containerService.PauseContainer(c, instanceID, req.ContainerID)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
 			"container_id": req.ContainerID,
-			"user":         username,
 		}).Error("Failed to pause container")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -429,24 +416,11 @@ func (h *ContainerHandler) UnpauseContainer(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Unpause container through service layer (with audit logging)
-	err = h.containerService.UnpauseContainer(c.Request.Context(), instanceID, req.ContainerID, userIDPtr, username, clientIP)
+	err = h.containerService.UnpauseContainer(c, instanceID, req.ContainerID)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
 			"container_id": req.ContainerID,
-			"user":         username,
 		}).Error("Failed to unpause container")
 		basehandlers.RespondInternalError(c, err)
 		return
@@ -491,24 +465,11 @@ func (h *ContainerHandler) DeleteContainer(c *gin.Context) {
 		return
 	}
 
-	// Get user info for audit logging
-	userID := c.GetString("user_id")
-	username := c.GetString("username")
-	clientIP := c.ClientIP()
-
-	var userIDPtr *uuid.UUID
-	if userID != "" {
-		uid, _ := uuid.Parse(userID)
-		userIDPtr = &uid
-	}
-
-	// Delete container through service layer (with audit logging)
-	err = h.containerService.DeleteContainer(c.Request.Context(), instanceID, req.ContainerID, req.Force, req.RemoveVolumes, userIDPtr, username, clientIP)
+	err = h.containerService.DeleteContainer(c, instanceID, req.ContainerID, req.Force, req.RemoveVolumes)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"instance_id":  instanceID,
 			"container_id": req.ContainerID,
-			"user":         username,
 		}).Error("Failed to delete container")
 		basehandlers.RespondInternalError(c, err)
 		return

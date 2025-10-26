@@ -145,6 +145,19 @@ const (
 	// 权限操作
 	ActionGranted Action = "granted"
 	ActionRevoked Action = "revoked"
+
+	// Host 管理操作 (T038)
+	ActionAgentConnected    Action = "agent_connected"
+	ActionAgentDisconnected Action = "agent_disconnected"
+	ActionAgentReconnected  Action = "agent_reconnected"
+	ActionTerminalCreated   Action = "terminal_created"
+	ActionTerminalClosed    Action = "terminal_closed"
+	ActionTerminalReplay    Action = "terminal_replay"
+	ActionNodeCreated       Action = "node_created"
+	ActionNodeUpdated       Action = "node_updated"
+	ActionNodeDeleted       Action = "node_deleted"
+	ActionSystemAlert       Action = "system_alert"
+	ActionSystemError       Action = "system_error"
 )
 
 // Validate 验证操作类型有效性
@@ -152,7 +165,12 @@ func (a Action) Validate() error {
 	switch a {
 	case ActionCreated, ActionUpdated, ActionDeleted, ActionRead,
 		ActionEnabled, ActionDisabled, ActionBypassed, ActionForcePush,
-		ActionLogin, ActionLogout, ActionGranted, ActionRevoked:
+		ActionLogin, ActionLogout, ActionGranted, ActionRevoked,
+		// Host 管理操作
+		ActionAgentConnected, ActionAgentDisconnected, ActionAgentReconnected,
+		ActionTerminalCreated, ActionTerminalClosed, ActionTerminalReplay,
+		ActionNodeCreated, ActionNodeUpdated, ActionNodeDeleted,
+		ActionSystemAlert, ActionSystemError:
 		return nil
 	default:
 		return fmt.Errorf("invalid action: %s", a)
@@ -197,6 +215,15 @@ const (
 
 	// Host 资源（T038）
 	ResourceTypeHost ResourceType = "host"
+
+	// Docker 资源（T036-T037）
+	ResourceTypeDockerInstance  ResourceType = "docker_instance"
+	ResourceTypeDockerContainer ResourceType = "docker_container"
+	ResourceTypeDockerImage     ResourceType = "docker_image"
+	ResourceTypeDockerNetwork   ResourceType = "docker_network"
+	ResourceTypeDockerVolume    ResourceType = "docker_volume"
+	ResourceTypeDockerSystem    ResourceType = "docker_system"
+	ResourceTypeDockerRecording ResourceType = "docker_recording"
 )
 
 // Validate 验证资源类型有效性
@@ -207,7 +234,11 @@ func (rt ResourceType) Validate() error {
 		ResourceTypeDatabase, ResourceTypeDatabaseInstance, ResourceTypeDatabaseUser,
 		ResourceTypeMinIO, ResourceTypeRedis, ResourceTypeMySQL, ResourceTypePostgreSQL,
 		ResourceTypeUser, ResourceTypeRole, ResourceTypeInstance,
-		ResourceTypeScheduledTask, ResourceTypeHost:
+		ResourceTypeScheduledTask, ResourceTypeHost,
+		// Docker 资源 (T036-T037)
+		ResourceTypeDockerInstance, ResourceTypeDockerContainer, ResourceTypeDockerImage,
+		ResourceTypeDockerNetwork, ResourceTypeDockerVolume, ResourceTypeDockerSystem,
+		ResourceTypeDockerRecording:
 		return nil
 	default:
 		return fmt.Errorf("invalid resource type: %s", rt)

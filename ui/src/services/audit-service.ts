@@ -61,62 +61,66 @@ export interface AuditConfig {
   max_object_bytes?: number
 }
 
+// Subsystem types - match backend SubsystemType enum
 export const SUBSYSTEMS = [
-  'cluster',
-  'pod',
-  'deployment',
-  'service',
-  'configmap',
-  'secret',
+  'http',
+  'docker',
   'database',
-  'databaseInstance',
-  'databaseUser',
+  'kubernetes',
+  'host',
+  'webssh',
+  'scheduler',
+  'alert',
+  'auth',
   'minio',
-  'redis',
-  'mysql',
-  'postgresql',
-  'user',
-  'role',
-  'instance',
-  'scheduledTask',
-  'docker_container',
-  'docker_image',
-  'docker_instance',
+  'middleware',
+  'storage',
+  'webserver',
 ]
 
+// Action types - match backend Action enum
 export const ACTIONS = [
+  // Basic CRUD operations
   'created',
   'updated',
   'deleted',
   'read',
+
+  // State change operations
   'enabled',
   'disabled',
+
+  // Special operations (Gitness reference)
   'bypassed',
   'forcePush',
+
+  // Authentication operations
   'login',
   'logout',
+
+  // Permission operations
   'granted',
   'revoked',
-  // Docker-specific actions
-  'container_start',
-  'container_stop',
-  'container_restart',
-  'container_pause',
-  'container_unpause',
-  'container_delete',
-  'container_exec',
-  'image_delete',
-  'image_pull',
-  'image_tag',
-  'instance_create',
-  'instance_update',
-  'instance_delete',
+
+  // Host management operations (T038)
+  'agent_connected',
+  'agent_disconnected',
+  'agent_reconnected',
+  'terminal_created',
+  'terminal_closed',
+  'terminal_replay',
+  'node_created',
+  'node_updated',
+  'node_deleted',
+  'system_alert',
+  'system_error',
 ]
 
 class AuditService {
   async getEvents(params?: {
     page?: number
     page_size?: number
+    subsystem?: string
     user_uid?: string
     action?: string
     resource_type?: string

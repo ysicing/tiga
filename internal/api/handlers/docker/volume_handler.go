@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/docker"
 
 	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
@@ -16,12 +17,14 @@ import (
 // VolumeHandler handles Docker volume operations
 type VolumeHandler struct {
 	agentForwarder *docker.AgentForwarderV2
+	auditHelper    *docker.AuditHelper
 }
 
 // NewVolumeHandler creates a new VolumeHandler instance
-func NewVolumeHandler(agentForwarder *docker.AgentForwarderV2) *VolumeHandler {
+func NewVolumeHandler(agentForwarder *docker.AgentForwarderV2, auditHelper *docker.AuditHelper) *VolumeHandler {
 	return &VolumeHandler{
 		agentForwarder: agentForwarder,
+		auditHelper:    auditHelper,
 	}
 }
 
@@ -48,6 +51,24 @@ func (h *VolumeHandler) GetVolumes(c *gin.Context) {
 	// Forward request to agent
 	req := &pb.ListVolumesRequest{}
 	resp, err := h.agentForwarder.ListVolumes(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		count := 0
+		if resp != nil {
+			count = len(resp.Volumes)
+		}
+		h.auditHelper.LogListOperation(
+			c,
+			models.DockerActionListVolumes,
+			models.DockerResourceTypeVolume,
+			instanceID,
+			"volumes",
+			count,
+			err,
+		)
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to list volumes: %w", err))
 		return
@@ -93,6 +114,21 @@ func (h *VolumeHandler) GetVolume(c *gin.Context) {
 		Name: volumeName,
 	}
 	resp, err := h.agentForwarder.GetVolume(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogGetOperation(
+			c,
+			models.DockerActionGetVolume,
+			models.DockerResourceTypeVolume,
+			instanceID,
+			volumeName,
+			instanceID,
+			"",
+			err,
+		)
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to get volume: %w", err))
 		return
@@ -145,6 +181,25 @@ func (h *VolumeHandler) CreateVolume(c *gin.Context) {
 		Labels:     reqBody.Labels,
 	}
 	resp, err := h.agentForwarder.CreateVolume(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		extraData := map[string]interface{}{
+			"volume_name": reqBody.Name,
+			"driver":      reqBody.Driver,
+		}
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionCreateVolume,
+			ResourceType: models.DockerResourceTypeVolume,
+			ResourceID:   instanceID,
+			ResourceName: reqBody.Name,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData:    extraData,
+			Error:        err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to create volume: %w", err))
 		return
@@ -193,6 +248,24 @@ func (h *VolumeHandler) DeleteVolume(c *gin.Context) {
 		Force: reqBody.Force,
 	}
 	resp, err := h.agentForwarder.DeleteVolume(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionDeleteVolume,
+			ResourceType: models.DockerResourceTypeVolume,
+			ResourceID:   instanceID,
+			ResourceName: reqBody.Name,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData: map[string]interface{}{
+				"volume_name": reqBody.Name,
+				"force":       reqBody.Force,
+			},
+			Error: err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete volume: %w", err))
 		return
@@ -236,6 +309,28 @@ func (h *VolumeHandler) PruneVolumes(c *gin.Context) {
 		Filters: reqBody.Filters,
 	}
 	resp, err := h.agentForwarder.PruneVolumes(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		extraData := map[string]interface{}{
+			"filters": reqBody.Filters,
+		}
+		if resp != nil {
+			extraData["space_reclaimed"] = resp.SpaceReclaimed
+			extraData["volumes_deleted"] = len(resp.VolumesDeleted)
+		}
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionPruneVolumes,
+			ResourceType: models.DockerResourceTypeVolume,
+			ResourceID:   instanceID,
+			ResourceName: "volumes",
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData:    extraData,
+			Error:        err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to prune volumes: %w", err))
 		return

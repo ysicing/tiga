@@ -152,9 +152,9 @@ func SetupRoutes(
 	// Docker management services
 	dockerAgentForwarder := dockerservices.NewAgentForwarderV2(agentManager, db) // Use task-queue based forwarder
 	dockerInstanceService := dockerservices.NewDockerInstanceService(db)
-	dockerContainerService := dockerservices.NewContainerService(db, dockerInstanceService, dockerAgentForwarder)
-	dockerImageService := dockerservices.NewImageService(db, dockerInstanceService, dockerAgentForwarder, dockerStreamManager)
-	dockerAuditService := dockerservices.NewAuditLogService(auditRepo)
+	dockerAuditHelper := dockerservices.NewAuditHelper(auditEventRepo) // T036-T037: Use unified audit system
+	dockerContainerService := dockerservices.NewContainerService(dockerInstanceService, dockerAgentForwarder, dockerAuditHelper)
+	dockerImageService := dockerservices.NewImageService(dockerInstanceService, dockerAgentForwarder, dockerStreamManager, dockerAuditHelper)
 	// Docker health check service
 	dockerHealthService := dockerservices.NewDockerHealthService(dockerInstanceRepo, dockerAgentForwarder, db)
 	// Unused services for future phases
@@ -261,14 +261,14 @@ func SetupRoutes(
 	// T036-T037: 审计 API 已统一到 /api/v1/audit，移除旧的 dbAuditHandler
 
 	// Docker management handlers
-	dockerInstanceHandler := dockerhandlers.NewInstanceHandler(dockerInstanceService, dockerAgentForwarder)
-	dockerContainerHandler := dockerhandlers.NewContainerHandler(dockerContainerService, dockerAgentForwarder)
+	dockerInstanceHandler := dockerhandlers.NewInstanceHandler(dockerInstanceService, dockerAgentForwarder, dockerAuditHelper)
+	dockerContainerHandler := dockerhandlers.NewContainerHandler(dockerContainerService, dockerAgentForwarder, dockerAuditHelper)
 	dockerStatsHandler := dockerhandlers.NewContainerStatsHandler(dockerStreamManager, agentManager, db)
 	dockerLogsHandler := dockerhandlers.NewContainerLogsHandler(dockerStreamManager, agentManager, db)
-	dockerImageHandler := dockerhandlers.NewImageHandler(dockerImageService, dockerAgentForwarder)
-	dockerAuditHandler := dockerhandlers.NewAuditLogHandler(dockerAuditService)
-	dockerVolumeHandler := dockerhandlers.NewVolumeHandler(dockerAgentForwarder)
-	dockerNetworkHandler := dockerhandlers.NewNetworkHandler(dockerAgentForwarder)
+	dockerImageHandler := dockerhandlers.NewImageHandler(dockerImageService, dockerAgentForwarder, dockerAuditHelper)
+	// T036-T037: dockerAuditHandler 已移除，使用统一审计 API: /api/v1/audit/events?subsystem=docker
+	dockerVolumeHandler := dockerhandlers.NewVolumeHandler(dockerAgentForwarder, dockerAuditHelper)
+	dockerNetworkHandler := dockerhandlers.NewNetworkHandler(dockerAgentForwarder, dockerAuditHelper)
 	dockerSystemHandler := dockerhandlers.NewSystemHandler(dockerAgentForwarder)
 
 	// Terminal handlers (using terminalRecordingRepo created earlier)
@@ -607,8 +607,7 @@ func SetupRoutes(
 					imagesGroup.POST("/pull", dockerImageHandler.PullImage)
 				}
 
-				// Audit logs
-				dockerGroup.GET("/audit-logs", dockerAuditHandler.GetDockerAuditLogs)
+				// T036-T037: 审计 API 已统一到 /api/v1/audit/events?subsystem=docker，移除旧的 /audit-logs 路由
 
 				// Volume operations
 				volumesGroup := dockerGroup.Group("/instances/:id/volumes")

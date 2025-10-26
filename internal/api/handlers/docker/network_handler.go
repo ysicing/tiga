@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/ysicing/tiga/internal/models"
 	"github.com/ysicing/tiga/internal/services/docker"
 
 	basehandlers "github.com/ysicing/tiga/internal/api/handlers"
@@ -16,12 +17,14 @@ import (
 // NetworkHandler handles Docker network operations
 type NetworkHandler struct {
 	agentForwarder *docker.AgentForwarderV2
+	auditHelper    *docker.AuditHelper
 }
 
 // NewNetworkHandler creates a new NetworkHandler instance
-func NewNetworkHandler(agentForwarder *docker.AgentForwarderV2) *NetworkHandler {
+func NewNetworkHandler(agentForwarder *docker.AgentForwarderV2, auditHelper *docker.AuditHelper) *NetworkHandler {
 	return &NetworkHandler{
 		agentForwarder: agentForwarder,
+		auditHelper:    auditHelper,
 	}
 }
 
@@ -54,6 +57,24 @@ func (h *NetworkHandler) GetNetworks(c *gin.Context) {
 		Filters: filters,
 	}
 	resp, err := h.agentForwarder.ListNetworks(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		count := 0
+		if resp != nil {
+			count = len(resp.Networks)
+		}
+		h.auditHelper.LogListOperation(
+			c,
+			models.DockerActionListNetworks,
+			models.DockerResourceTypeNetwork,
+			instanceID,
+			"networks",
+			count,
+			err,
+		)
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to list networks: %w", err))
 		return
@@ -107,6 +128,21 @@ func (h *NetworkHandler) GetNetwork(c *gin.Context) {
 		Scope:     scope,
 	}
 	resp, err := h.agentForwarder.GetNetwork(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogGetOperation(
+			c,
+			models.DockerActionGetNetwork,
+			models.DockerResourceTypeNetwork,
+			instanceID,
+			networkID,
+			instanceID,
+			"",
+			err,
+		)
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to get network: %w", err))
 		return
@@ -205,6 +241,28 @@ func (h *NetworkHandler) CreateNetwork(c *gin.Context) {
 		Labels:         reqBody.Labels,
 	}
 	resp, err := h.agentForwarder.CreateNetwork(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		extraData := map[string]interface{}{
+			"network_name": reqBody.Name,
+			"driver":       reqBody.Driver,
+		}
+		if resp != nil && resp.NetworkId != "" {
+			extraData["network_id"] = resp.NetworkId
+		}
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionCreateNetwork,
+			ResourceType: models.DockerResourceTypeNetwork,
+			ResourceID:   instanceID,
+			ResourceName: reqBody.Name,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData:    extraData,
+			Error:        err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to create network: %w", err))
 		return
@@ -251,6 +309,23 @@ func (h *NetworkHandler) DeleteNetwork(c *gin.Context) {
 		NetworkId: reqBody.NetworkID,
 	}
 	resp, err := h.agentForwarder.DeleteNetwork(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionDeleteNetwork,
+			ResourceType: models.DockerResourceTypeNetwork,
+			ResourceID:   instanceID,
+			ResourceName: reqBody.NetworkID,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData: map[string]interface{}{
+				"network_id": reqBody.NetworkID,
+			},
+			Error: err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete network: %w", err))
 		return
@@ -318,6 +393,24 @@ func (h *NetworkHandler) ConnectNetwork(c *gin.Context) {
 		EndpointConfig: endpointConfig,
 	}
 	resp, err := h.agentForwarder.ConnectNetwork(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionConnectNetwork,
+			ResourceType: models.DockerResourceTypeNetwork,
+			ResourceID:   instanceID,
+			ResourceName: reqBody.NetworkID,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData: map[string]interface{}{
+				"network_id":   reqBody.NetworkID,
+				"container_id": reqBody.ContainerID,
+			},
+			Error: err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to connect network: %w", err))
 		return
@@ -368,6 +461,25 @@ func (h *NetworkHandler) DisconnectNetwork(c *gin.Context) {
 		Force:       reqBody.Force,
 	}
 	resp, err := h.agentForwarder.DisconnectNetwork(instanceID, req)
+
+	// Log audit (after operation)
+	defer func() {
+		h.auditHelper.LogDockerOperation(c, docker.AuditParams{
+			Action:       models.DockerActionDisconnectNetwork,
+			ResourceType: models.DockerResourceTypeNetwork,
+			ResourceID:   instanceID,
+			ResourceName: reqBody.NetworkID,
+			InstanceID:   instanceID,
+			InstanceName: "",
+			ExtraData: map[string]interface{}{
+				"network_id":   reqBody.NetworkID,
+				"container_id": reqBody.ContainerID,
+				"force":        reqBody.Force,
+			},
+			Error: err,
+		})
+	}()
+
 	if err != nil {
 		basehandlers.RespondError(c, http.StatusInternalServerError, fmt.Errorf("failed to disconnect network: %w", err))
 		return

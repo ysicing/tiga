@@ -72,10 +72,11 @@ func (l *AuditLogger) LogActivity(ctx context.Context, entry AuditEntry) error {
 
 	// Map to unified AuditEvent model
 	auditEvent := &models.AuditEvent{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now().UnixMilli(),
-		Subsystem: models.SubsystemHost,
-		Action:    models.Action(entry.Action),
+		ID:           uuid.New().String(),
+		Timestamp:    time.Now().UnixMilli(),
+		Subsystem:    models.SubsystemHost,
+		Action:       models.Action(entry.Action),
+		ResourceType: models.ResourceTypeHost, // T036-T037: 必须设置顶级ResourceType字段
 		Resource: models.Resource{
 			Type:       models.ResourceTypeHost,
 			Identifier: entry.HostNodeID.String(),

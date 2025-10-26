@@ -623,7 +623,7 @@ func (h *TerminalHandler) AuditTerminalAccess(ctx context.Context, session *Term
 	auditLog := &models.AuditLog{
 		UserID:       &session.UserID,
 		Username:     session.Username,
-		Action:       models.DockerActionContainerExec,
+		Action:       models.DockerActionExecContainer,
 		ResourceType: "docker_terminal",
 		ResourceID:   &session.ID,
 		Description:  fmt.Sprintf("Docker terminal access: %s", action),
