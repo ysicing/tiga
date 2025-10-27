@@ -139,52 +139,15 @@ docker run --rm -p 8080:8080 ghcr.io/ysicing/tiga:latest
 
 ---
 
-## 📌 版本查询
+## 📌 版本信息
 
-### 命令行查询
+可通过以下方式查询版本信息：
 
-使用 `--version` 参数查看服务端或 Agent 的版本信息：
+- **命令行**: `./bin/tiga --version`
+- **API 接口**: `GET /api/v1/version`
+- **前端 UI**: 系统管理 → 全局配置 → 版本标签页
 
-```bash
-# 服务端版本
-./bin/tiga --version
-
-# Agent 版本
-./bin/tiga-agent --version
-```
-
-**输出示例**：
-```
-Tiga Server
-Version:    v1.0.0-a1b2c3d
-Build Time: 2025-10-26T10:30:00Z
-Commit ID:  a1b2c3d
-```
-
-### API 查询
-
-通过 REST API 获取服务端版本信息：
-
-```bash
-curl http://localhost:12306/api/v1/version
-```
-
-**响应示例**：
-```json
-{
-  "version": "v1.0.0-a1b2c3d",
-  "build_time": "2025-10-26T10:30:00Z",
-  "commit_id": "a1b2c3d"
-}
-```
-
-### 前端 UI 查询
-
-在系统设置页面的"版本"标签页可以查看服务端版本信息：
-
-1. 访问 `http://localhost:12306`
-2. 进入"系统管理" → "全局配置"
-3. 点击"版本"标签页
+> 💡 构建过程会自动注入版本号、构建时间和 commit ID
 
 ---
 

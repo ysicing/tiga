@@ -304,170 +304,41 @@ type Config struct {
 - 测试：`*_test.go`
 - 配置：`config.yaml`、`.env`
 
-## 新增功能：主机管理子系统（开发中）
+## 主机管理子系统（开发中）
 
 **功能分支**：`002-nezha-webssh`
 **参考规格**：`.claude/specs/002-nezha-webssh/`
 
-### 核心特性
-- **Agent-Server架构**：轻量级Agent部署在被监控主机，通过gRPC持久连接上报数据
-- **实时监控**：CPU、内存、磁盘、网络等指标实时采集和展示
-- **服务探测**：支持HTTP/TCP/ICMP服务健康检查，Agent端分布式执行
-- **WebSSH终端**：浏览器内SSH终端，通过Agent代理实现安全访问
-- **告警系统**：表达式引擎驱动的灵活告警规则，支持多通知渠道
+Agent-Server 架构的主机监控系统，提供实时指标采集、服务探测、WebSSH 终端和告警功能。
 
-### 技术栈
-- **通信**：gRPC双向流（Agent-Server）、WebSocket（浏览器实时数据）
-- **Agent**：Go独立二进制、gopsutil系统监控、systemd服务管理
-- **调度**：robfig/cron服务探测定时任务
-- **告警**：antonmedv/expr表达式引擎
-- **前端**：Zustand实时状态管理、Recharts监控图表、xterm.js终端UI
+**核心特性**：
+- gRPC 双向流通信，轻量级 Agent 部署
+- 实时监控（CPU、内存、磁盘、网络）
+- 浏览器内 SSH 终端（通过 Agent 代理）
+- 灵活告警规则（表达式引擎驱动）
 
-### 数据模型
-- `HostNode`：主机节点元数据
-- `HostInfo`：主机硬件和系统信息
-- `HostState`：实时监控指标（时序数据）
-- `ServiceMonitor`：服务探测规则
-- `MonitorAlertRule`：告警规则
-- `AlertEvent`：告警事件
-- `WebSSHSession`：SSH会话管理
+详见规格文档以了解完整的数据模型、API 和实施阶段。
 
-### API端点
-- `/api/v1/hosts`：主机管理CRUD
-- `/api/v1/hosts/{id}/state`：监控数据查询
-- `/api/v1/host-groups`：主机分组
-- `/api/v1/service-monitors`：服务探测规则
-- `/api/v1/alert-rules`：告警规则
-- `/api/v1/webssh/{session_id}`：WebSSH终端（WebSocket）
-- `/api/v1/ws/host-monitor`：实时监控订阅（WebSocket）
-
-### 实施阶段
-- Phase 1：核心监控（Agent连接、数据采集、实时展示）
-- Phase 2：服务探测（探测规则、任务调度、结果聚合）
-- Phase 3：WebSSH（SSH代理、终端UI、会话管理）
-- Phase 4：高级功能（分组管理、自定义告警、Prometheus集成）
-
-## 新增功能：数据库管理子系统（已完成）
+## 数据库管理子系统（已完成）
 
 **功能分支**：`003-nosql-sql`
 **参考规格**：`.claude/specs/003-nosql-sql/`
-**完成度**：96% (54/56 任务)
+**完成度**：96%
 
-### 核心特性
-- **多数据库支持**：MySQL 8.0+、PostgreSQL 15+、Redis 7+ 统一管理
-- **安全优先**：AES-256-GCM 密码加密、SQL 安全过滤、命令黑名单、全操作审计
-- **权限管理**：统一权限模型（readonly/readwrite）自动映射到不同数据库系统
-- **查询控制台**：支持 SQL/Redis 命令执行，30秒超时，10MB结果限制
-- **连接管理**：连接池（50 open/10 idle）、连接缓存、健康检查
+统一管理 MySQL、PostgreSQL、Redis 数据库实例，提供查询控制台、权限管理和全操作审计。
 
-### 技术栈
-- **数据库驱动**：go-sql-driver/mysql v1.8.1、lib/pq v1.10.9、go-redis/v9 v9.5.1
-- **安全**：pkg/crypto（AES-256-GCM）、xwb1989/sqlparser（SQL 解析）
-- **测试**：testcontainers-go（集成测试）、testify（断言库）
-- **前端**：Monaco Editor（SQL 编辑器）、react-window（虚拟滚动）
+**核心特性**：
+- 多数据库统一管理（MySQL 8.0+、PostgreSQL 15+、Redis 7+）
+- 安全优先（AES-256-GCM 加密、SQL/Redis 命令安全过滤、审计日志）
+- 统一权限模型（readonly/readwrite 自动映射到不同数据库系统）
+- 查询控制台（Monaco Editor、30秒超时、10MB 结果限制）
 
-### 数据模型
-- `DatabaseInstance`：数据库实例（加密密码存储）
-- `Database`：数据库元数据（支持 MySQL/PostgreSQL/Redis）
-- `DatabaseUser`：数据库用户（加密密码）
-- `PermissionPolicy`：权限策略（软删除支持）
-- `QuerySession`：查询会话记录（性能指标）
-- `DatabaseAuditLog`：审计日志（operator、action、details、client_ip）
+**关键文件**：
+- 数据模型：`internal/models/db_*.go`
+- 服务层：`internal/services/database/`（security_filter、manager、query_executor、audit_logger）
+- 数据库驱动：`pkg/dbdriver/`
 
-### API端点
-- `/api/v1/database/instances`：实例管理CRUD、连接测试
-- `/api/v1/database/instances/{id}/databases`：数据库操作
-- `/api/v1/database/instances/{id}/users`：用户管理
-- `/api/v1/database/permissions`：权限授予和撤销
-- `/api/v1/database/instances/{id}/query`：查询执行（安全过滤）
-- `/api/v1/database/audit-logs`：审计日志查询（分页、过滤）
-
-### 安全特性
-**SQL 安全过滤**：
-- 阻止 DDL 操作（DROP、TRUNCATE、ALTER、CREATE INDEX 等）
-- 阻止无 WHERE 的 UPDATE/DELETE
-- 阻止危险函数（LOAD_FILE、INTO OUTFILE、DUMPFILE）
-- 性能目标：<2ms 验证时间
-
-**Redis 命令过滤**：
-- 黑名单：FLUSHDB、FLUSHALL、SHUTDOWN、CONFIG、SAVE、BGSAVE
-- 大小写不敏感匹配
-- 性能目标：<100μs 验证时间
-
-**权限映射**：
-- **MySQL/PostgreSQL**：
-  - readonly → SELECT 权限
-  - readwrite → SELECT, INSERT, UPDATE, DELETE 权限
-- **Redis ACL**：
-  - readonly → +@read -@write -@dangerous
-  - readwrite → +@read +@write -@dangerous
-
-### 性能优化
-- **连接池**：MaxOpenConns=50、MaxIdleConns=10
-- **连接缓存**：实例级缓存避免重复建连
-- **查询限制**：
-  - 超时：30秒（可配置）
-  - 结果大小：10MB（超出自动截断并提示）
-- **审计清理**：定时任务每天 2AM 删除 90 天前日志
-
-### 测试覆盖
-- **契约测试**（6个文件）：API 规范验证
-- **集成测试**（7个文件）：真实数据库环境测试（testcontainers）
-- **单元测试**（3个文件）：核心逻辑验证（security_filter、credential、acl_mapping）
-- **总计**：135+ 测试用例
-
-### 关键文件
-```
-internal/
-├── models/                # 数据模型（6个）
-│   └── db_*.go
-├── repository/database/   # 仓储层（5个）
-├── services/database/     # 服务层（8个）
-│   ├── security_filter.go     # SQL/Redis 安全过滤
-│   ├── manager.go             # 实例管理器（连接缓存）
-│   ├── query_executor.go      # 查询执行器（超时控制）
-│   └── audit_logger.go        # 审计日志记录
-└── api/handlers/database/ # API 处理器（6个）
-
-pkg/
-├── dbdriver/              # 数据库驱动（4个）
-│   ├── driver.go          # 接口定义
-│   ├── mysql.go, postgres.go, redis.go
-└── crypto/                # 加密服务
-    └── encryption.go      # AES-256-GCM 实现
-
-tests/
-├── contract/              # 契约测试（6个）
-├── integration/database/  # 集成测试（7个）
-└── unit/                  # 单元测试（3个）
-```
-
-### 使用示例
-```bash
-# 运行数据库管理相关测试
-go test -v ./tests/contract/database_*.go
-go test -v ./tests/integration/database/... -timeout 5m
-go test -v ./tests/unit/...
-
-# 启动应用（包含数据库管理功能）
-task dev
-
-# 访问 Swagger 文档
-# http://localhost:12306/swagger/index.html
-```
-
-### 前端页面
-- **实例列表**：显示所有数据库实例，支持创建、编辑、删除、连接测试
-- **数据库列表**：查看和管理实例下的数据库
-- **用户管理**：创建用户、修改密码、删除用户
-- **权限管理**：授予和撤销数据库权限（readonly/readwrite）
-- **查询控制台**：Monaco Editor 编辑器，执行 SQL/Redis 命令
-- **审计日志**：查询和筛选所有数据库操作日志
-
-### 待完成任务
-- API 文档生成（运行 `./scripts/generate-swagger.sh`）
-- 代码质量检查（运行 `task lint`）
-- 手动验证（参考 `.claude/specs/003-nosql-sql/quickstart.md`）
+详见规格文档以了解完整的 API、安全特性、性能优化和测试覆盖。
 
 ## 架构改进：Phase 4 (2025-10-16)
 
@@ -595,567 +466,84 @@ go build ./internal/app             # ✅
 
 **功能分支**: `005-k8s-kite-k8s`
 **参考规格**: `.claude/specs/005-k8s-kite-k8s/`
-**完成度**: 67% (55/82 任务)
+**完成度**: 67%
 
-### 核心特性
+多集群 Kubernetes 管理，支持 CRD、Prometheus 集成、全局搜索和节点终端。
 
-- **多集群管理**: 支持多个 Kubernetes 集群统一管理，集群健康状态实时监控
-- **CRD 支持**: 原生支持 OpenKruise、Tailscale、Traefik、K3s System Upgrade Controller
-- **Prometheus 集成**: 自动发现集群内 Prometheus 实例，支持监控数据查询
-- **全局搜索**: 跨资源类型全局搜索（Pod、Deployment、Service、ConfigMap），智能评分排序
-- **资源关系图**: 可视化资源依赖关系（Deployment → ReplicaSet → Pod）
-- **节点终端**: 基于 WebSocket 的节点 SSH 终端，通过特权 Pod 实现
-- **只读模式**: 系统级只读模式，阻止所有修改操作
-- **审计日志**: 记录所有集群操作和终端访问
+**核心特性**：
+- 多集群统一管理，实时健康状态监控
+- 原生 CRD 支持（OpenKruise、Tailscale、Traefik、K3s System Upgrade）
+- Prometheus 自动发现和监控数据查询
+- 全局搜索（跨资源类型、智能评分排序）
+- 资源关系图可视化（Deployment → ReplicaSet → Pod）
+- 节点终端（WebSocket、特权 Pod 实现）
+- 系统级只读模式
 
-### 技术栈
+**扩展的 Cluster 模型字段**：`health_status`、`node_count`、`pod_count`、`prometheus_url`
 
-- **后端**: client-go v0.31.4、dynamic client、OpenKruise SDK v1.8.0
-- **前端**: React 19、ClusterContext、xterm.js（终端UI）
-- **缓存**: 5 分钟 TTL 内存缓存（ResourceVersion 感知）
-- **测试**: testcontainers-go + Kind（集成测试）、fake client（单元测试）
+**核心服务**（`internal/services/k8s/`）：
+- `ClusterHealthService` - 60秒间隔后台健康检查
+- `SearchService` - 并发全局搜索
+- `RelationsService` - 资源关系递归查询
+- `CacheService` - 5分钟 TTL 工作负载缓存
+- `PrometheusAutoDiscoveryService` - 30秒超时自动发现
 
-### 数据模型
+**关键实现**：
+- Client 缓存（双检锁模式，线程安全）
+- 只读模式中间件（阻止修改操作）
+- 审计日志增强（记录集群操作和终端访问）
 
-**核心模型**（位于 `internal/models/`）:
-- `Cluster`: 集群元数据（名称、Kubeconfig、健康状态、Prometheus URL）
-- `ResourceHistory`: 资源变更历史记录
-- `K8sRole`: Kubernetes RBAC 角色定义
-
-**扩展字段**（Cluster 模型）:
-```go
-type Cluster struct {
-    BaseModel
-    Name             string    `json:"name"`
-    Config           string    `json:"-"`                // Kubeconfig（加密存储）
-    InCluster        bool      `json:"in_cluster"`       // 是否为 In-Cluster 配置
-    Enable           bool      `json:"enable"`
-    Description      string    `json:"description"`
-    
-    // Phase 0 扩展字段
-    HealthStatus     string    `json:"health_status"`    // unknown, healthy, warning, error, unavailable
-    LastConnectedAt  time.Time `json:"last_connected_at"`
-    NodeCount        int       `json:"node_count"`
-    PodCount         int       `json:"pod_count"`
-    PrometheusURL    string    `json:"prometheus_url"`   // 自动发现或手动配置
-}
-```
-
-### 服务架构
-
-**核心服务**（位于 `internal/services/k8s/`）:
-
-1. **ClusterHealthService**: 集群健康检查（60秒间隔后台任务）
-   - 调用 `/api/v1/nodes` 获取节点列表
-   - 更新 `health_status`、`node_count`、`pod_count`
-   - 状态转换：unknown → healthy → warning → error → unavailable
-
-2. **RelationsService**: 资源关系服务
-   - 静态关系映射：Deployment → ReplicaSet → Pod（8 种关系）
-   - 递归查询（最大深度 3）
-   - 循环引用检测（visited map）
-
-3. **CacheService**: 工作负载缓存
-   - 缓存键：`clusterID:resourceType:namespace`
-   - TTL：5 分钟
-   - ResourceVersion 检测自动失效
-   - 线程安全（RWMutex）
-
-4. **SearchService**: 全局搜索
-   - 并发查询 4 个资源类型
-   - 评分算法：
-     - 精确匹配：100 分
-     - 名称包含：80 分
-     - 标签匹配：60 分
-     - 注解匹配：40 分
-   - 结果限制：50 条
-
-5. **PrometheusAutoDiscoveryService**: Prometheus 自动发现
-   - 异步 Goroutine，30 秒超时
-   - 搜索命名空间：monitoring、prometheus、kube-system
-   - 端点优先级：LoadBalancer > NodePort > ClusterIP
-   - 连通性测试：`GET /api/v1/status/config`（2 秒超时）
-
-### API 端点
-
-**集群管理**:
-- `GET /api/v1/k8s/clusters` - 集群列表
-- `GET /api/v1/k8s/clusters/:id` - 集群详情
-- `POST /api/v1/k8s/clusters` - 创建集群
-- `PUT /api/v1/k8s/clusters/:id` - 更新集群
-- `DELETE /api/v1/k8s/clusters/:id` - 删除集群
-- `POST /api/v1/k8s/clusters/:id/test-connection` - 测试连接
-- `POST /api/v1/k8s/clusters/:id/prometheus/rediscover` - 重新检测 Prometheus
-
-**资源管理**（CRD 支持）:
-- OpenKruise: `/api/v1/k8s/clusters/:cluster_id/clonesets`（扩容、重启）
-- Tailscale: `/api/v1/k8s/clusters/:cluster_id/tailscale/connectors`
-- Traefik: `/api/v1/k8s/clusters/:cluster_id/traefik/ingressroutes`
-- K3s: `/api/v1/k8s/clusters/:cluster_id/k3s/plans`
-
-**增强功能**:
-- `GET /api/v1/k8s/clusters/:cluster_id/search?q=<query>` - 全局搜索
-- `GET /api/v1/k8s/clusters/:cluster_id/resources/:kind/:name/relations` - 资源关系
-- `GET /api/v1/k8s/clusters/:cluster_id/crds` - CRD 检测
-
-**节点终端**:
-- `POST /api/v1/k8s/clusters/:cluster_id/nodes/:name/terminal` - 创建终端会话
-- `WS /api/v1/k8s/terminal/:session_id` - WebSocket 终端连接
-
-### 配置系统
-
-**Kubernetes 配置**（config.yaml）:
-```yaml
-kubernetes:
-  node_terminal_image: "alpine:latest"  # 终端特权 Pod 镜像
-  enable_kruise: true                   # 启用 OpenKruise
-  enable_tailscale: true                # 启用 Tailscale
-  enable_traefik: true                  # 启用 Traefik
-  enable_k3s_upgrade: true              # 启用 K3s Upgrade Controller
-```
-
-**Prometheus 配置**:
-```yaml
-prometheus:
-  auto_discovery: true         # 启用自动发现
-  discovery_timeout: 30        # 发现超时（秒）
-  cluster_urls:                # 手动配置（优先级高于自动发现）
-    cluster-1: "http://prometheus.monitoring:9090"
-```
-
-**功能特性**:
-```yaml
-features:
-  readonly_mode: false         # 只读模式开关
-```
-
-### 前端页面
-
-**位置**: `ui/src/pages/k8s/`
-
-**核心页面**:
-- `cluster-list-page.tsx`: 集群列表（健康状态、节点数、Pod 数）
-- `cluster-detail-page.tsx`: 集群详情（概览、配置、Prometheus 三个 Tab）
-- `cluster-form-page.tsx`: 集群创建/编辑表单
-- `search-page.tsx`: 全局搜索页（搜索、过滤、结果分组）
-- `monitoring-page.tsx`: Prometheus 监控配置
-
-**CRD 页面** (列表 + 详情):
-- OpenKruise: `cloneset-list-page.tsx`、`advanced-daemonset-list-page.tsx`
-- Tailscale: `connector-list-page.tsx`、`proxyclass-list-page.tsx`
-- Traefik: `ingressroute-list-page.tsx`、`middleware-list-page.tsx`
-- K3s: `upgrade-plans-list-page.tsx`
-
-**核心组件**:
-- `cluster-selector.tsx`: 集群切换器（下拉菜单）
-- `resource-relations.tsx`: 资源关系树形视图
-- `terminal.tsx`: xterm.js 终端 UI
-
-**状态管理**:
-- `ClusterContext`（cluster-context.tsx）: 当前选中集群 ID
-- 切换集群时清除缓存和临时状态
-
-### 测试覆盖
-
-**集成测试**（位于 `tests/integration/k8s/`）:
-- `cluster_health_test.go`: 集群健康检查（239 行，使用 testcontainers + Kind）
-- `prometheus_discovery_test.go`: Prometheus 自动发现框架
-- `search_performance_test.go`: 全局搜索性能（<1 秒，1000+ 资源）
-
-**单元测试**（位于 `tests/unit/k8s/`）:
-- `relations_test.go`: 资源关系服务（270 行，5 个测试用例）
-- `cache_test.go`: 缓存服务（266 行，7 个测试用例）
-- `search_test.go`: 搜索服务（332 行，6 个测试用例）
-
-**测试框架**:
-- testcontainers-go: Docker 容器化 K8s 集群（Kind）
-- fake.NewSimpleClientset(): Kubernetes fake client
-- fake.NewSimpleDynamicClient(): Dynamic client fake
-
-### 使用示例
-
-**导入集群**:
-```bash
-# 启动应用，自动从 ~/.kube/config 导入集群
-task dev
-
-# 访问前端
-# http://localhost:5174/k8s/clusters
-```
-
-**全局搜索**:
-```bash
-# API 调用
-curl -H "Authorization: Bearer <token>" \
-     "http://localhost:12306/api/v1/k8s/clusters/<cluster-id>/search?q=redis&limit=50"
-
-# 前端页面
-# http://localhost:5174/k8s/search
-```
-
-**节点终端**:
-```bash
-# 1. 创建终端会话
-POST /api/v1/k8s/clusters/:cluster_id/nodes/:node_name/terminal
-
-# 2. 连接 WebSocket
-ws://localhost:12306/api/v1/k8s/terminal/:session_id
-
-# 前端页面会自动处理 WebSocket 连接
-```
-
-### 关键实现细节
-
-**Client 缓存**（pkg/kube/client.go）:
-- 双检锁模式创建 K8s client
-- 集群更新/删除时自动清除缓存
-- 线程安全
-
-**节点终端原理**:
-1. 创建特权 Pod（hostNetwork、hostPID、privileged）
-2. 通过 WebSocket 建立终端连接
-3. 使用 xterm.js 渲染终端 UI
-4. 30 分钟超时自动清理 Pod
-
-**只读模式中间件**（internal/api/middleware/readonly.go）:
-- 阻止 POST、PUT、PATCH、DELETE 请求
-- 白名单：登录、健康检查、测试连接
-- 返回 HTTP 403 Forbidden
-
-**审计日志增强**:
-- ClusterID 和 ClusterName 字段
-- 记录所有资源修改操作
-- 记录所有节点终端访问
-
-### 待完成任务
-
-**高优先级**:
-- [ ] 契约测试（0/14）：API 规范验证
-- [ ] 剩余集成测试（T020、T022）
-- [ ] Prometheus 发现单元测试（T077）
-
-**中优先级**:
-- [ ] 通用 CRD 处理器框架（T038）
-- [ ] CRD 检测 API（T039）
-- [ ] 性能测试（T078）
-
-**低优先级**:
-- [ ] Swagger 注释（K8s API 端点）
-- [ ] 手动验证（quickstart.md 验证场景）
-- [ ] 代码质量检查（`task lint`）
-
-### 参考文档
-
-- 任务清单：`.claude/specs/005-k8s-kite-k8s/tasks.md`
-- 快速开始：`.claude/specs/005-k8s-kite-k8s/quickstart.md`
-- 数据模型：`.claude/specs/005-k8s-kite-k8s/data-model.md`
-- API 契约：`.claude/specs/005-k8s-kite-k8s/contracts/`
+详见规格文档以了解完整的数据模型、API 端点、配置系统、测试覆盖和使用示例。
 
 ## Docker 管理子系统（架构优化）
 
 **功能分支**: `007-docker-docker-agent`
 **完成时间**: 2025-10-25
 
-### 核心架构原则
+Agent-Server 架构的 Docker 远程管理，支持 NAT 穿透。
 
-**关键设计决策**: Agent 位于 NAT/防火墙后，Server 无法主动连接 Agent。所有通信必须通过 Agent 主动建立的连接进行。
+**核心设计**：Agent 位于 NAT/防火墙后，Server 无法主动连���。所有通信通过 Agent 主动建立的连接进行。
 
-### 双模式 Docker 管理
+**双模式架构**：
+1. **非流式操作**（任务队列）- 29个操作：容器/镜像/网络/卷管理、系统信息查询
+2. **流式操作**（DockerStream）- 5个操作：容器终端、日志、统计、镜像拉取、事件流
 
-#### 1. **非流式操作**（通过任务队列）
-
-**通信路径**: User → Server API → AgentForwarderV2 → 任务队列 → Agent → Docker
-
-**包含操作** (29个):
-- **容器管理**: List/Get/Start/Stop/Restart/Pause/Unpause/Delete Container
-- **镜像管理**: List/Get/Delete/Tag Image
-- **网络管理**: List/Get/Create/Delete/Connect/Disconnect Network
-- **卷管理**: List/Get/Create/Delete/Prune Volumes
-- **系统信息**: GetSystemInfo, GetDockerInfo, GetVersion, GetDiskUsage, Ping
-
-**实现**:
+**关键文件**：
+- Agent: `cmd/tiga-agent/docker_handler.go`、`docker_stream_handler.go`
 - Server: `internal/services/docker/agent_forwarder_v2.go`
-- Agent: `cmd/tiga-agent/docker_handler.go`
-- Proto: `proto/host_monitor.proto` (AgentTask/TaskResult)
+- Proto: `proto/host_monitor.proto`
 
-**执行流程**:
-```
-1. Server 创建 AgentTask (operation, params, payload)
-2. 任务加入队列等待 Agent 上报
-3. Agent 通过 ReportState 双向流接收任务
-4. Agent 执行 Docker 操作
-5. Agent 返回 TaskResult (success, payload)
-6. Server 接收结果并响应 API 请求
-```
+**架构优势**：
+- NAT 友好（Agent 主动连接，无需公网 IP）
+- 统一 Agent（不需要独立 Docker Agent 进程）
+- 双模式互补（简单操作用任务队列，流式用专用连接）
 
-#### 2. **流式操作**（通过 DockerStream）
-
-**通信路径**: User → Server API → DockerStream 会话 → Agent (主动连接) → Docker
-
-**包含操作** (5个):
-- **容器终端**: ExecContainer (双向流，stdin/stdout)
-- **容器日志**: GetContainerLogs (服务端流)
-- **容器统计**: GetContainerStats (服务端流，JSON)
-- **镜像拉取**: PullImage (进度流)
-- **Docker 事件**: GetEvents (事件流)
-
-**实现**:
-- Server: `internal/services/host/docker_stream_manager.go` (待实现)
-- Agent: `cmd/tiga-agent/docker_stream_handler.go`
-- Proto: `proto/host_monitor.proto` (DockerStream RPC)
-
-**执行流程**:
-```
-1. User 请求流式操作（如容器日志）
-2. Server 创建 Docker 流会话，session_id 加入等待队列
-3. Agent 检测到待处理的 Docker 流任务
-4. Agent 主动建立 DockerStream gRPC 连接
-5. Server 发送 DockerStreamInit (operation, container_id, params)
-6. Agent 执行 Docker 流操作，持续发送 DockerStreamData
-7. Server 将流数据转发给 User (WebSocket/SSE)
-8. 操作完成后发送 DockerStreamClose
-```
-
-### Proto 消息设计
-
-**DockerStream RPC**:
-```protobuf
-service HostMonitor {
-  rpc DockerStream(stream DockerStreamMessage) returns (stream DockerStreamMessage);
-}
-
-message DockerStreamMessage {
-  oneof message {
-    DockerStreamInit init = 1;        // 初始化
-    DockerStreamData data = 2;        // 数据传输
-    DockerStreamResize resize = 3;    // 终端调整
-    DockerStreamClose close = 4;      // 关闭
-    DockerStreamError error = 5;      // 错误
-  }
-}
-
-message DockerStreamInit {
-  string session_id = 1;              // Server 生成的会话ID
-  string instance_id = 2;             // Docker 实例ID
-  string operation = 3;               // 操作类型
-  string container_id = 4;            // 容器ID
-  map<string, string> params = 6;    // 操作参数
-  bool ready = 7;                     // Agent 就绪标志
-}
-
-message DockerStreamData {
-  string session_id = 1;
-  bytes data = 2;                     // 流式数据
-  string data_type = 3;               // stdout/stderr/stats/events
-}
-```
-
-### 关键文件
-
-**Agent 端**:
-- `cmd/tiga-agent/docker_handler.go` - 任务队列模式处理器
-- `cmd/tiga-agent/docker_stream_handler.go` - 流式操作处理器
-- `internal/docker/` - Docker 客户端封装
-
-**Server 端**:
-- `internal/services/docker/agent_forwarder_v2.go` - 任务队列转发器
-- `internal/services/docker/agent_forwarder.go` - ⚠️ 废弃（待移除）
-- `internal/api/handlers/docker/` - Docker API 处理器
-
-**Proto**:
-- `proto/host_monitor.proto` - 主机监控 + Docker 流式操作
-
-### 架构演进历史
-
-**Phase 1** (废弃): Agent 启动独立 Docker gRPC 服务端 (:50051)
-- ❌ 问题: Server 无法反向连接 NAT 后的 Agent
-
-**Phase 2** (当前): Agent 主动建立连接
-- ✅ 非流式操作: 通过 ReportState 双向流（任务队列）
-- ✅ 流式操作: 通过 DockerStream 双向流（Agent 主动连接）
-
-### 使用示例
-
-**非流式操作** (容器启动):
-```bash
-POST /api/v1/docker/instances/{id}/containers/{cid}/start
-→ AgentForwarderV2.StartContainer()
-  → 创建 AgentTask
-  → 加入任务队列
-  → Agent 执行并返回 TaskResult
-  → Server 响应 API
-```
-
-**流式操作** (容器日志):
-```bash
-GET /api/v1/docker/instances/{id}/containers/{cid}/logs (SSE)
-→ ContainerLogsHandler.GetLogs()
-  → 创建 Docker 流会话 (session_id)
-  → 等待 Agent 连接
-  → Agent 建立 DockerStream
-  → Server 发送 DockerStreamInit(get_logs)
-  → Agent 持续发送日志数据
-  → Server 转发到 SSE 连接
-```
-
-### 待完成工作
-
-- [ ] Server 端 Docker 流会话管理器实现
-- [ ] 容器终端 (ExecContainer) 双向流实现
-- [ ] 镜像拉取进度流实现
-- [ ] Docker 事件流实现
-- [ ] 移除废弃的 AgentForwarder 代码
-- [ ] 功能测试验证
-
-### 架构优势
-
-1. **NAT 友好**: Agent 主动连接，无需公网 IP
-2. **统一 Agent**: 不需要独立的 Docker Agent 进程
-3. **双模式互补**: 简单操作用任务队列，复杂流式用专用连接
-4. **可扩展**: 未来可添加更多流式操作（如 Attach Container）
+详见规格文档以了解完整的通信流程、Proto 消息设计和使用示例。
 
 ## 统一终端录制系统（开发中）
 
 **功能分支**：`009-3`
 **参考规格**：`.claude/specs/009-3/`
-**完成度**：20% (契约测试完成)
+**完成度**：20%
 
-### 核心目标
-- **问题**：3 个分散的终端录制实现（Docker、WebSSH、K8s），路径和清理策略不统一
-- **解决方案**：统一数据模型 + 统一存储服务 + 统一清理任务
-- **支持终端类型**：Docker 容器、WebSSH 主机、K8s 节点、K8s Pod
-- **注意**：这是新功能，无需向后兼容（项目未正式发布）
+统一 Docker、WebSSH、K8s 三种终端的录制实现，提供统一的存储、清理和回放。
 
-### 数据模型
+**核心目标**：
+- 解决 3 个分散的终端录制实现（路径和清理策略不统一）
+- 统一数据模型 + 统一存储服务（本地/MinIO）+ 统一清理任务
+- 支持 Docker 容器、WebSSH 主机、K8s 节点、K8s Pod
 
-```go
-// internal/models/terminal_recording.go
-type TerminalRecording struct {
-    BaseModel
+**核心服务**（`internal/services/recording/`）：
+- `StorageService` - 存储抽象（本地/MinIO）
+- `CleanupService` - 定时清理（90天保留期）
+- `ManagerService` - 录制管理（CRUD、搜索、统计）
 
-    // 统一字段
-    RecordingType string         // "docker" | "webssh" | "k8s_node" | "k8s_pod"
-    TypeMetadata  datatypes.JSON // JSONB 存储类型特定元数据
-
-    // 存储信息
-    StorageType string // "local" | "minio"
-    StoragePath string // 本地路径或 MinIO key
-    FileSize    int64
-    Format      string // "asciinema"
-
-    // 时间信息
-    StartedAt time.Time
-    EndedAt   *time.Time
-    Duration  int
-
-    // 终端配置
-    Rows, Cols int
-    Shell      string
-
-    // 元数据
-    ClientIP, Description, Tags string
-    UserID    uuid.UUID
-    SessionID uuid.UUID
-}
-```
-
-### 核心服务
-
-**位置**：`internal/services/recording/`
-
-1. **StorageService** - 存储抽象（本地/MinIO）
-2. **CleanupService** - 统一清理服务
-3. **ManagerService** - 录制管理（CRUD、搜索、统计）
-
-### API 端点
-
-- `GET /api/v1/recordings` - 录制列表（所有类型）
-- `GET /api/v1/recordings/:id` - 录制详情
-- `DELETE /api/v1/recordings/:id` - 删除录制
-- `GET /api/v1/recordings/search` - 搜索录制
-- `GET /api/v1/recordings/statistics` - 统计信息
-- `GET /api/v1/recordings/:id/playback` - 回放内容（Asciinema）
-- `GET /api/v1/recordings/:id/download` - 下载 .cast 文件
-- `POST /api/v1/recordings/cleanup/trigger` - 手动触发清理
-- `GET /api/v1/recordings/cleanup/status` - 清理状态
-
-### 配置
-
-```yaml
-recording:
-  storage_type: local
-  base_path: ./data/recordings
-  retention_days: 90
-  cleanup_schedule: "0 4 * * *"
-  cleanup_batch_size: 1000
-  max_recording_size: 524288000  # 500MB
-
-  # MinIO 可选（Phase 2）
-  minio:
-    endpoint: minio.example.com:9000
-    bucket: terminal-recordings
-    access_key: ""
-    secret_key: ""
-    use_ssl: true
-```
-
-### 已完成工作
-
-**阶段 3.1 - 设置**（4/4）✅
-- ✅ 录制服务目录结构（`internal/services/recording/`）
-- ✅ 配置结构扩展（`RecordingConfig`）
-- ✅ 数据库索引创建（`internal/db/migrations.go`）
-- ✅ Go lint 工具配置
-
-**阶段 3.2 - 契约测试**（9/19）✅
+**已完成工作**：
+- ✅ 录制服务目录结构和配置扩展
+- ✅ 数据库索引创建
 - ✅ 9 个 API 端点契约测试（T005-T013）
-- ✅ 测试辅助工具（`tests/contract/test_helper.go`）
-- ✅ 完整的请求/响应 schema 验证
-- ✅ Asciinema v2 格式验证
-- ⏸️ 10 个集成测试待完成（T014-T023）
+- ⏸️ 10 个集成测试待完成
 
-### 关键文件
-
-```
-internal/
-├── config/config.go                   # [完成] 扩展配置
-├── db/migrations.go                   # [完成] 索引创建
-├── models/terminal_recording.go       # [待实现] 扩展模型
-├── repository/terminal_recording_repo.go  # [待实现] Repository
-├── services/recording/
-│   ├── storage_service.go            # [占位符] 存储抽象
-│   ├── cleanup_service.go            # [占位符] 统一清理
-│   └── manager_service.go            # [占位符] 录制管理
-└── api/handlers/recording/
-    ├── recording_handler.go          # [待实现] API 处理器
-    └── playback_handler.go           # [待实现] 回放处理器
-
-ui/src/pages/recordings/
-├── recording-list-page.tsx           # [待实现] 录制列表
-└── recording-player-page.tsx         # [待实现] 播放器
-
-tests/
-├── contract/                          # [完成] 9 个契约测试
-│   ├── test_helper.go
-│   ├── recording_list_test.go
-│   ├── recording_detail_test.go
-│   ├── recording_delete_test.go
-│   ├── recording_search_test.go
-│   ├── recording_statistics_test.go
-│   ├── recording_playback_test.go
-│   ├── recording_download_test.go
-│   ├── recording_cleanup_trigger_test.go
-│   └── recording_cleanup_status_test.go
-├── integration/                      # [待实现] 10 个集成测试
-└── unit/                             # [待实现] 单元测试
-```
-
-### 参考文档
-
-- 规格文档：`.claude/specs/009-3/spec.md`
-- 研究文档：`.claude/specs/009-3/research.md`
-- 数据模型：`.claude/specs/009-3/data-model.md`
-- API 契约：`.claude/specs/009-3/contracts/recording-api.yaml`
-- 快速启动：`.claude/specs/009-3/quickstart.md`
+详见规格文档以了解完整的数据模型、API 端点、配置和参考文档。
 
 
