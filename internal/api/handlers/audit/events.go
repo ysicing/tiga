@@ -1,8 +1,10 @@
 package audit
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -236,4 +238,123 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": event,
 	})
+}
+
+// T029: ListK8sEvents retrieves K8s audit events
+// @Summary List K8s audit events
+// @Description Get paginated K8s audit events with cluster filtering
+// @Tags audit
+// @Accept json
+// @Produce json
+// @Param clusterName path string true "K8s cluster name"
+// @Param page query int false "Page number (default: 1)" minimum(1)
+// @Param page_size query int false "Page size (default: 20)" minimum(1) maximum(100)
+// @Success 200 {object} object{data=[]models.AuditEvent,pagination=handlers.Pagination}
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /audit/events/k8s/{clusterName} [get]
+// @Security BearerAuth
+func (h *EventHandler) ListK8sEvents(c *gin.Context) {
+	clusterName := c.Param("clusterName")
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+
+	// Call repository method through type assertion
+	// Using reflection to access unexported type
+	auditEventRepoValue := reflect.ValueOf(h.eventRepo)
+	if auditEventRepoValue.Kind() == reflect.Ptr && auditEventRepoValue.Elem().Kind() == reflect.Struct {
+		// Get the concrete repository implementation
+		auditEventRepo := auditEventRepoValue.Interface().(repository.AuditEventRepository)
+
+		// Type assert to access unexported methods (we know the underlying type)
+		impl, ok := auditEventRepo.((interface {
+			ListK8sEvents(context.Context, string, int, int) ([]*models.AuditEvent, int64, error)
+		}))
+		if !ok {
+			handlers.RespondErrorWithMessage(c, http.StatusInternalServerError, fmt.Errorf("invalid repository type"), "Invalid repository type")
+			return
+		}
+
+		events, total, err := impl.ListK8sEvents(c.Request.Context(), clusterName, pageSize, offset)
+		if err != nil {
+			logrus.Errorf("Failed to list K8s audit events: %v", err)
+			handlers.RespondErrorWithMessage(c, http.StatusInternalServerError, err, "Failed to list K8s audit events")
+			return
+		}
+
+		// Build pagination metadata
+		totalPages := (int(total) + pageSize - 1) / pageSize
+		pagination := handlers.Pagination{
+			Page:       page,
+			PageSize:   pageSize,
+			Total:      total,
+			TotalPages: totalPages,
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data":       events,
+			"pagination": pagination,
+		})
+		return
+	}
+
+	handlers.RespondErrorWithMessage(c, http.StatusInternalServerError, fmt.Errorf("invalid repository type"), "Invalid repository type")
+}
+
+// T029: GetK8sStatistics retrieves K8s audit statistics
+// @Summary Get K8s audit statistics
+// @Description Get aggregated statistics about K8s audit events
+// @Tags audit
+// @Accept json
+// @Produce json
+// @Param clusterName query string false "Filter by K8s cluster name"
+// @Success 200 {object} object{data=repository.K8sAuditStatistics}
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /audit/events/k8s/statistics [get]
+// @Security BearerAuth
+func (h *EventHandler) GetK8sStatistics(c *gin.Context) {
+	clusterName := c.Query("clusterName")
+
+	// Call repository method through type assertion
+	// Using reflection to access unexported type
+	auditEventRepoValue := reflect.ValueOf(h.eventRepo)
+	if auditEventRepoValue.Kind() == reflect.Ptr && auditEventRepoValue.Elem().Kind() == reflect.Struct {
+		// Get the concrete repository implementation
+		auditEventRepo := auditEventRepoValue.Interface().(repository.AuditEventRepository)
+
+		// Type assert to access unexported methods (we know the underlying type)
+		impl, ok := auditEventRepo.((interface {
+			GetK8sStatistics(context.Context, string) (*repository.K8sAuditStatistics, error)
+		}))
+		if !ok {
+			handlers.RespondErrorWithMessage(c, http.StatusInternalServerError, fmt.Errorf("invalid repository type"), "Invalid repository type")
+			return
+		}
+
+		stats, err := impl.GetK8sStatistics(c.Request.Context(), clusterName)
+		if err != nil {
+			logrus.Errorf("Failed to get K8s audit statistics: %v", err)
+			handlers.RespondErrorWithMessage(c, http.StatusInternalServerError, err, "Failed to get K8s audit statistics")
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": stats,
+		})
+		return
+	}
+
+	handlers.RespondErrorWithMessage(c, http.StatusInternalServerError, fmt.Errorf("invalid repository type"), "Invalid repository type")
+	return
 }

@@ -129,7 +129,7 @@ func (s *K8sAuditService) LogResourceOperation(ctx context.Context, log *Resourc
 	}
 
 	// Log asynchronously
-	s.asyncLogger.Log(ctx, auditEvent)
+	s.asyncLogger.Enqueue(auditEvent)
 
 	return nil
 }
@@ -193,7 +193,7 @@ func (s *K8sAuditService) LogTerminalAccess(ctx context.Context, log *TerminalAc
 	}
 
 	// Log asynchronously
-	s.asyncLogger.Log(ctx, auditEvent)
+	s.asyncLogger.Enqueue(auditEvent)
 
 	return nil
 }
@@ -235,7 +235,7 @@ func (s *K8sAuditService) LogReadOperation(ctx context.Context, log *ReadOperati
 	}
 
 	// Log asynchronously
-	s.asyncLogger.Log(ctx, auditEvent)
+	s.asyncLogger.Enqueue(auditEvent)
 
 	return nil
 }

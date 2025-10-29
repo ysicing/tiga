@@ -35,6 +35,8 @@ type TerminalSession struct {
 
 	lastHeartbeat time.Time // Track last heartbeat for ping/pong
 	k8sSession    *K8sTerminalSession
+	// recorderWrapper stores the wrapped connection when recording is enabled
+	recorderWrapper *RecordingWebSocketWrapper
 }
 
 func NewTerminalSession(client *K8sClient, conn *websocket.Conn, namespace, podName, container string) *TerminalSession {
@@ -48,15 +50,15 @@ func NewTerminalSession(client *K8sClient, conn *websocket.Conn, namespace, podN
 	}
 }
 
-// NewTerminalSessionWithRecording creates a new terminal session with a wrapped connection for recording
-func NewTerminalSessionWithRecording(client *K8sClient, conn *RecordingWebSocketWrapper, namespace, podName, container string, k8sSession *K8sTerminalSession) *TerminalSession {
+// NewTerminalSessionWithRecording creates a new terminal session with recording support
+func NewTerminalSessionWithRecording(client *K8sClient, conn *websocket.Conn, namespace, podName, container string, k8sSession *K8sTerminalSession) *TerminalSession {
 	return &TerminalSession{
-		k8sClient: client,
-		conn:      conn.UnderlyingConn(),
-		sizeChan:  make(chan *remotecommand.TerminalSize, 10),
-		namespace: namespace,
-		podName:   podName,
-		container: container,
+		k8sClient:  client,
+		conn:       conn,
+		sizeChan:   make(chan *remotecommand.TerminalSize, 10),
+		namespace:  namespace,
+		podName:    podName,
+		container:  container,
 		k8sSession: k8sSession,
 	}
 }
@@ -116,14 +118,6 @@ func (session *TerminalSession) Close() {
 }
 
 func (session *TerminalSession) Read(p []byte) (int, error) {
-	// Use wrapped connection for recording if available
-	if session.k8sSession != nil && session.k8sSession.Recorder != nil {
-		if wrapper, ok := session.conn.(*RecordingWebSocketWrapper); ok {
-			// Read from wrapped connection (which handles recording internally)
-			return wrapper.Read(p)
-		}
-	}
-
 	var msg TerminalMessage
 	err := websocket.JSON.Receive(session.conn, &msg)
 	if err != nil {
@@ -133,6 +127,10 @@ func (session *TerminalSession) Read(p []byte) (int, error) {
 	switch msg.Type {
 	case "stdin":
 		data := []byte(msg.Data)
+		// Record input if recording is active
+		if session.k8sSession != nil && session.k8sSession.Recorder != nil {
+			session.k8sSession.WriteRecordingFrame("i", data)
+		}
 		return copy(p, data), nil
 	case "resize":
 		if msg.Rows > 0 && msg.Cols > 0 {
@@ -154,12 +152,9 @@ func (session *TerminalSession) Read(p []byte) (int, error) {
 }
 
 func (session *TerminalSession) Write(p []byte) (int, error) {
-	// Use wrapped connection for recording if available
+	// Record output if recording is active
 	if session.k8sSession != nil && session.k8sSession.Recorder != nil {
-		if wrapper, ok := session.conn.(*RecordingWebSocketWrapper); ok {
-			// Write to wrapped connection (which handles recording internally)
-			return wrapper.Write(p)
-		}
+		session.k8sSession.WriteRecordingFrame("o", p)
 	}
 
 	msg := TerminalMessage{

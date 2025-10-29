@@ -35,6 +35,11 @@ func NewManagerService(
 	}
 }
 
+// GetRecordingRepo returns the recording repository (for K8s-specific queries)
+func (s *ManagerService) GetRecordingRepo() repository.RecordingRepositoryInterface {
+	return s.repo
+}
+
 // ListRecordings retrieves recordings with filtering, pagination, and sorting
 func (s *ManagerService) ListRecordings(
 	ctx context.Context,

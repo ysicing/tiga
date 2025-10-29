@@ -28,8 +28,9 @@ const MaxRecordingDuration = 7200
 type TerminalRecording struct {
 	BaseModel
 	SessionID uuid.UUID `gorm:"type:uuid;not null;uniqueIndex" json:"session_id"`
-	UserID    uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
-	Username  string    `gorm:"type:varchar(255);not null" json:"username"`
+	// UserID is optional for K8s terminal recordings (can be NULL to avoid foreign key constraint)
+	UserID   *uuid.UUID `gorm:"type:uuid;index" json:"user_id,omitempty"`
+	Username string     `gorm:"type:varchar(255);not null" json:"username"`
 
 	// Recording type (unified support for multiple terminal types)
 	RecordingType string         `gorm:"type:varchar(50);not null;default:'docker';index" json:"recording_type"` // docker, webssh, k8s_node, k8s_pod

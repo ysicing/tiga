@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -29,6 +30,7 @@ import (
 	dbrepo "github.com/ysicing/tiga/internal/repository/database"
 	schedulerrepo "github.com/ysicing/tiga/internal/repository/scheduler"
 	alertservices "github.com/ysicing/tiga/internal/services/alert"
+	auditservices "github.com/ysicing/tiga/internal/services/audit"
 	authservices "github.com/ysicing/tiga/internal/services/auth"
 	dbservices "github.com/ysicing/tiga/internal/services/database"
 	dockerservices "github.com/ysicing/tiga/internal/services/docker"
@@ -129,6 +131,17 @@ func SetupRoutes(
 	// Audit repositories (T012, T020)
 	auditEventRepo := repository.NewAuditEventRepository(db)
 
+	// Initialize async audit logger for unified audit events
+	auditAsyncLogger := auditservices.NewAsyncLogger(auditEventRepo, "kubernetes", &auditservices.Config{
+		BatchSize:      100,
+		FlushPeriod:    1 * time.Second,
+		WorkerCount:    2,
+		ChannelBuffer:  1000,
+	})
+
+	// Initialize K8s audit service (010-k8s-pod-009 T021-T030)
+	k8sAuditService := k8sservices.NewAuditService(auditAsyncLogger, clusterRepo)
+
 	// Initialize session and login services using the shared jwtManager
 	sessionService := authservices.NewSessionService(db)
 	loginService := authservices.NewLoginService(db, jwtManager, sessionService)
@@ -173,7 +186,7 @@ func SetupRoutes(
 	recordingManagerService := recordingservices.NewManagerService(recordingRepo, recordingStorageService)
 
 	// K8s terminal recording service (010-k8s-pod-009 T019-T020)
-	k8sTerminalRecordingService := k8sservice.NewTerminalRecordingService(terminalRecordingRepo)
+	k8sTerminalRecordingService := k8sservices.NewTerminalRecordingService(terminalRecordingRepo)
 
 	// Host monitoring services - use shared instances from app.go to avoid duplicate creation
 	// stateCollector, hostService, terminalManager, and probeScheduler are passed as parameters
@@ -426,6 +439,8 @@ func SetupRoutes(
 				// Unified CRD status check (OpenKruise, Tailscale, Traefik, SystemUpgrade)
 				crdStatusHandler := pkghandlers.NewCRDStatusHandler()
 				k8sGroup.Use(pkgmiddleware.ClusterMiddleware(clusterManager))
+				// K8s audit middleware for resource operations (010-k8s-pod-009 T030)
+				k8sGroup.Use(middleware.K8sAudit(k8sAuditService))
 				k8sGroup.GET("/crd-status/:type", crdStatusHandler.GetCRDStatus)
 
 				// Cluster management

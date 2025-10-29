@@ -111,7 +111,7 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 		}
 
 		// Start terminal recording (T019 integration)
-		k8sSession, recorder, recordingModel, err := h.recordingService.StartNodeTerminalRecording(
+		k8sSession, _, recordingModel, err := h.recordingService.StartNodeTerminalRecording(
 			ctx,
 			user.ID,
 			cs.Name,
@@ -132,11 +132,8 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 			}
 		}
 
-		// Wrap the WebSocket connection with recording decorator
-		wrappedConn := kube.NewRecordingWebSocketWrapper(conn, recorder)
-
-		// Create terminal session with wrapped connection
-		session := kube.NewTerminalSessionWithRecording(cs.K8sClient, wrappedConn, "kube-system", nodeAgentName, common.NodeTerminalPodName, k8sSession)
+		// Create terminal session with recording support
+		session := kube.NewTerminalSessionWithRecording(cs.K8sClient, conn, "kube-system", nodeAgentName, common.NodeTerminalPodName, k8sSession)
 		if err := session.Start(ctx, "attach"); err != nil {
 			logrus.Errorf("Terminal session error: %v", err)
 		}

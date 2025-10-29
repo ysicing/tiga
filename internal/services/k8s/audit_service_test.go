@@ -2,7 +2,7 @@
 // This file was generated at 2025-10-29 22:15:00
 // Source: .claude/specs/010-k8s-pod-009/tasks.md (task: T021)
 
-package k8sservice
+package k8s
 
 import (
 	"context"
