@@ -546,4 +546,47 @@ Agent-Server 架构的 Docker 远程管理，支持 NAT 穿透。
 
 详见规格文档以了解完整的数据模型、API 端点、配置和参考文档。
 
+## K8s 终端录制与审计增强（开发中）
+
+**功能分支**: `010-k8s-pod-009`
+**参考规格**: `.claude/specs/010-k8s-pod-009/`
+**完成度**: 0%
+
+K8s 终端录制与审计增强，支持节点终端和容器终端自动录制，以及 K8s 资源操作全面审计。
+
+**核心特性**：
+- 自动录制节点终端和容器终端会话（Asciinema v2 格式，2 小时限制）
+- 记录所有 K8s 资源操作审计（创建、更新、删除、查看）
+- 终端访问审计（关联到录制记录）
+- 多维度审计日志查询（操作者、操作类型、资源类型、时间范围）
+- 90 天自动清理（录制文件 + 审计日志）
+
+**依赖系统**：
+- 009-3 统一终端录制系统（TerminalRecording、StorageService、CleanupService）
+- 统一 AuditEvent 系统
+
+**扩展的数据模型**：
+- **TerminalRecording**: 新增 `k8s_node` 和 `k8s_pod` 录制类型
+- **AuditEvent**: 新增 K8s 子系统操作类型（CreateResource、UpdateResource、DeleteResource、ViewResource、NodeTerminalAccess、PodTerminalAccess）
+
+**关键文件**：
+- 模型：`internal/models/terminal_recording.go`（扩展 K8s 类型）、`internal/models/audit_event.go`（扩展 K8s 子系统）
+- 服务：`internal/services/k8s/terminal_recording_service.go`、`internal/services/k8s/audit_service.go`
+- 终端集成：`pkg/kube/terminal_recorder.go`
+- 审计拦截：`pkg/handlers/resources/audit_interceptor.go`
+
+**技术方法**：
+- 装饰器模式：包装 TerminalSession 添加录制功能（非侵入式）
+- 中间件模式：Gin 中间件拦截 K8s 资源操作添加审计
+- 异步审计日志：Channel 缓冲（1000）+ 批量写入（100 条或 1 秒）
+- 实时录制：Asciinema v2 格式，逐帧写入避免内存占用
+- 2 小时限制：定时器触发停止录制，保持终端连接，发送 WebSocket 通知
+
+**性能目标**：
+- 终端连接延迟增加 < 100ms
+- 资源操作延迟增加 < 50ms
+- 审计日志查询 < 500ms（通过索引优化）
+
+详见规格文档以了解完整的数据模型、API 契约、测试策略和实施计划。
+
 

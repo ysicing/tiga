@@ -418,7 +418,7 @@ func (m *SessionManager) saveToUnifiedRecordingTable(ctx context.Context, sessio
 	// Create TerminalRecording entry
 	recording := &models.TerminalRecording{
 		SessionID:     sessionUUID,
-		UserID:        session.UserID,
+		UserID:        &session.UserID, // Convert to pointer for optional foreign key
 		Username:      user.Username,
 		RecordingType: "webssh",
 		TypeMetadata:  datatypes.JSON(typeMetadataStr),
