@@ -34,6 +34,7 @@ type TerminalSession struct {
 	container string
 
 	lastHeartbeat time.Time // Track last heartbeat for ping/pong
+	k8sSession    *K8sTerminalSession
 }
 
 func NewTerminalSession(client *K8sClient, conn *websocket.Conn, namespace, podName, container string) *TerminalSession {
@@ -44,6 +45,19 @@ func NewTerminalSession(client *K8sClient, conn *websocket.Conn, namespace, podN
 		namespace: namespace,
 		podName:   podName,
 		container: container,
+	}
+}
+
+// NewTerminalSessionWithRecording creates a new terminal session with a wrapped connection for recording
+func NewTerminalSessionWithRecording(client *K8sClient, conn *RecordingWebSocketWrapper, namespace, podName, container string, k8sSession *K8sTerminalSession) *TerminalSession {
+	return &TerminalSession{
+		k8sClient: client,
+		conn:      conn.UnderlyingConn(),
+		sizeChan:  make(chan *remotecommand.TerminalSize, 10),
+		namespace: namespace,
+		podName:   podName,
+		container: container,
+		k8sSession: k8sSession,
 	}
 }
 
@@ -102,6 +116,14 @@ func (session *TerminalSession) Close() {
 }
 
 func (session *TerminalSession) Read(p []byte) (int, error) {
+	// Use wrapped connection for recording if available
+	if session.k8sSession != nil && session.k8sSession.Recorder != nil {
+		if wrapper, ok := session.conn.(*RecordingWebSocketWrapper); ok {
+			// Read from wrapped connection (which handles recording internally)
+			return wrapper.Read(p)
+		}
+	}
+
 	var msg TerminalMessage
 	err := websocket.JSON.Receive(session.conn, &msg)
 	if err != nil {
@@ -132,6 +154,14 @@ func (session *TerminalSession) Read(p []byte) (int, error) {
 }
 
 func (session *TerminalSession) Write(p []byte) (int, error) {
+	// Use wrapped connection for recording if available
+	if session.k8sSession != nil && session.k8sSession.Recorder != nil {
+		if wrapper, ok := session.conn.(*RecordingWebSocketWrapper); ok {
+			// Write to wrapped connection (which handles recording internally)
+			return wrapper.Write(p)
+		}
+	}
+
 	msg := TerminalMessage{
 		Type: "stdout",
 		Data: string(p),

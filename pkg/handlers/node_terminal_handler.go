@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/websocket"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/models"
+	k8sservice "github.com/ysicing/tiga/internal/services/k8s"
 	"github.com/ysicing/tiga/pkg/cluster"
 	"github.com/ysicing/tiga/pkg/common"
 	"github.com/ysicing/tiga/pkg/kube"
@@ -25,10 +27,13 @@ import (
 )
 
 type NodeTerminalHandler struct {
+	recordingService *k8sservice.TerminalRecordingService
 }
 
-func NewNodeTerminalHandler() *NodeTerminalHandler {
-	return &NodeTerminalHandler{}
+func NewNodeTerminalHandler(recordingService *k8sservice.TerminalRecordingService) *NodeTerminalHandler {
+	return &NodeTerminalHandler{
+		recordingService: recordingService,
+	}
 }
 
 // HandleNodeTerminalWebSocket handles WebSocket connections for node terminal access
@@ -52,24 +57,35 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 	}
 
 	websocket.Handler(func(conn *websocket.Conn) {
+		var recordingID uuid.UUID
+		var recordingStopFunc func()
+
 		defer func() {
 			_ = conn.Close()
+			// Stop recording if it was started
+			if recordingStopFunc != nil {
+				recordingStopFunc()
+			}
 		}()
+
 		if !rbac.CanAccess(user, "nodes", "exec", cs.Name, "") {
 			h.sendErrorMessage(conn, rbac.NoAccess(user.Key(), string(common.VerbExec), "nodes", "", cs.Name))
 			return
 		}
+
 		node, err := cs.K8sClient.ClientSet.CoreV1().Nodes().Get(context.TODO(), nodeName, metav1.GetOptions{})
 		if err != nil {
 			log.Printf("Failed to get node %s: %v", nodeName, err)
 			h.sendErrorMessage(conn, fmt.Sprintf("Failed to get node %s: %v", nodeName, err))
 			return
 		}
+
 		if node == nil {
 			log.Printf("Node %s not found", nodeName)
 			h.sendErrorMessage(conn, fmt.Sprintf("Node %s not found", nodeName))
 			return
 		}
+
 		ctx, cancel := context.WithCancel(c.Request.Context())
 		defer cancel()
 
@@ -94,7 +110,33 @@ func (h *NodeTerminalHandler) HandleNodeTerminalWebSocket(c *gin.Context) {
 			return
 		}
 
-		session := kube.NewTerminalSession(cs.K8sClient, conn, "kube-system", nodeAgentName, common.NodeTerminalPodName)
+		// Start terminal recording (T019 integration)
+		k8sSession, recorder, recordingModel, err := h.recordingService.StartNodeTerminalRecording(
+			ctx,
+			user.ID,
+			cs.Name,
+			nodeName,
+			80, // default width
+			24, // default height
+		)
+		if err != nil {
+			log.Printf("Failed to start terminal recording: %v", err)
+			h.sendErrorMessage(conn, fmt.Sprintf("Failed to start terminal recording: %v", err))
+			return
+		}
+
+		recordingID = recordingModel.ID
+		recordingStopFunc = func() {
+			if err := h.recordingService.StopRecording(ctx, recordingID, "session_ended"); err != nil {
+				logrus.Errorf("Failed to stop recording: %v", err)
+			}
+		}
+
+		// Wrap the WebSocket connection with recording decorator
+		wrappedConn := kube.NewRecordingWebSocketWrapper(conn, recorder)
+
+		// Create terminal session with wrapped connection
+		session := kube.NewTerminalSessionWithRecording(cs.K8sClient, wrappedConn, "kube-system", nodeAgentName, common.NodeTerminalPodName, k8sSession)
 		if err := session.Start(ctx, "attach"); err != nil {
 			logrus.Errorf("Terminal session error: %v", err)
 		}

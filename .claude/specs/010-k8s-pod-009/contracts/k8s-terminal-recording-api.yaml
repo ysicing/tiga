@@ -1,0 +1,647 @@
+openapi: 3.0.3
+info:
+  title: K8s Terminal Recording API
+  description: |
+    API endpoints for K8s terminal recording management (extension of 009-3 unified terminal recording system).
+
+    Supports recording types:
+    - `docker` - Docker container terminal
+    - `webssh` - WebSSH host terminal
+    - `k8s_node` - K8s node terminal (new)
+    - `k8s_pod` - K8s Pod container terminal (new)
+  version: 1.0.0
+  contact:
+    name: Tiga API Support
+
+servers:
+  - url: http://localhost:12306/api/v1
+    description: Development server
+  - url: https://api.tiga.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: recordings
+    description: Terminal recording management
+
+paths:
+  /recordings:
+    get:
+      summary: Query terminal recordings
+      description: |
+        Query terminal recordings with multi-dimensional filters.
+        Supports pagination and filtering by recording type, cluster, node, pod, etc.
+      operationId: listRecordings
+      tags:
+        - recordings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: recording_type
+          in: query
+          description: |
+            Recording type filter. Supports:
+            - `docker` - Docker container terminal
+            - `webssh` - WebSSH host terminal
+            - `k8s_node` - K8s node terminal
+            - `k8s_pod` - K8s Pod container terminal
+          schema:
+            type: string
+            enum: [docker, webssh, k8s_node, k8s_pod]
+        - name: cluster_id
+          in: query
+          description: Filter by cluster ID (K8s recordings only)
+          schema:
+            type: string
+            format: uuid
+        - name: node_name
+          in: query
+          description: Filter by node name (k8s_node recordings only)
+          schema:
+            type: string
+        - name: namespace
+          in: query
+          description: Filter by namespace (k8s_pod recordings only)
+          schema:
+            type: string
+        - name: pod_name
+          in: query
+          description: Filter by pod name (k8s_pod recordings only)
+          schema:
+            type: string
+        - name: container_name
+          in: query
+          description: Filter by container name (k8s_pod recordings only)
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: string
+            format: uuid
+        - name: username
+          in: query
+          description: Filter by username
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          description: Filter recordings started after this time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Filter recordings started before this time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [started_at, duration, file_size]
+            default: started_at
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - total
+                  - page
+                  - page_size
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TerminalRecording'
+                  total:
+                    type: integer
+                    description: Total number of recordings matching filters
+                  page:
+                    type: integer
+                    description: Current page number
+                  page_size:
+                    type: integer
+                    description: Number of items per page
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recordings/{id}:
+    get:
+      summary: Get recording details
+      description: Retrieve detailed information about a specific terminal recording
+      operationId: getRecording
+      tags:
+        - recordings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recording ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TerminalRecording'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      summary: Delete recording
+      description: |
+        Delete a terminal recording and its associated file.
+        Requires appropriate permissions (admin or recording owner).
+      operationId: deleteRecording
+      tags:
+        - recordings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recording ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Recording deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recordings/{id}/play:
+    get:
+      summary: Play recording
+      description: |
+        Retrieve recording content in Asciinema v2 format for playback.
+        Returns the raw .cast file content (newline-delimited JSON).
+      operationId: playRecording
+      tags:
+        - recordings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recording ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recording content (Asciinema v2 format)
+          content:
+            application/x-asciicast:
+              schema:
+                type: string
+                description: |
+                  Asciinema v2 format (newline-delimited JSON):
+                  - First line: Header (JSON object with version, width, height, timestamp, title)
+                  - Subsequent lines: Frames (JSON arrays [time, type, data])
+                example: |
+                  {"version": 2, "width": 120, "height": 30, "timestamp": 1730000000, "title": "k8s-node: node-1"}
+                  [0.123456, "o", "root@node-1:~# "]
+                  [1.234567, "i", "ls -la\r"]
+                  [1.345678, "o", "total 48\r\ndrwxr-xr-x 5 root root 4096 Oct 27 10:00 .\r\n"]
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recordings/cleanup:
+    post:
+      summary: Trigger recording cleanup
+      description: |
+        Manually trigger cleanup of expired recordings (older than retention period, default 90 days).
+        Requires admin role.
+      operationId: cleanupRecordings
+      tags:
+        - recordings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  description: If true, only return what would be deleted without actually deleting
+                  default: false
+                retention_days:
+                  type: integer
+                  description: Custom retention period (overrides default 90 days)
+                  minimum: 1
+                  maximum: 365
+      responses:
+        '200':
+          description: Cleanup completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+                    description: Number of recordings deleted
+                  freed_space:
+                    type: integer
+                    format: int64
+                    description: Total file size freed (bytes)
+                  deleted_recordings:
+                    type: array
+                    description: List of deleted recording IDs (only if dry_run=true)
+                    items:
+                      type: string
+                      format: uuid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recordings/stats:
+    get:
+      summary: Get recording statistics
+      description: |
+        Get aggregated statistics about terminal recordings.
+        Includes counts by type, total storage usage, etc.
+      operationId: getRecordingStats
+      tags:
+        - recordings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: start_time
+          in: query
+          description: Statistics start time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Statistics end time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                    description: Total number of recordings
+                  total_size:
+                    type: integer
+                    format: int64
+                    description: Total storage size (bytes)
+                  total_duration:
+                    type: integer
+                    description: Total recording duration (seconds)
+                  by_type:
+                    type: object
+                    properties:
+                      docker:
+                        $ref: '#/components/schemas/RecordingTypeStats'
+                      webssh:
+                        $ref: '#/components/schemas/RecordingTypeStats'
+                      k8s_node:
+                        $ref: '#/components/schemas/RecordingTypeStats'
+                      k8s_pod:
+                        $ref: '#/components/schemas/RecordingTypeStats'
+                  by_user:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user_id:
+                          type: string
+                          format: uuid
+                        username:
+                          type: string
+                        count:
+                          type: integer
+                        total_duration:
+                          type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    TerminalRecording:
+      type: object
+      required:
+        - id
+        - session_id
+        - user_id
+        - username
+        - recording_type
+        - started_at
+        - storage_type
+        - storage_path
+        - format
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Recording ID
+        session_id:
+          type: string
+          format: uuid
+          description: WebSocket session ID (unique)
+        user_id:
+          type: string
+          format: uuid
+          description: User ID who initiated the session
+        username:
+          type: string
+          description: Username (redundant for quick queries)
+        recording_type:
+          type: string
+          enum: [docker, webssh, k8s_node, k8s_pod]
+          description: Recording type
+        type_metadata:
+          type: object
+          description: |
+            Type-specific metadata (JSONB).
+
+            For k8s_node:
+            ```json
+            {
+              "cluster_id": "550e8400-e29b-41d4-a716-446655440000",
+              "node_name": "node-1"
+            }
+            ```
+
+            For k8s_pod:
+            ```json
+            {
+              "cluster_id": "550e8400-e29b-41d4-a716-446655440000",
+              "namespace": "default",
+              "pod_name": "nginx-6c8b5b5d4f-abc123",
+              "container_name": "nginx"
+            }
+            ```
+          oneOf:
+            - $ref: '#/components/schemas/K8sNodeMetadata'
+            - $ref: '#/components/schemas/K8sPodMetadata'
+            - type: object
+              description: Other types (docker, webssh) have different metadata structures
+        started_at:
+          type: string
+          format: date-time
+          description: Recording start time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Recording end time (null if active)
+        duration:
+          type: integer
+          description: Recording duration (seconds)
+          minimum: 0
+          maximum: 7200
+        storage_type:
+          type: string
+          enum: [local, minio]
+          description: Storage backend
+        storage_path:
+          type: string
+          description: |
+            Storage path/key.
+            Format for K8s types: `{basePath}/k8s_node/{YYYY-MM-DD}/{id}.cast` or `{basePath}/k8s_pod/{YYYY-MM-DD}/{id}.cast`
+        file_size:
+          type: integer
+          format: int64
+          description: File size (bytes)
+          minimum: 0
+        format:
+          type: string
+          enum: [asciinema]
+          default: asciinema
+          description: Recording format (always Asciinema v2)
+        rows:
+          type: integer
+          description: Terminal rows
+          default: 30
+        cols:
+          type: integer
+          description: Terminal columns
+          default: 120
+        shell:
+          type: string
+          nullable: true
+          description: Shell type (e.g., /bin/bash)
+        client_ip:
+          type: string
+          nullable: true
+          description: Client IP address
+        description:
+          type: string
+          nullable: true
+          description: User-provided description
+        tags:
+          type: string
+          nullable: true
+          description: Comma-separated tags
+        created_at:
+          type: string
+          format: date-time
+          description: Record creation time
+        updated_at:
+          type: string
+          format: date-time
+          description: Record last update time
+
+    K8sNodeMetadata:
+      type: object
+      required:
+        - cluster_id
+        - node_name
+      properties:
+        cluster_id:
+          type: string
+          format: uuid
+          description: Cluster ID
+        node_name:
+          type: string
+          description: Node name
+
+    K8sPodMetadata:
+      type: object
+      required:
+        - cluster_id
+        - namespace
+        - pod_name
+        - container_name
+      properties:
+        cluster_id:
+          type: string
+          format: uuid
+          description: Cluster ID
+        namespace:
+          type: string
+          description: Namespace
+        pod_name:
+          type: string
+          description: Pod name
+        container_name:
+          type: string
+          description: Container name
+
+    RecordingTypeStats:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of recordings
+        total_size:
+          type: integer
+          format: int64
+          description: Total storage size (bytes)
+        total_duration:
+          type: integer
+          description: Total recording duration (seconds)
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request (invalid parameters)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: bad_request
+            message: Invalid query parameter 'page': must be >= 1
+
+    Unauthorized:
+      description: Unauthorized (missing or invalid JWT token)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+            message: Missing or invalid authentication token
+
+    Forbidden:
+      description: Forbidden (insufficient permissions)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: forbidden
+            message: You do not have permission to delete this recording
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+            message: Recording not found
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: internal_server_error
+            message: An unexpected error occurred
