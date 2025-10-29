@@ -69,7 +69,7 @@ func (h *TerminalHandler) HandleTerminalWebSocket(c *gin.Context) {
 		}
 
 		// Start pod terminal recording (T020 integration)
-		k8sSession, recorder, recordingModel, err := h.recordingService.StartPodTerminalRecording(
+		k8sSession, _, recordingModel, err := h.recordingService.StartPodTerminalRecording(
 			ctx,
 			user.ID,
 			cs.Name,
@@ -92,11 +92,8 @@ func (h *TerminalHandler) HandleTerminalWebSocket(c *gin.Context) {
 			}
 		}
 
-		// Wrap the WebSocket connection with recording decorator
-		wrappedConn := kube.NewRecordingWebSocketWrapper(ws, recorder)
-
-		// Create terminal session with wrapped connection
-		session := kube.NewTerminalSessionWithRecording(cs.K8sClient, wrappedConn, namespace, podName, container, k8sSession)
+		// Create terminal session with recording support
+		session := kube.NewTerminalSessionWithRecording(cs.K8sClient, ws, namespace, podName, container, k8sSession)
 		defer session.Close()
 
 		if err := session.Start(ctx, "exec"); err != nil {

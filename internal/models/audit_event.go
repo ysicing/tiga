@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // AuditEvent 统一的审计事件模型

@@ -10,6 +10,26 @@ import (
 	"github.com/ysicing/tiga/internal/models"
 )
 
+// K8sAuditStatistics K8s审计事件统计信息
+type K8sAuditStatistics struct {
+	TotalEvents        int64                `json:"total_events"`
+	EventsToday        int64                `json:"events_today"`
+	EventsByAction     []ActionCount        `json:"events_by_action"`
+	EventsByResourceType []ResourceTypeCount `json:"events_by_resource_type"`
+}
+
+// ActionCount 操作类型统计
+type ActionCount struct {
+	Action string `json:"action"`
+	Count  int64  `json:"count"`
+}
+
+// ResourceTypeCount 资源类型统计
+type ResourceTypeCount struct {
+	ResourceType string `json:"resource_type"`
+	Count        int64  `json:"count"`
+}
+
 // AuditEventRepository 统一审计事件仓储
 // 参考：.claude/specs/006-gitness-tiga/tasks.md T020
 //
@@ -225,6 +245,20 @@ func (r *auditEventRepository) applyFilters(query *gorm.DB, filter map[string]in
 		query = query.Where("timestamp <= ?", endTime)
 	}
 
+	// T027: K8s相关过滤
+	if clusterName, ok := filter["cluster_name"].(string); ok && clusterName != "" {
+		query = query.Where("resource->>'cluster_name' = ?", clusterName)
+	}
+	if k8sResource, ok := filter["k8s_resource"].(string); ok && k8sResource != "" {
+		query = query.Where("resource->>'name' = ?", k8sResource)
+	}
+	if k8sNamespace, ok := filter["k8s_namespace"].(string); ok && k8sNamespace != "" {
+		query = query.Where("resource->>'namespace' = ?", k8sNamespace)
+	}
+	if k8sResourceType, ok := filter["k8s_resource_type"].(string); ok && k8sResourceType != "" {
+		query = query.Where("resource->>'resource_type' = ?", k8sResourceType)
+	}
+
 	// 分页
 	if limit, ok := filter["limit"].(int); ok && limit > 0 {
 		query = query.Limit(limit)
@@ -234,4 +268,99 @@ func (r *auditEventRepository) applyFilters(query *gorm.DB, filter map[string]in
 	}
 
 	return query
+}
+
+// T027: ListK8sEvents retrieves K8s audit events with cluster filtering
+func (r *auditEventRepository) ListK8sEvents(ctx context.Context, clusterName string, limit, offset int) ([]*models.AuditEvent, int64, error) {
+	var events []*models.AuditEvent
+
+	query := r.db.WithContext(ctx).
+		Model(&models.AuditEvent{}).
+		Where("subsystem = ?", "kubernetes")
+
+	// Apply cluster filter
+	if clusterName != "" {
+		query = query.Where("resource->>'cluster_name' = ?", clusterName)
+	}
+
+	// Count total
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Fetch with pagination
+	err := query.
+		Order("timestamp DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&events).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return events, total, nil
+}
+
+// T027: GetK8sStatistics retrieves statistics about K8s audit events
+func (r *auditEventRepository) GetK8sStatistics(ctx context.Context, clusterName string) (*K8sAuditStatistics, error) {
+	var stats K8sAuditStatistics
+
+	query := r.db.WithContext(ctx).
+		Model(&models.AuditEvent{}).
+		Where("subsystem = ?", "kubernetes")
+
+	// Apply cluster filter if specified
+	if clusterName != "" {
+		query = query.Where("resource->>'cluster_name' = ?", clusterName)
+	}
+
+	// Get total count
+	if err := query.Count(&stats.TotalEvents).Error; err != nil {
+		return nil, err
+	}
+
+	// Get events by action type
+	err := query.
+		Where("action IN (?, ?, ?, ?, ?, ?)",
+			models.ActionCreateResource,
+			models.ActionUpdateResource,
+			models.ActionDeleteResource,
+			models.ActionViewResource,
+			models.ActionNodeTerminalAccess,
+			models.ActionPodTerminalAccess).
+		Select("action, COUNT(*) as count").
+		Group("action").
+		Scan(&stats.EventsByAction).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Get events by resource type
+	err = query.
+		Where("resource_type IS NOT NULL").
+		Select("resource_type, COUNT(*) as count").
+		Group("resource_type").
+		Scan(&stats.EventsByResourceType).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Get events created today
+	today := time.Now().Truncate(24 * time.Hour)
+	todayQuery := r.db.WithContext(ctx).
+		Model(&models.AuditEvent{}).
+		Where("subsystem = ?", "kubernetes").
+		Where("timestamp >= ?", today.UnixNano()/int64(time.Millisecond))
+
+	if clusterName != "" {
+		todayQuery = todayQuery.Where("resource->>'cluster_name' = ?", clusterName)
+	}
+
+	err = todayQuery.Count(&stats.EventsToday).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
 }

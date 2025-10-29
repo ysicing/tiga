@@ -2,7 +2,7 @@
 // This file was generated at 2025-10-29 22:15:00
 // Source: .claude/specs/010-k8s-pod-009/tasks.md (task: T023)
 
-package k8sservice
+package k8s
 
 import (
 	"context"
@@ -73,16 +73,15 @@ func (s *TerminalRecordingService) StartNodeTerminalRecording(
 
 	// Create database record
 	recordingModel := &models.TerminalRecording{
-		ID:              recordingID,
-		SessionID:       sessionID,
-		UserID:          userID,
-		RecordingType:   models.RecordingTypeK8sNode,
-		Title:           fmt.Sprintf("Node Terminal - %s", nodeName),
-		Status:          "active",
-		StartTime:       time.Now(),
-		DurationSeconds: 0,
-		TypeMetadata:    metadataJSON,
-		FilePath:        recordingFilePath,
+		SessionID:     sessionID,
+		UserID:        nil, // K8s recordings don't require UserID reference
+		Username:      "system", // TODO: Get actual username from context
+		RecordingType: models.RecordingTypeK8sNode,
+		TypeMetadata:  metadataJSON,
+		StoragePath:   recordingFilePath,
+		StartedAt:     time.Now(),
+		StorageType:   "local",
+		Format:        "asciinema",
 	}
 
 	// Save to database
@@ -92,14 +91,12 @@ func (s *TerminalRecordingService) StartNodeTerminalRecording(
 
 	// Create K8s terminal session
 	session := &kube.K8sTerminalSession{
-		SessionID:     sessionID,
-		Type:          kube.K8sTerminalSessionTypeNode,
-		ClusterID:     clusterID,
-		NodeName:      nodeName,
-		RecordingID:   &recordingID,
-		RecordingState: "active",
-		Recorder:      recorder,
-		StartedAt:     time.Now(),
+		SessionID:   sessionID,
+		ClusterID:   clusterID,
+		NodeName:    nodeName,
+		RecordingID: &recordingID,
+		Recorder:    recorder,
+		StartedAt:   time.Now(),
 	}
 
 	// Start recording with 2-hour timeout
@@ -154,16 +151,15 @@ func (s *TerminalRecordingService) StartPodTerminalRecording(
 
 	// Create database record
 	recordingModel := &models.TerminalRecording{
-		ID:              recordingID,
-		SessionID:       sessionID,
-		UserID:          userID,
-		RecordingType:   models.RecordingTypeK8sPod,
-		Title:           fmt.Sprintf("Pod Terminal - %s/%s/%s", namespace, podName, containerName),
-		Status:          "active",
-		StartTime:       time.Now(),
-		DurationSeconds: 0,
-		TypeMetadata:    metadataJSON,
-		FilePath:        recordingFilePath,
+		SessionID:     sessionID,
+		UserID:        nil, // K8s recordings don't require UserID reference
+		Username:      "system", // TODO: Get actual username from context
+		RecordingType: models.RecordingTypeK8sPod,
+		TypeMetadata:  metadataJSON,
+		StoragePath:   recordingFilePath,
+		StartedAt:     time.Now(),
+		StorageType:   "local",
+		Format:        "asciinema",
 	}
 
 	// Save to database
@@ -174,13 +170,11 @@ func (s *TerminalRecordingService) StartPodTerminalRecording(
 	// Create K8s terminal session
 	session := &kube.K8sTerminalSession{
 		SessionID:      sessionID,
-		Type:           kube.K8sTerminalSessionTypePod,
 		ClusterID:      clusterID,
 		Namespace:      namespace,
 		PodName:        podName,
 		ContainerName:  containerName,
 		RecordingID:    &recordingID,
-		RecordingState: "active",
 		Recorder:       recorder,
 		StartedAt:      time.Now(),
 	}
@@ -202,10 +196,10 @@ func (s *TerminalRecordingService) StopRecording(ctx context.Context, recordingI
 		return fmt.Errorf("failed to get recording: %w", err)
 	}
 
-	// Update status and duration
-	recording.Status = "stopped"
-	recording.EndTime = time.Now()
-	recording.DurationSeconds = int64(recording.EndTime.Sub(recording.StartTime).Seconds())
+	// Update duration
+	now := time.Now()
+	recording.EndedAt = &now
+	recording.Duration = int(now.Sub(recording.StartedAt).Seconds())
 
 	// Update database
 	if err := s.recordingRepo.Update(ctx, recording); err != nil {
@@ -213,7 +207,7 @@ func (s *TerminalRecordingService) StopRecording(ctx context.Context, recordingI
 	}
 
 	logrus.Infof("Stopped terminal recording: id=%s, reason=%s, duration=%ds",
-		recordingID, reason, recording.DurationSeconds)
+		recordingID, reason, recording.Duration)
 
 	return nil
 }

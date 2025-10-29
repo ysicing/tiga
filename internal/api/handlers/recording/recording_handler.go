@@ -1,6 +1,8 @@
 package recording
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -261,6 +263,179 @@ func (h *RecordingHandler) SearchRecordings(c *gin.Context) {
 // @Security BearerAuth
 func (h *RecordingHandler) GetStatistics(c *gin.Context) {
 	stats, err := h.managerService.GetStatistics(c.Request.Context())
+	if err != nil {
+		handlers.RespondInternalError(c, err)
+		return
+	}
+
+	handlers.RespondSuccess(c, stats)
+}
+
+// T028: ListK8sNodeRecordings retrieves terminal recordings for a specific K8s node
+// @Summary List K8s node terminal recordings
+// @Description Get paginated list of terminal recordings for a specific K8s node
+// @Tags recordings
+// @Accept json
+// @Produce json
+// @Param clusterName path string true "K8s cluster name"
+// @Param nodeName path string true "K8s node name"
+// @Param page query int false "Page number (default: 1)" minimum(1)
+// @Param limit query int false "Items per page (default: 20)" minimum(1) maximum(100)
+// @Success 200 {object} ListRecordingsResponse
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /api/v1/recordings/k8s/{clusterName}/nodes/{nodeName} [get]
+// @Security BearerAuth
+func (h *RecordingHandler) ListK8sNodeRecordings(c *gin.Context) {
+	clusterName := c.Param("clusterName")
+	nodeName := c.Param("nodeName")
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	offset := (page - 1) * limit
+
+	// Call repository method through interface casting
+	terminalRecordingRepo, ok := h.managerService.GetRecordingRepo().(repository.TerminalRecordingRepositoryInterface)
+	if !ok {
+		handlers.RespondInternalError(c, fmt.Errorf("invalid repository type"))
+		return
+	}
+
+	// Cast to the concrete type to access K8s-specific methods
+	repo := terminalRecordingRepo.(*repository.TerminalRecordingRepository)
+
+	recordings, total, err := repo.ListByK8sNode(c.Request.Context(), clusterName, nodeName, limit, offset)
+	if err != nil {
+		handlers.RespondInternalError(c, err)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
+	// Convert to metadata
+	items := make([]interface{}, 0, len(recordings))
+	for _, r := range recordings {
+		items = append(items, r.ToMetadata())
+	}
+
+	handlers.RespondSuccess(c, ListRecordingsResponse{
+		Items:      items,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	})
+}
+
+// T028: ListK8sPodRecordings retrieves terminal recordings for a specific K8s pod
+// @Summary List K8s pod terminal recordings
+// @Description Get paginated list of terminal recordings for a specific K8s pod
+// @Tags recordings
+// @Accept json
+// @Produce json
+// @Param clusterName path string true "K8s cluster name"
+// @Param namespace path string true "K8s namespace"
+// @Param podName path string true "K8s pod name"
+// @Param page query int false "Page number (default: 1)" minimum(1)
+// @Param limit query int false "Items per page (default: 20)" minimum(1) maximum(100)
+// @Success 200 {object} ListRecordingsResponse
+// @Failure 400 {object} handlers.ErrorResponse
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /api/v1/recordings/k8s/{clusterName}/namespaces/{namespace}/pods/{podName} [get]
+// @Security BearerAuth
+func (h *RecordingHandler) ListK8sPodRecordings(c *gin.Context) {
+	clusterName := c.Param("clusterName")
+	namespace := c.Param("namespace")
+	podName := c.Param("podName")
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	offset := (page - 1) * limit
+
+	// Call repository method through interface casting
+	terminalRecordingRepo, ok := h.managerService.GetRecordingRepo().(repository.TerminalRecordingRepositoryInterface)
+	if !ok {
+		handlers.RespondInternalError(c, fmt.Errorf("invalid repository type"))
+		return
+	}
+
+	// Cast to the concrete type to access K8s-specific methods
+	repo := terminalRecordingRepo.(*repository.TerminalRecordingRepository)
+
+	recordings, total, err := repo.ListByK8sPod(c.Request.Context(), clusterName, namespace, podName, limit, offset)
+	if err != nil {
+		handlers.RespondInternalError(c, err)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := int(total) / limit
+	if int(total)%limit > 0 {
+		totalPages++
+	}
+
+	// Convert to metadata
+	items := make([]interface{}, 0, len(recordings))
+	for _, r := range recordings {
+		items = append(items, r.ToMetadata())
+	}
+
+	handlers.RespondSuccess(c, ListRecordingsResponse{
+		Items:      items,
+		Total:      total,
+		Page:       page,
+		Limit:      limit,
+		TotalPages: totalPages,
+	})
+}
+
+// T028: GetK8sStatistics retrieves statistics about K8s terminal recordings
+// @Summary Get K8s recording statistics
+// @Description Get aggregated statistics about K8s terminal recordings (total count, size, by type)
+// @Tags recordings
+// @Accept json
+// @Produce json
+// @Param clusterName query string false "Filter by K8s cluster name"
+// @Success 200 {object} repository.TerminalRecordingStatistics
+// @Failure 500 {object} handlers.ErrorResponse
+// @Router /api/v1/recordings/k8s/statistics [get]
+// @Security BearerAuth
+func (h *RecordingHandler) GetK8sStatistics(c *gin.Context) {
+	clusterName := c.Query("clusterName")
+
+	// Call repository method through interface casting
+	terminalRecordingRepo, ok := h.managerService.GetRecordingRepo().(repository.TerminalRecordingRepositoryInterface)
+	if !ok {
+		handlers.RespondInternalError(c, fmt.Errorf("invalid repository type"))
+		return
+	}
+
+	// Cast to the concrete type to access K8s-specific methods
+	repo := terminalRecordingRepo.(*repository.TerminalRecordingRepository)
+
+	stats, err := repo.GetK8sStatistics(c.Request.Context(), clusterName)
 	if err != nil {
 		handlers.RespondInternalError(c, err)
 		return

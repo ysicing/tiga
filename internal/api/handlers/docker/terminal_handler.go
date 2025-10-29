@@ -228,7 +228,7 @@ func (h *TerminalHandler) CreateTerminalSession(c *gin.Context) {
 		SessionID:   session.ID,
 		InstanceID:  instanceID,
 		ContainerID: containerID,
-		UserID:      userID,
+		UserID:      &userID, // Convert to pointer for optional foreign key
 		Username:    username,
 		StartedAt:   now,
 		Rows:        req.Rows,

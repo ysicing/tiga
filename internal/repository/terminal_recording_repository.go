@@ -278,3 +278,108 @@ func (r *TerminalRecordingRepository) GetStatistics(ctx context.Context) (*Termi
 
 	return &stats, nil
 }
+
+// T026: ListByK8sNode retrieves terminal recordings for a specific K8s node
+func (r *TerminalRecordingRepository) ListByK8sNode(ctx context.Context, clusterName, nodeName string, limit, offset int) ([]*models.TerminalRecording, int64, error) {
+	var recordings []*models.TerminalRecording
+	var total int64
+
+	query := r.db.WithContext(ctx).
+		Model(&models.TerminalRecording{}).
+		Where("recording_type = ?", models.RecordingTypeK8sNode).
+		Where("k8s_cluster_name = ?", clusterName).
+		Where("k8s_node_name = ?", nodeName)
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Fetch with pagination
+	err := query.
+		Order("started_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Preload("Instance").
+		Find(&recordings).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return recordings, total, nil
+}
+
+// T026: ListByK8sPod retrieves terminal recordings for a specific K8s pod
+func (r *TerminalRecordingRepository) ListByK8sPod(ctx context.Context, clusterName, namespace, podName string, limit, offset int) ([]*models.TerminalRecording, int64, error) {
+	var recordings []*models.TerminalRecording
+	var total int64
+
+	query := r.db.WithContext(ctx).
+		Model(&models.TerminalRecording{}).
+		Where("recording_type = ?", models.RecordingTypeK8sPod).
+		Where("k8s_cluster_name = ?", clusterName).
+		Where("k8s_namespace = ?", namespace).
+		Where("k8s_pod_name = ?", podName)
+
+	// Count total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Fetch with pagination
+	err := query.
+		Order("started_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Preload("Instance").
+		Find(&recordings).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return recordings, total, nil
+}
+
+// T026: GetK8sStatistics retrieves statistics about K8s terminal recordings
+func (r *TerminalRecordingRepository) GetK8sStatistics(ctx context.Context, clusterName string) (*TerminalRecordingStatistics, error) {
+	var stats TerminalRecordingStatistics
+
+	// Build base query
+	query := r.db.WithContext(ctx).Model(&models.TerminalRecording{})
+
+	// Apply cluster filter if specified
+	if clusterName != "" {
+		query = query.Where("k8s_cluster_name = ?", clusterName)
+	}
+
+	// Get K8s-specific counts and stats
+	err := query.
+		Where("recording_type IN (?, ?)", models.RecordingTypeK8sNode, models.RecordingTypeK8sPod).
+		Select("COUNT(*) as total_recordings, " +
+			"COALESCE(SUM(duration), 0) as total_duration, " +
+			"COALESCE(SUM(file_size), 0) as total_size, " +
+			"COALESCE(AVG(duration), 0) as avg_duration, " +
+			"COALESCE(AVG(file_size), 0) as avg_size").
+		Scan(&stats).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Get K8s recordings created today
+	today := time.Now().Truncate(24 * time.Hour)
+	query = r.db.WithContext(ctx).
+		Model(&models.TerminalRecording{}).
+		Where("started_at >= ?", today).
+		Where("recording_type IN (?, ?)", models.RecordingTypeK8sNode, models.RecordingTypeK8sPod)
+
+	if clusterName != "" {
+		query = query.Where("k8s_cluster_name = ?", clusterName)
+	}
+
+	err = query.Count(&stats.RecordingsToday).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
+}

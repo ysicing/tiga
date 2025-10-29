@@ -9,19 +9,21 @@ import (
 	"time"
 
 	"golang.org/x/net/websocket"
+
+	"github.com/ysicing/tiga/internal/services/recording"
 )
 
 // RecordingWebSocketWrapper wraps a WebSocket connection to intercept data for recording
 type RecordingWebSocketWrapper struct {
 	conn      *websocket.Conn
-	recorder  *AsciinemaRecorder
+	recorder  *recording.AsciinemaRecorder
 	writeLock sync.Mutex
 	readLock  sync.Mutex
 	startedAt time.Time
 }
 
 // NewRecordingWebSocketWrapper creates a new recording WebSocket wrapper
-func NewRecordingWebSocketWrapper(conn *websocket.Conn, recorder *AsciinemaRecorder) *RecordingWebSocketWrapper {
+func NewRecordingWebSocketWrapper(conn *websocket.Conn, recorder *recording.AsciinemaRecorder) *RecordingWebSocketWrapper {
 	return &RecordingWebSocketWrapper{
 		conn:      conn,
 		recorder:  recorder,
