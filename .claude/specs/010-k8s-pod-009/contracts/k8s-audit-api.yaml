@@ -1,0 +1,703 @@
+openapi: 3.0.3
+info:
+  title: K8s Audit API
+  description: |
+    API endpoints for K8s operation audit management (extension of unified AuditEvent system).
+
+    Supports auditing:
+    - K8s resource operations (create, update, delete, view)
+    - Terminal access (node terminal, Pod container terminal)
+    - Read-only operations (view details, view logs, view YAML, view events)
+  version: 1.0.0
+  contact:
+    name: Tiga API Support
+
+servers:
+  - url: http://localhost:12306/api/v1
+    description: Development server
+  - url: https://api.tiga.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: audit
+    description: Audit log management
+
+paths:
+  /audit/events:
+    get:
+      summary: Query audit events
+      description: |
+        Query audit events with multi-dimensional filters.
+        Supports filtering by subsystem (kubernetes), action, resource type, user, time range, etc.
+      operationId: listAuditEvents
+      tags:
+        - audit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subsystem
+          in: query
+          description: |
+            Subsystem filter. For K8s audit, use `kubernetes`.
+            Other subsystems: http, minio, database, docker, host, webssh
+          schema:
+            type: string
+            enum: [kubernetes, http, minio, database, docker, host, webssh]
+        - name: action
+          in: query
+          description: |
+            Action type filter. K8s-specific actions:
+            - `CreateResource` - Resource creation
+            - `UpdateResource` - Resource update
+            - `DeleteResource` - Resource deletion
+            - `ViewResource` - Read-only operations (view details, logs, YAML, events)
+            - `NodeTerminalAccess` - Node terminal access
+            - `PodTerminalAccess` - Pod container terminal access
+          schema:
+            type: string
+        - name: resource_type
+          in: query
+          description: |
+            Resource type filter. K8s resource types:
+            - Standard: deployment, service, pod, configmap, secret, namespace, etc.
+            - Terminal: k8s_node, k8s_pod
+          schema:
+            type: string
+        - name: cluster_id
+          in: query
+          description: Filter by cluster ID (K8s subsystem only)
+          schema:
+            type: string
+            format: uuid
+        - name: namespace
+          in: query
+          description: Filter by namespace (K8s subsystem only)
+          schema:
+            type: string
+        - name: resource_name
+          in: query
+          description: Filter by resource name (partial match supported)
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          description: Filter by user ID
+          schema:
+            type: string
+            format: uuid
+        - name: username
+          in: query
+          description: Filter by username
+          schema:
+            type: string
+        - name: client_ip
+          in: query
+          description: Filter by client IP address
+          schema:
+            type: string
+        - name: success
+          in: query
+          description: Filter by operation result (true/false)
+          schema:
+            type: boolean
+        - name: start_time
+          in: query
+          description: Filter events after this time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Filter events before this time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: sort
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [timestamp, action, resource_type]
+            default: timestamp
+        - name: order
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - total
+                  - page
+                  - page_size
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  total:
+                    type: integer
+                    description: Total number of events matching filters
+                  page:
+                    type: integer
+                    description: Current page number
+                  page_size:
+                    type: integer
+                    description: Number of items per page
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /audit/events/{id}:
+    get:
+      summary: Get audit event details
+      description: Retrieve detailed information about a specific audit event
+      operationId: getAuditEvent
+      tags:
+        - audit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Audit event ID (UUID string)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /audit/stats:
+    get:
+      summary: Get audit statistics
+      description: |
+        Get aggregated statistics about audit events.
+        Includes counts by action, resource type, user, etc.
+      operationId: getAuditStats
+      tags:
+        - audit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: subsystem
+          in: query
+          description: Filter by subsystem (e.g., kubernetes)
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          description: Statistics start time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          description: Statistics end time (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_count:
+                    type: integer
+                    description: Total number of audit events
+                  by_action:
+                    type: object
+                    description: Counts grouped by action type
+                    additionalProperties:
+                      type: integer
+                    example:
+                      CreateResource: 150
+                      UpdateResource: 85
+                      DeleteResource: 32
+                      ViewResource: 1243
+                      NodeTerminalAccess: 47
+                      PodTerminalAccess: 128
+                  by_resource_type:
+                    type: object
+                    description: Counts grouped by resource type
+                    additionalProperties:
+                      type: integer
+                    example:
+                      deployment: 68
+                      service: 42
+                      pod: 215
+                      k8s_node: 47
+                      k8s_pod: 128
+                  by_user:
+                    type: array
+                    description: Counts grouped by user
+                    items:
+                      type: object
+                      properties:
+                        user_id:
+                          type: string
+                          format: uuid
+                        username:
+                          type: string
+                        count:
+                          type: integer
+                        actions:
+                          type: object
+                          additionalProperties:
+                            type: integer
+                  success_rate:
+                    type: object
+                    properties:
+                      successful:
+                        type: integer
+                        description: Count of successful operations
+                      failed:
+                        type: integer
+                        description: Count of failed operations
+                      rate:
+                        type: number
+                        format: float
+                        description: Success rate (0.0-1.0)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /audit/cleanup:
+    post:
+      summary: Trigger audit cleanup
+      description: |
+        Manually trigger cleanup of expired audit events (older than retention period, default 90 days).
+        Requires admin role.
+      operationId: cleanupAuditEvents
+      tags:
+        - audit
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  description: If true, only return what would be deleted without actually deleting
+                  default: false
+                retention_days:
+                  type: integer
+                  description: Custom retention period (overrides default 90 days)
+                  minimum: 1
+                  maximum: 365
+                subsystem:
+                  type: string
+                  description: Only clean up events from this subsystem (optional)
+      responses:
+        '200':
+          description: Cleanup completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted_count:
+                    type: integer
+                    description: Number of audit events deleted
+                  deleted_events:
+                    type: array
+                    description: List of deleted event IDs (only if dry_run=true)
+                    items:
+                      type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuditEvent:
+      type: object
+      required:
+        - id
+        - timestamp
+        - action
+        - resource_type
+        - resource
+        - subsystem
+        - user
+        - client_ip
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Audit event ID (UUID string)
+        timestamp:
+          type: integer
+          format: int64
+          description: Event timestamp (Unix milliseconds)
+        action:
+          type: string
+          description: |
+            Action type. K8s-specific actions:
+            - CreateResource, UpdateResource, DeleteResource
+            - ViewResource (read-only operations)
+            - NodeTerminalAccess, PodTerminalAccess
+          example: CreateResource
+        resource_type:
+          type: string
+          description: Resource type (e.g., deployment, service, pod, k8s_node, k8s_pod)
+          example: deployment
+        resource:
+          $ref: '#/components/schemas/ResourceInfo'
+        subsystem:
+          type: string
+          description: Subsystem identifier (e.g., kubernetes)
+          example: kubernetes
+        user:
+          $ref: '#/components/schemas/UserInfo'
+        space_path:
+          type: string
+          nullable: true
+          description: Space path (optional)
+        client_ip:
+          type: string
+          description: Client IP address
+        user_agent:
+          type: string
+          nullable: true
+          description: User agent string
+        request_method:
+          type: string
+          nullable: true
+          description: HTTP request method (GET, POST, PUT, DELETE)
+        request_id:
+          type: string
+          nullable: true
+          description: Request correlation ID
+        created_at:
+          type: string
+          format: date-time
+          description: Audit record creation time
+
+    AuditEventDetail:
+      allOf:
+        - $ref: '#/components/schemas/AuditEvent'
+        - type: object
+          properties:
+            diff_object:
+              $ref: '#/components/schemas/DiffObject'
+            data:
+              type: object
+              description: Custom data (subsystem-specific)
+
+    ResourceInfo:
+      type: object
+      required:
+        - type
+        - identifier
+      properties:
+        type:
+          type: string
+          description: Resource type
+          example: deployment
+        identifier:
+          type: string
+          description: Resource identifier (name or ID)
+          example: nginx-deployment
+        data:
+          type: object
+          description: |
+            Resource-specific data. For K8s audit:
+            ```json
+            {
+              "cluster_id": "550e8400-e29b-41d4-a716-446655440000",
+              "cluster_name": "prod-cluster",
+              "namespace": "default",
+              "resource_name": "nginx-deployment",
+              "change_summary": "replicas: 3 -> 5\nimage: nginx:1.19 -> nginx:1.21",
+              "recording_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+              "success": "true",
+              "error_message": null
+            }
+            ```
+          properties:
+            cluster_id:
+              type: string
+              format: uuid
+              description: Cluster ID
+            cluster_name:
+              type: string
+              description: Cluster name (redundant for display)
+            namespace:
+              type: string
+              description: Namespace (optional, cluster-level resources have no namespace)
+            resource_name:
+              type: string
+              description: Resource name
+            change_summary:
+              type: string
+              description: Change summary (update operations only)
+            recording_id:
+              type: string
+              format: uuid
+              description: Associated recording ID (terminal access only)
+            success:
+              type: string
+              enum: ["true", "false"]
+              description: Operation result (stored as string in JSON)
+            error_message:
+              type: string
+              nullable: true
+              description: Error message (failure only)
+
+    UserInfo:
+      type: object
+      required:
+        - uid
+        - username
+        - type
+      properties:
+        uid:
+          type: string
+          format: uuid
+          description: User ID
+        username:
+          type: string
+          description: Username
+        type:
+          type: string
+          description: User type (user, service_account, anonymous)
+          example: user
+
+    DiffObject:
+      type: object
+      nullable: true
+      description: |
+        Diff object for update operations (optional).
+        Contains old and new resource state (max 64KB each).
+      properties:
+        old_object:
+          type: string
+          description: Old resource state (JSON/YAML)
+        new_object:
+          type: string
+          description: New resource state (JSON/YAML)
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request (invalid parameters)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: bad_request
+            message: Invalid query parameter 'page': must be >= 1
+
+    Unauthorized:
+      description: Unauthorized (missing or invalid JWT token)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: unauthorized
+            message: Missing or invalid authentication token
+
+    Forbidden:
+      description: Forbidden (insufficient permissions)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: forbidden
+            message: Admin role required for cleanup operation
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: not_found
+            message: Audit event not found
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: internal_server_error
+            message: An unexpected error occurred
+
+  examples:
+    ResourceCreationEvent:
+      summary: Resource creation audit
+      value:
+        id: 8d7c6b5a-4321-fedc-ba98-76543210abcd
+        timestamp: 1730019600000
+        action: CreateResource
+        resource_type: deployment
+        resource:
+          type: deployment
+          identifier: nginx-deployment
+          data:
+            cluster_id: c1d2e3f4-a5b6-7890-cdef-1234567890ab
+            cluster_name: prod-cluster
+            namespace: default
+            resource_name: nginx-deployment
+            success: "true"
+        subsystem: kubernetes
+        user:
+          uid: 550e8400-e29b-41d4-a716-446655440000
+          username: admin
+          type: user
+        client_ip: 192.168.1.100
+        request_method: POST
+        created_at: "2025-10-27T10:00:00Z"
+
+    ResourceUpdateEvent:
+      summary: Resource update audit with change summary
+      value:
+        id: 9e8d7c6b-5432-1fed-cba9-87654321dcba
+        timestamp: 1730020200000
+        action: UpdateResource
+        resource_type: deployment
+        resource:
+          type: deployment
+          identifier: nginx-deployment
+          data:
+            cluster_id: c1d2e3f4-a5b6-7890-cdef-1234567890ab
+            namespace: default
+            resource_name: nginx-deployment
+            change_summary: "replicas: 3 -> 5\nimage: nginx:1.19 -> nginx:1.21"
+            success: "true"
+        subsystem: kubernetes
+        user:
+          uid: 550e8400-e29b-41d4-a716-446655440000
+          username: admin
+          type: user
+        client_ip: 192.168.1.100
+        request_method: PATCH
+        diff_object:
+          old_object: "spec:\n  replicas: 3\n  template:\n    spec:\n      containers:\n      - image: nginx:1.19\n"
+          new_object: "spec:\n  replicas: 5\n  template:\n    spec:\n      containers:\n      - image: nginx:1.21\n"
+        created_at: "2025-10-27T10:10:00Z"
+
+    TerminalAccessEvent:
+      summary: Terminal access audit with recording link
+      value:
+        id: af9e8d7c-6543-2fed-dcba-98765432edcb
+        timestamp: 1730021000000
+        action: NodeTerminalAccess
+        resource_type: k8s_node
+        resource:
+          type: k8s_node
+          identifier: node-1
+          data:
+            cluster_id: c1d2e3f4-a5b6-7890-cdef-1234567890ab
+            resource_name: node-1
+            recording_id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+            success: "true"
+        subsystem: kubernetes
+        user:
+          uid: 550e8400-e29b-41d4-a716-446655440000
+          username: admin
+          type: user
+        client_ip: 192.168.1.100
+        created_at: "2025-10-27T10:23:20Z"
+
+    ReadOnlyEvent:
+      summary: Read-only operation audit (view Pod logs)
+      value:
+        id: bf0f9e8d-7654-3fed-edcb-a9876543fedc
+        timestamp: 1730021500000
+        action: ViewResource
+        resource_type: pod
+        resource:
+          type: pod
+          identifier: nginx-6c8b5b5d4f-abc123
+          data:
+            cluster_id: c1d2e3f4-a5b6-7890-cdef-1234567890ab
+            namespace: default
+            resource_name: nginx-6c8b5b5d4f-abc123
+            success: "true"
+        subsystem: kubernetes
+        user:
+          uid: 660f9400-f3ab-52e5-b827-557766551111
+          username: developer
+          type: user
+        client_ip: 192.168.1.105
+        request_method: GET
+        data:
+          operation: view_logs
+          container: nginx
+        created_at: "2025-10-27T10:31:40Z"

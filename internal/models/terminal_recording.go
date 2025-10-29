@@ -1,13 +1,27 @@
 package models
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
+
+// Recording type constants
+const (
+	RecordingTypeDocker  = "docker"
+	RecordingTypeWebSSH  = "webssh"
+	RecordingTypeK8sNode = "k8s_node"
+	RecordingTypeK8sPod  = "k8s_pod"
+)
+
+// MaxRecordingDuration is the maximum recording duration (2 hours in seconds)
+const MaxRecordingDuration = 7200
 
 // TerminalRecording represents a terminal session recording for audit and playback
 // Supports multiple terminal types: Docker, WebSSH, K8s Node, K8s Pod
@@ -61,31 +75,114 @@ func (TerminalRecording) AfterMigrate(tx *gorm.DB) error {
 	// This index is used by FindExpired and FindInvalid repository methods
 	dbDialect := tx.Dialector.Name()
 
-	var sql string
+	var sqls []string
+
+	// Index 1: Cleanup index (existing)
 	switch dbDialect {
 	case "postgres", "sqlite":
 		// PostgreSQL and SQLite support partial indexes with WHERE clause
-		sql = `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_cleanup
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_cleanup
 		       ON terminal_recordings(ended_at, file_size, duration)
-		       WHERE ended_at IS NOT NULL`
+		       WHERE ended_at IS NOT NULL`)
 	case "mysql":
 		// MySQL doesn't support partial indexes, create full composite index
-		sql = `CREATE INDEX idx_terminal_recordings_cleanup
-		       ON terminal_recordings(ended_at, file_size, duration)`
-	default:
-		// Skip index creation for unsupported databases
-		return nil
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_cleanup
+		       ON terminal_recordings(ended_at, file_size, duration)`)
 	}
 
-	// For MySQL, ignore "Duplicate key name" errors (index already exists)
-	if err := tx.Exec(sql).Error; err != nil && dbDialect == "mysql" {
-		// Log but don't fail - index may already exist
-		return nil
-	} else if err != nil {
-		return err
+	// Index 2: K8s cluster filtering (010-k8s-pod-009 T003)
+	// Enables fast queries by cluster_id from type_metadata JSONB field
+	switch dbDialect {
+	case "postgres":
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_cluster
+		       ON terminal_recordings((type_metadata->>'cluster_id'))
+		       WHERE recording_type IN ('k8s_node', 'k8s_pod')`)
+	case "sqlite":
+		// SQLite requires JSON_EXTRACT syntax
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_cluster
+		       ON terminal_recordings(json_extract(type_metadata, '$.cluster_id'))
+		       WHERE recording_type IN ('k8s_node', 'k8s_pod')`)
+	case "mysql":
+		// MySQL requires virtual column for JSON indexing
+		sqls = append(sqls, `ALTER TABLE terminal_recordings
+		       ADD COLUMN IF NOT EXISTS k8s_cluster_id VARCHAR(255)
+		       AS (JSON_UNQUOTE(JSON_EXTRACT(type_metadata, '$.cluster_id'))) VIRTUAL`)
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_cluster
+		       ON terminal_recordings(k8s_cluster_id)
+		       WHERE recording_type IN ('k8s_node', 'k8s_pod')`)
+	}
+
+	// Index 3: K8s node filtering (010-k8s-pod-009 T003)
+	switch dbDialect {
+	case "postgres":
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_node
+		       ON terminal_recordings((type_metadata->>'node_name'))
+		       WHERE recording_type = 'k8s_node'`)
+	case "sqlite":
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_node
+		       ON terminal_recordings(json_extract(type_metadata, '$.node_name'))
+		       WHERE recording_type = 'k8s_node'`)
+	case "mysql":
+		sqls = append(sqls, `ALTER TABLE terminal_recordings
+		       ADD COLUMN IF NOT EXISTS k8s_node_name VARCHAR(255)
+		       AS (JSON_UNQUOTE(JSON_EXTRACT(type_metadata, '$.node_name'))) VIRTUAL`)
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_node
+		       ON terminal_recordings(k8s_node_name)
+		       WHERE recording_type = 'k8s_node'`)
+	}
+
+	// Index 4: K8s Pod filtering (010-k8s-pod-009 T003)
+	switch dbDialect {
+	case "postgres":
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_pod
+		       ON terminal_recordings((type_metadata->>'pod_name'))
+		       WHERE recording_type = 'k8s_pod'`)
+	case "sqlite":
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_pod
+		       ON terminal_recordings(json_extract(type_metadata, '$.pod_name'))
+		       WHERE recording_type = 'k8s_pod'`)
+	case "mysql":
+		sqls = append(sqls, `ALTER TABLE terminal_recordings
+		       ADD COLUMN IF NOT EXISTS k8s_pod_name VARCHAR(255)
+		       AS (JSON_UNQUOTE(JSON_EXTRACT(type_metadata, '$.pod_name'))) VIRTUAL`)
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_terminal_recordings_k8s_pod
+		       ON terminal_recordings(k8s_pod_name)
+		       WHERE recording_type = 'k8s_pod'`)
+	}
+
+	// Execute all SQL statements
+	for _, sql := range sqls {
+		if sql == "" {
+			continue
+		}
+		if err := tx.Exec(sql).Error; err != nil {
+			// For MySQL, ignore "Duplicate" errors (index/column already exists)
+			if dbDialect == "mysql" {
+				// Log but don't fail
+				continue
+			}
+			// For other databases, only fail on non-"already exists" errors
+			if !isAlreadyExistsError(err) {
+				return err
+			}
+		}
 	}
 
 	return nil
+}
+
+// isAlreadyExistsError checks if the error is an "already exists" error
+func isAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	// PostgreSQL: "already exists"
+	// SQLite: "already exists", "duplicate column name"
+	// MySQL: "Duplicate", "already exists"
+	return strings.Contains(errMsg, "already exists") ||
+		strings.Contains(errMsg, "Duplicate") ||
+		strings.Contains(errMsg, "duplicate")
 }
 
 // RecordingFrame represents a single frame in the terminal recording (asciinema format)
@@ -210,4 +307,42 @@ func (r *TerminalRecording) GetFileSizeString() string {
 	default:
 		return fmt.Sprintf("%d B", r.FileSize)
 	}
+}
+
+// ValidateTypeMetadata validates the type_metadata field based on recording_type
+func (r *TerminalRecording) ValidateTypeMetadata() error {
+	if len(r.TypeMetadata) == 0 {
+		return nil // Empty metadata is allowed for legacy recordings
+	}
+
+	var metadata map[string]interface{}
+	if err := json.Unmarshal(r.TypeMetadata, &metadata); err != nil {
+		return fmt.Errorf("invalid type_metadata JSON: %w", err)
+	}
+
+	switch r.RecordingType {
+	case RecordingTypeK8sNode:
+		if clusterID, ok := metadata["cluster_id"].(string); !ok || clusterID == "" {
+			return errors.New("k8s_node recording requires cluster_id in type_metadata")
+		}
+		if nodeName, ok := metadata["node_name"].(string); !ok || nodeName == "" {
+			return errors.New("k8s_node recording requires node_name in type_metadata")
+		}
+	case RecordingTypeK8sPod:
+		requiredFields := []string{"cluster_id", "namespace", "pod_name", "container_name"}
+		for _, field := range requiredFields {
+			if val, ok := metadata[field].(string); !ok || val == "" {
+				return fmt.Errorf("k8s_pod recording requires %s in type_metadata", field)
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateDuration checks if recording duration exceeds 2-hour limit
+func (r *TerminalRecording) ValidateDuration() error {
+	if r.Duration > MaxRecordingDuration {
+		return fmt.Errorf("recording duration %d seconds exceeds maximum %d seconds (2 hours)", r.Duration, MaxRecordingDuration)
+	}
+	return nil
 }

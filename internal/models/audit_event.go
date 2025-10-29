@@ -48,6 +48,66 @@ func (AuditEvent) TableName() string {
 	return "audit_events"
 }
 
+// AfterMigrate creates composite indexes for K8s subsystem query optimization
+// (010-k8s-pod-009 T003)
+func (AuditEvent) AfterMigrate(tx *gorm.DB) error {
+	dbDialect := tx.Dialector.Name()
+
+	var sqls []string
+
+	// K8s query optimization index (resource_type, action, timestamp)
+	// Enables fast queries: subsystem=kubernetes&action=CreateResource&resource_type=deployment
+	// Partial index only for kubernetes subsystem to save space
+	switch dbDialect {
+	case "postgres", "sqlite":
+		// PostgreSQL and SQLite support partial indexes with WHERE clause
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_audit_events_k8s_query
+		       ON audit_events(resource_type, action, timestamp DESC)
+		       WHERE subsystem = 'kubernetes'`)
+	case "mysql":
+		// MySQL doesn't support partial indexes, create full composite index
+		// Note: MySQL will use this index when subsystem='kubernetes' is in WHERE clause
+		sqls = append(sqls, `CREATE INDEX IF NOT EXISTS idx_audit_events_k8s_query
+		       ON audit_events(subsystem, resource_type, action, timestamp)`)
+	}
+
+	// Execute all SQL statements
+	for _, sql := range sqls {
+		if sql == "" {
+			continue
+		}
+		if err := tx.Exec(sql).Error; err != nil {
+			// Ignore "already exists" errors
+			if !isAuditAlreadyExistsError(err) {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// isAuditAlreadyExistsError checks if the error is an "already exists" error
+func isAuditAlreadyExistsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	return contains(errMsg, "already exists") ||
+		contains(errMsg, "Duplicate") ||
+		contains(errMsg, "duplicate")
+}
+
+func contains(s, substr string) bool {
+	// Use simple string search
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 // GetID 实现 audit.AuditLog 接口 - 返回审计日志 ID
 func (ae *AuditEvent) GetID() string {
 	return ae.ID
@@ -158,6 +218,14 @@ const (
 	ActionNodeDeleted       Action = "node_deleted"
 	ActionSystemAlert       Action = "system_alert"
 	ActionSystemError       Action = "system_error"
+
+	// K8s 资源操作审计 (010-k8s-pod-009 T002)
+	ActionCreateResource    Action = "CreateResource"    // K8s 资源创建
+	ActionUpdateResource    Action = "UpdateResource"    // K8s 资源更新
+	ActionDeleteResource    Action = "DeleteResource"    // K8s 资源删除
+	ActionViewResource      Action = "ViewResource"      // K8s 只读操作（查看详情、日志等）
+	ActionNodeTerminalAccess Action = "NodeTerminalAccess" // K8s 节点终端访问
+	ActionPodTerminalAccess  Action = "PodTerminalAccess"  // K8s Pod 容器终端访问
 )
 
 // Validate 验证操作类型有效性
@@ -170,7 +238,10 @@ func (a Action) Validate() error {
 		ActionAgentConnected, ActionAgentDisconnected, ActionAgentReconnected,
 		ActionTerminalCreated, ActionTerminalClosed, ActionTerminalReplay,
 		ActionNodeCreated, ActionNodeUpdated, ActionNodeDeleted,
-		ActionSystemAlert, ActionSystemError:
+		ActionSystemAlert, ActionSystemError,
+		// K8s 资源操作审计 (010-k8s-pod-009 T002)
+		ActionCreateResource, ActionUpdateResource, ActionDeleteResource,
+		ActionViewResource, ActionNodeTerminalAccess, ActionPodTerminalAccess:
 		return nil
 	default:
 		return fmt.Errorf("invalid action: %s", a)
@@ -193,6 +264,10 @@ const (
 	ResourceTypeService    ResourceType = "service"
 	ResourceTypeConfigMap  ResourceType = "configMap"
 	ResourceTypeSecret     ResourceType = "secret"
+
+	// K8s 终端资源 (010-k8s-pod-009 T002)
+	ResourceTypeK8sNode ResourceType = "k8s_node" // K8s 节点终端
+	ResourceTypeK8sPod  ResourceType = "k8s_pod"  // K8s Pod 容器终端
 
 	// 数据库资源
 	ResourceTypeDatabase         ResourceType = "database"
@@ -231,6 +306,8 @@ func (rt ResourceType) Validate() error {
 	switch rt {
 	case ResourceTypeCluster, ResourceTypePod, ResourceTypeDeployment,
 		ResourceTypeService, ResourceTypeConfigMap, ResourceTypeSecret,
+		// K8s 终端资源 (010-k8s-pod-009 T002)
+		ResourceTypeK8sNode, ResourceTypeK8sPod,
 		ResourceTypeDatabase, ResourceTypeDatabaseInstance, ResourceTypeDatabaseUser,
 		ResourceTypeMinIO, ResourceTypeRedis, ResourceTypeMySQL, ResourceTypePostgreSQL,
 		ResourceTypeUser, ResourceTypeRole, ResourceTypeInstance,
@@ -433,3 +510,31 @@ func (st SubsystemType) Validate() error {
 func (st SubsystemType) String() string {
 	return string(st)
 }
+
+// IsReadOnlyOperation checks if the action is a read-only operation
+// (010-k8s-pod-009 T002)
+func (ae *AuditEvent) IsReadOnlyOperation() bool {
+	return ae.Action == ActionViewResource || ae.Action == ActionRead
+}
+
+// IsModifyOperation checks if the action is a modification operation
+// (010-k8s-pod-009 T002)
+func (ae *AuditEvent) IsModifyOperation() bool {
+	return ae.Action == ActionCreateResource ||
+		ae.Action == ActionUpdateResource ||
+		ae.Action == ActionDeleteResource ||
+		ae.Action == ActionCreated ||
+		ae.Action == ActionUpdated ||
+		ae.Action == ActionDeleted
+}
+
+// IsExpired checks if audit event has expired based on retention days
+// (010-k8s-pod-009 T002)
+func (ae *AuditEvent) IsExpired(retentionDays int) bool {
+	if retentionDays <= 0 {
+		return false // No retention policy, never expire
+	}
+	cutoffTime := time.Now().AddDate(0, 0, -retentionDays)
+	return ae.CreatedAt.Before(cutoffTime)
+}
+
