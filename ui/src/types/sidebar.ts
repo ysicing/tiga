@@ -20,6 +20,7 @@ export interface SidebarGroup {
 }
 
 export interface SidebarConfig {
+  version: number  // 配置版本号
   groups: SidebarGroup[]
   hiddenItems: string[]
   pinnedItems: string[]

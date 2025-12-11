@@ -44,6 +44,7 @@ import {
 } from '@/types/sidebar'
 
 const SIDEBAR_CONFIG_KEY = 'tiga-sidebar-config'
+const CURRENT_CONFIG_VERSION = 2  // 配置版本号（修改分组顺序后递增）
 
 const iconMap = {
   IconBox,
@@ -250,7 +251,7 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
                 {
                   id: 'openkruise-daemonsets',
                   titleKey: 'nav.kruise-daemonsets',
-                  url: '/k8s/advanceddaemonsets',
+                  url: '/k8s/daemonsets.apps.kruise.io',
                   icon: 'IconTopologyBus',
                   visible: true,
                   pinned: false,
@@ -365,7 +366,7 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
             },
           ],
           visible: true,
-          collapsed: false,
+          collapsed: true,
           order: groupOrder++,
         })
       } else {
@@ -392,6 +393,7 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
     })
 
     return {
+      version: CURRENT_CONFIG_VERSION,
       groups,
       hiddenItems: [],
       pinnedItems: [],
@@ -405,7 +407,12 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
       const stored = localStorage.getItem(SIDEBAR_CONFIG_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as SidebarConfig
-        if (parsed.groups && Array.isArray(parsed.groups)) {
+        // 检查版本号，如果不匹配则重新生成配置
+        if (
+          parsed.groups &&
+          Array.isArray(parsed.groups) &&
+          parsed.version === CURRENT_CONFIG_VERSION
+        ) {
           setConfig(parsed)
           return
         }
@@ -414,6 +421,7 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
       console.warn('Failed to load sidebar config from localStorage:', error)
     }
 
+    // 生成新配置（首次访问或版本不匹配）
     const defaultConfig = generateDefaultConfig()
     setConfig(defaultConfig)
     try {
@@ -578,7 +586,7 @@ export const SidebarConfigProvider: React.FC<SidebarConfigProviderProps> = ({
           const newItem: SidebarItem = {
             id: itemId,
             titleKey: kind,
-            url: `/crds/${crdName}`,
+            url: `/k8s/crds/${crdName}`,
             icon: 'IconCode',
             visible: true,
             pinned: false,

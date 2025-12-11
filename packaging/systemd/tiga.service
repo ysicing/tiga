@@ -1,0 +1,40 @@
+[Unit]
+Description=Tiga DevOps Platform Server
+Documentation=https://github.com/ysicing/tiga
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tiga
+Group=tiga
+WorkingDirectory=/var/lib/tiga
+ExecStart=/usr/bin/tiga
+Restart=on-failure
+RestartSec=5s
+
+# 环境变量
+Environment="TIGA_CONFIG=/etc/tiga/config.yaml"
+EnvironmentFile=-/etc/tiga/.env
+
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/tiga /var/log/tiga /etc/tiga
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tiga
+
+[Install]
+WantedBy=multi-user.target

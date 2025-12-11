@@ -72,8 +72,10 @@ import { CloneSetListPage } from './pages/k8s/cloneset-list-page'
 import { CloneSetDetail } from './pages/k8s/cloneset-detail'
 import { AdvancedDaemonSetListPage } from './pages/k8s/advanced-daemonset-list-page'
 import { AdvancedDaemonSetDetail } from './pages/k8s/advanced-daemonset-detail'
-// import { BroadcastJobListPage } from './pages/k8s/broadcastjob-list-page'
-// import { SidecarSetListPage } from './pages/k8s/sidecarset-list-page'
+import { BroadcastJobListPage } from './pages/k8s/broadcastjob-list-page'
+import { BroadcastJobDetail } from './pages/k8s/broadcastjob-detail'
+import { SidecarSetListPage } from './pages/k8s/sidecarset-list-page'
+import { SidecarSetDetail } from './pages/k8s/sidecarset-detail'
 // import { ImagePullJobListPage } from './pages/k8s/imagepulljob-list-page'
 // import { NodeImageListPage } from './pages/k8s/nodeimage-list-page'
 // import { UnitedDeploymentListPage } from './pages/k8s/uniteddeployment-list-page'
@@ -135,6 +137,16 @@ const ConnectorDetailWrapper = () => {
 const ProxyClassDetailWrapper = () => {
   const { name } = useParams<{ name: string }>()
   return <ProxyClassDetail name={name!} />
+}
+
+const BroadcastJobDetailWrapper = () => {
+  const { namespace, name } = useParams<{ namespace: string; name: string }>()
+  return <BroadcastJobDetail namespace={namespace!} name={name!} />
+}
+
+const SidecarSetDetailWrapper = () => {
+  const { name } = useParams<{ name: string }>()
+  return <SidecarSetDetail name={name!} />
 }
 
 export const router = createBrowserRouter([
@@ -513,11 +525,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'broadcastjobs',
-        element: <div>Coming Soon: BroadcastJobs</div>,
+        element: <BroadcastJobListPage />,
+      },
+      {
+        path: 'broadcastjobs/:namespace/:name',
+        element: <BroadcastJobDetailWrapper />,
       },
       {
         path: 'sidecarsets',
-        element: <div>Coming Soon: SidecarSets</div>,
+        element: <SidecarSetListPage />,
+      },
+      {
+        path: 'sidecarsets/:name',
+        element: <SidecarSetDetailWrapper />,
       },
       {
         path: 'imagepulljobs',

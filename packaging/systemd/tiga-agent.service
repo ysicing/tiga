@@ -1,0 +1,30 @@
+[Unit]
+Description=Tiga Agent for Host Monitoring
+Documentation=https://github.com/ysicing/tiga
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/lib/tiga
+ExecStart=/usr/bin/tiga-agent
+Restart=on-failure
+RestartSec=5s
+
+# 环境变量
+Environment="TIGA_SERVER=http://localhost:12306"
+EnvironmentFile=-/etc/tiga/agent.env
+
+# 资源限制
+LimitNOFILE=65536
+LimitNPROC=2048
+
+# 日志
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tiga-agent
+
+[Install]
+WantedBy=multi-user.target

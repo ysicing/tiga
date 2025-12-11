@@ -15,6 +15,20 @@ export type AdvancedDaemonSetStatusType =
   | 'Available'
   | 'In Progress'
 
+export type BroadcastJobStatusType =
+  | 'Unknown'
+  | 'Pending'
+  | 'Running'
+  | 'Succeeded'
+  | 'Failed'
+  | 'Paused'
+
+export type SidecarSetStatusType =
+  | 'Unknown'
+  | 'Ready'
+  | 'NotReady'
+  | 'Updating'
+
 // CloneSet types based on OpenKruise API
 export interface CloneSet {
   apiVersion: string
@@ -260,6 +274,226 @@ export interface AdvancedDaemonSet {
     collisionCount?: number
   }
 }
+
+// BroadcastJob types based on OpenKruise API
+export interface BroadcastJob {
+  apiVersion: string
+  kind: string
+  metadata: {
+    name: string
+    namespace?: string
+    creationTimestamp?: string
+    uid?: string
+    resourceVersion?: string
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+    deletionTimestamp?: string
+    ownerReferences?: Array<{
+      apiVersion: string
+      kind: string
+      name: string
+      uid: string
+      controller?: boolean
+    }>
+  }
+  spec: {
+    template: {
+      metadata?: {
+        labels?: Record<string, string>
+        annotations?: Record<string, string>
+      }
+      spec: {
+        containers: Array<{
+          name: string
+          image: string
+          command?: string[]
+          args?: string[]
+          env?: Array<{
+            name: string
+            value?: string
+          }>
+          resources?: {
+            requests?: {
+              cpu?: string
+              memory?: string
+            }
+            limits?: {
+              cpu?: string
+              memory?: string
+            }
+          }
+          volumeMounts?: Array<{
+            name: string
+            mountPath: string
+          }>
+          imagePullPolicy?: string
+        }>
+        volumes?: Array<{
+          name: string
+          configMap?: {
+            name: string
+          }
+          secret?: {
+            secretName: string
+          }
+          persistentVolumeClaim?: {
+            claimName: string
+          }
+          emptyDir?: Record<string, unknown>
+        }>
+        restartPolicy?: string
+        serviceAccountName?: string
+        imagePullSecrets?: Array<{
+          name: string
+        }>
+        nodeSelector?: Record<string, string>
+        tolerations?: Array<{
+          key?: string
+          operator?: string
+          value?: string
+          effect?: string
+          tolerationSeconds?: number
+        }>
+      }
+    }
+    parallelism?: number
+    completionPolicy?: {
+      type?: string
+      ttlSecondsAfterFinished?: number
+    }
+    paused?: boolean
+    ttlSecondsAfterFinished?: number
+    failurePolicy?: {
+      type?: string
+      restartLimit?: number
+    }
+  }
+  status?: {
+    active?: number
+    succeeded?: number
+    failed?: number
+    desired?: number
+    phase?: string
+    conditions?: Array<{
+      type: string
+      status: string
+      lastTransitionTime?: string
+      lastProbeTime?: string
+      reason?: string
+      message?: string
+    }>
+    startTime?: string
+    completionTime?: string
+  }
+}
+
+// SidecarSet types based on OpenKruise API
+export interface SidecarSet {
+  apiVersion: string
+  kind: string
+  metadata: {
+    name: string
+    namespace?: string
+    creationTimestamp?: string
+    uid?: string
+    resourceVersion?: string
+    labels?: Record<string, string>
+    annotations?: Record<string, string>
+    deletionTimestamp?: string
+    ownerReferences?: Array<{
+      apiVersion: string
+      kind: string
+      name: string
+      uid: string
+      controller?: boolean
+    }>
+  }
+  spec: {
+    selector?: {
+      matchLabels?: Record<string, string>
+      matchExpressions?: Array<{
+        key: string
+        operator: string
+        values?: string[]
+      }>
+    }
+    containers: Array<{
+      name: string
+      image: string
+      command?: string[]
+      args?: string[]
+      env?: Array<{
+        name: string
+        value?: string
+      }>
+      resources?: {
+        requests?: {
+          cpu?: string
+          memory?: string
+        }
+        limits?: {
+          cpu?: string
+          memory?: string
+        }
+      }
+      volumeMounts?: Array<{
+        name: string
+        mountPath: string
+      }>
+      imagePullPolicy?: string
+      podInjectPolicy?: string
+      shareVolumePolicy?: {
+        type?: string
+      }
+      transferEnv?: Array<{
+        sourceContainerName: string
+        envName: string
+      }>
+    }>
+    volumes?: Array<{
+      name: string
+      configMap?: {
+        name: string
+      }
+      secret?: {
+        secretName: string
+      }
+      persistentVolumeClaim?: {
+        claimName: string
+      }
+      emptyDir?: Record<string, unknown>
+    }>
+    imagePullSecrets?: Array<{
+      name: string
+    }>
+    updateStrategy?: {
+      type?: string
+      maxUnavailable?: number | string
+      partition?: number
+      selector?: {
+        matchLabels?: Record<string, string>
+      }
+    }
+    namespace?: string
+    revisionHistoryLimit?: number
+  }
+  status?: {
+    matchedPods?: number
+    updatedPods?: number
+    readyPods?: number
+    observedGeneration?: number
+    collisionCount?: number
+    conditions?: Array<{
+      type: string
+      status: string
+      lastTransitionTime?: string
+      reason?: string
+      message?: string
+    }>
+    latestRevision?: string
+  }
+}
+
 export type PodStatus = {
   readyContainers: number
   totalContainers: number

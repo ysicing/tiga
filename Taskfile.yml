@@ -247,3 +247,45 @@ tasks:
     dir: ui
     cmds:
       - pnpm dev
+
+  # ========================================
+  # Packaging tasks
+  # ========================================
+
+  package:deb:
+    desc: build Debian/Ubuntu package (.deb)
+    deps:
+      - all
+    cmds:
+      - command -v nfpm || go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+      - |
+        eval "$(bash scripts/version.sh)"
+        VERSION=${VERSION} nfpm pkg --packager deb --target dist/
+
+  package:rpm:
+    desc: build RPM package (.rpm) for RHEL/CentOS/Fedora
+    deps:
+      - all
+    cmds:
+      - command -v nfpm || go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+      - |
+        eval "$(bash scripts/version.sh)"
+        VERSION=${VERSION} nfpm pkg --packager rpm --target dist/
+
+  package:apk:
+    desc: build Alpine package (.apk)
+    deps:
+      - all
+    cmds:
+      - command -v nfpm || go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+      - |
+        eval "$(bash scripts/version.sh)"
+        VERSION=${VERSION} nfpm pkg --packager apk --target dist/
+
+  package:all:
+    desc: build all packages (deb, rpm, apk)
+    cmds:
+      - task: package:deb
+      - task: package:rpm
+      - task: package:apk
+      - echo "All packages built successfully in dist/ directory"
