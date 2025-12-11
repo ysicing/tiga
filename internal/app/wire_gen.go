@@ -10,8 +10,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/ysicing/tiga/internal/config"
 	"github.com/ysicing/tiga/internal/db"
@@ -30,6 +28,7 @@ import (
 	scheduler2 "github.com/ysicing/tiga/internal/services/scheduler"
 	"github.com/ysicing/tiga/pkg/kube"
 	"gorm.io/gorm"
+	"time"
 )
 
 // Injectors from wire.go:

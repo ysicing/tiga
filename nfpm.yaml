@@ -1,0 +1,176 @@
+# nfpm configuration for tiga DevOps Platform
+# Build packages: nfpm pkg --packager deb/rpm/apk
+
+name: "tiga"
+arch: "amd64"
+platform: "linux"
+version: "${VERSION:-v0.1.0}"
+section: "admin"
+priority: "optional"
+maintainer: "tiga Team <dev@example.com>"
+description: |
+  Tiga - 统一的 DevOps 运维平台
+  一个现代化、全栈、统一的 DevOps 运维管理平台，整合 Kubernetes 集群管理、
+  主机监控、数据库管理、容器编排、对象存储等多个运维子系统。
+vendor: "tiga"
+homepage: "https://github.com/ysicing/tiga"
+license: "Apache-2.0"
+
+# 包依赖
+depends:
+  - systemd
+
+# 推荐安装
+recommends:
+  - postgresql
+  - docker.io
+
+# 文件映射
+contents:
+  # 二进制文件
+  - src: ./bin/tiga
+    dst: /usr/bin/tiga
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+  - src: ./bin/tiga-agent
+    dst: /usr/bin/tiga-agent
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+  # 配置文件（标记为 config 避免覆盖用户配置）
+  - src: ./packaging/config.yaml.production
+    dst: /etc/tiga/config.yaml
+    type: config|noreplace
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  # 配置文件示例（供参考）
+  - src: ./config.yaml.example
+    dst: /etc/tiga/config.yaml.example
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  # Systemd 服务文件
+  - src: ./packaging/systemd/tiga.service
+    dst: /usr/lib/systemd/system/tiga.service
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  - src: ./packaging/systemd/tiga-agent.service
+    dst: /usr/lib/systemd/system/tiga-agent.service
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  # 环境变量配置示例
+  - src: ./.env.example
+    dst: /etc/tiga/.env.example
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  # 文档和脚本
+  - src: ./packaging/README.md
+    dst: /usr/share/doc/tiga/README.md
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  - src: ./packaging/DATA_DIRECTORIES.md
+    dst: /usr/share/doc/tiga/DATA_DIRECTORIES.md
+    file_info:
+      mode: 0644
+      owner: root
+      group: root
+
+  - src: ./packaging/scripts/validate-install.sh
+    dst: /usr/share/doc/tiga/validate-install.sh
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+  # 数据和日志目录（空目录）
+  - dst: /var/lib/tiga
+    type: dir
+    file_info:
+      mode: 0755
+      owner: tiga
+      group: tiga
+
+  - dst: /var/log/tiga
+    type: dir
+    file_info:
+      mode: 0755
+      owner: tiga
+      group: tiga
+
+  - dst: /etc/tiga
+    type: dir
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+# 脚本
+scripts:
+  # 安装前：创建用户
+  preinstall: ./packaging/scripts/preinstall.sh
+
+  # 安装后：重载 systemd，提示用户
+  postinstall: ./packaging/scripts/postinstall.sh
+
+  # 升级前：停止服务
+  preremove: ./packaging/scripts/preremove.sh
+
+  # 删除后：清理（可选保留数据）
+  postremove: ./packaging/scripts/postremove.sh
+
+# 覆盖规则（对于不同的包管理器）
+overrides:
+  deb:
+    depends:
+      - systemd
+      - adduser
+    scripts:
+      postinstall: ./packaging/scripts/postinstall.sh
+
+  rpm:
+    depends:
+      - systemd
+      - shadow-utils
+    scripts:
+      postinstall: ./packaging/scripts/postinstall.sh
+
+  apk:
+    depends:
+      - openrc
+    scripts:
+      postinstall: ./packaging/scripts/postinstall.sh
+
+# 打包选项
+deb:
+  compression: xz
+  fields:
+    Bugs: https://github.com/ysicing/tiga/issues
+
+rpm:
+  compression: xz
+  group: Applications/System
+
+apk:
+  compression: gzip

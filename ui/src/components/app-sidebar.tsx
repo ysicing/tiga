@@ -102,6 +102,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const renderGroup = (group: any, level = 0) => {
     const hasSubGroups = group.subGroups && group.subGroups.length > 0
     const hasItems = group.items && group.items.length > 0
+    const isSubGroup = level > 0
 
     return (
       <Collapsible
@@ -109,10 +110,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         defaultOpen={!group.collapsed}
         className="group/collapsible"
       >
-        <SidebarGroup>
+        <SidebarGroup className="py-2 group-data-[state=closed]/collapsible:py-1">
           <SidebarGroupLabel asChild>
             <CollapsibleTrigger className="flex items-center justify-between w-full text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors group-data-[state=open]:text-foreground">
-              <span className="uppercase tracking-wide text-xs font-bold" style={{ paddingLeft: `${level * 0.75}rem` }}>
+              <span
+                className={isSubGroup
+                  ? "tracking-normal text-xs font-medium capitalize"
+                  : "uppercase tracking-wide text-xs font-bold"
+                }
+                style={{ paddingLeft: `${level * 0.75}rem` }}
+              >
                 {group.nameKey
                   ? t(group.nameKey, { defaultValue: group.nameKey })
                   : ''}
@@ -121,7 +128,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </CollapsibleTrigger>
           </SidebarGroupLabel>
           <CollapsibleContent>
-            <SidebarGroupContent className="flex flex-col gap-2">
+            <SidebarGroupContent className="flex flex-col gap-1">
               {hasItems && (
                 <SidebarMenu>
                   {group.items.map((item: any) => {
@@ -147,7 +154,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenu>
               )}
               {hasSubGroups && (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-0.5">
                   {group.subGroups.map((subGroup: any) => renderGroup(subGroup, level + 1))}
                 </div>
               )}

@@ -48,3 +48,12 @@ app.yaml
 docs/*.md
 data/recordings
 data/terminal-recordings
+recordings
+*.cast
+
+
+# Packaging output
+dist/
+*.deb
+*.rpm
+*.apk

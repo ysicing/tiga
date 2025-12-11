@@ -1,0 +1,33 @@
+# Tiga Minimal Configuration for Production Package
+# This file is intentionally minimal to trigger the installation wizard on first run.
+# The installation wizard will guide you through setting up:
+#   - Database configuration
+#   - Administrator account creation
+#   - System settings (app name, domain, ports)
+#   - Security keys (auto-generated)
+
+# Note: install_lock is intentionally omitted to allow installation wizard to run
+# After installation, it will be set to true automatically
+
+# Database configuration (production paths)
+database:
+  type: sqlite
+  database: /var/lib/tiga/tiga.db  # Production path for SQLite database
+
+# For PostgreSQL (alternative):
+# database:
+#   type: postgresql
+#   host: localhost
+#   port: 5432
+#   database: tiga
+#   username: tiga
+#   password: your_password
+
+# For MySQL (alternative):
+# database:
+#   type: mysql
+#   host: localhost
+#   port: 3306
+#   database: tiga
+#   username: tiga
+#   password: your_password

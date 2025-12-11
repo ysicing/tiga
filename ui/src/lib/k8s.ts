@@ -2,7 +2,17 @@ import { Deployment } from 'kubernetes-types/apps/v1'
 import { Container, Pod, Service } from 'kubernetes-types/core/v1'
 import { ObjectMeta } from 'kubernetes-types/meta/v1'
 
-import { CloneSet, CloneSetStatusType, DeploymentStatusType, PodStatus, SimpleContainer } from '@/types/k8s'
+import {
+  CloneSet,
+  CloneSetStatusType,
+  DeploymentStatusType,
+  PodStatus,
+  SimpleContainer,
+  BroadcastJob,
+  BroadcastJobStatusType,
+  SidecarSet,
+  SidecarSetStatusType
+} from '@/types/k8s'
 
 import { getAge } from './utils'
 
@@ -442,6 +452,98 @@ export function getCloneSetStatus(
     availableReplicas === desiredReplicas
   ) {
     return 'Available'
+  }
+
+  return 'Unknown'
+}
+
+export function getBroadcastJobStatus(
+  broadcastJob: BroadcastJob
+): BroadcastJobStatusType {
+  if (!broadcastJob.status) {
+    return 'Unknown'
+  }
+
+  const status = broadcastJob.status
+  const spec = broadcastJob.spec
+
+  // Check if paused
+  if (spec?.paused) {
+    return 'Paused'
+  }
+
+  // Check phase
+  if (status.phase) {
+    switch (status.phase.toLowerCase()) {
+      case 'running':
+        return 'Running'
+      case 'succeeded':
+        return 'Succeeded'
+      case 'failed':
+        return 'Failed'
+      case 'pending':
+        return 'Pending'
+    }
+  }
+
+  // Check by counts
+  const desired = status.desired || 0
+  const succeeded = status.succeeded || 0
+  const failed = status.failed || 0
+  const active = status.active || 0
+
+  if (failed > 0) {
+    return 'Failed'
+  }
+  if (succeeded === desired && desired > 0) {
+    return 'Succeeded'
+  }
+  if (active > 0) {
+    return 'Running'
+  }
+  if (desired > 0 && succeeded === 0 && active === 0) {
+    return 'Pending'
+  }
+
+  return 'Unknown'
+}
+
+export function getSidecarSetStatus(
+  sidecarSet: SidecarSet
+): SidecarSetStatusType {
+  if (!sidecarSet.status) {
+    return 'Unknown'
+  }
+
+  const status = sidecarSet.status
+
+  // Check conditions for update status
+  if (status.conditions) {
+    const updatingCondition = status.conditions.find(
+      (c) => c.type === 'Updating' && c.status === 'True'
+    )
+    if (updatingCondition) {
+      return 'Updating'
+    }
+  }
+
+  const matched = status.matchedPods || 0
+  const updated = status.updatedPods || 0
+  const ready = status.readyPods || 0
+
+  // Check if all matched pods are updated and ready
+  if (matched > 0 && updated === matched && ready === matched) {
+    return 'Ready'
+  }
+
+  // Check if updating
+  if (updated < matched) {
+    return 'Updating'
+  }
+
+  // Check if not all pods are ready
+  if (ready < matched) {
+    return 'NotReady'
   }
 
   return 'Unknown'
